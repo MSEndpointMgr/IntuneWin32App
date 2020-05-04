@@ -1,10 +1,10 @@
 function New-IntuneWin32AppRequirementRuleFile {
     <#
     .SYNOPSIS
-        Create a new Requirement rule object to be used for the Add-IntuneWin32App function.
+        Create a new file based Requirement rule object to be used for the Add-IntuneWin32App function.
 
     .DESCRIPTION
-        Create a new Requirement rule object to be used for the Add-IntuneWin32App function.
+        Create a new file based Requirement rule object to be used for the Add-IntuneWin32App function.
 
     .PARAMETER Existence
         Define that the detection rule will be existence based, e.g. if a file or folder exists or does not exist.
@@ -18,11 +18,32 @@ function New-IntuneWin32AppRequirementRuleFile {
     .PARAMETER Version
         Define that the detection rule will be based on the file version number specified as value.
 
+    .PARAMETER Size
+        Define that the detection rule will be based on the file size in MB specified as 0 or a positive integer value.
+
     .PARAMETER Path
         Specify a path that will be combined with what's passed for the FileOrFolder parameter, e.g. C:\Windows\Temp.
 
     .PARAMETER FileOrFolder
         Specify a file or folder name that will be combined with what's passed for the Path parameter, e.g. File.exe.
+
+    .PARAMETER Check32BitOn64System
+        Decide whether environment variables should be expanded in 32-bit context on 64-bit environments.
+
+    .PARAMETER DetectionType
+        Specify the detection type of an file or folder, if it either exists or doesn't exist.
+
+    .PARAMETER Operator
+        Specify the operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.
+
+    .PARAMETER DateValue
+        Specify a datetime object as the value.
+
+    .PARAMETER VersionValue
+        Specify a string version object as the value, e.g. 1.0, 1.0.0 or 1.0.0.0 as input.
+
+    .PARAMETER SizeInMBValue
+        Specify the file size in MB as a positive integer or 0.
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -46,11 +67,15 @@ function New-IntuneWin32AppRequirementRuleFile {
 
         [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Define that the detection rule will be based on the file version number specified as value.")]
         [switch]$Version,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Size", HelpMessage = "Define that the detection rule will be based on the file size in MB specified as 0 or a positive integer value.")]
+        [switch]$Size,
         
         [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Specify a path that will be combined with what's passed for the FileOrFolder parameter, e.g. C:\Windows\Temp.")]
         [parameter(Mandatory = $true, ParameterSetName = "DateModified")]
         [parameter(Mandatory = $true, ParameterSetName = "DateCreated")]
         [parameter(Mandatory = $true, ParameterSetName = "Version")]
+        [parameter(Mandatory = $true, ParameterSetName = "Size")]
         [ValidateNotNullOrEmpty()]
         [string]$Path,
 
@@ -58,6 +83,7 @@ function New-IntuneWin32AppRequirementRuleFile {
         [parameter(Mandatory = $true, ParameterSetName = "DateModified")]
         [parameter(Mandatory = $true, ParameterSetName = "DateCreated")]
         [parameter(Mandatory = $true, ParameterSetName = "Version")]
+        [parameter(Mandatory = $true, ParameterSetName = "Size")]
         [ValidateNotNullOrEmpty()]
         [string]$FileOrFolder,
 
@@ -65,6 +91,7 @@ function New-IntuneWin32AppRequirementRuleFile {
         [parameter(Mandatory = $false, ParameterSetName = "DateModified")]
         [parameter(Mandatory = $false, ParameterSetName = "DateCreated")]
         [parameter(Mandatory = $false, ParameterSetName = "Version")]
+        [parameter(Mandatory = $false, ParameterSetName = "Size")]
         [ValidateNotNullOrEmpty()]
         [bool]$Check32BitOn64System = $false,
 
@@ -76,6 +103,7 @@ function New-IntuneWin32AppRequirementRuleFile {
         [parameter(Mandatory = $true, ParameterSetName = "DateModified", HelpMessage = "Specify the operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.")]
         [parameter(Mandatory = $true, ParameterSetName = "DateCreated")]
         [parameter(Mandatory = $true, ParameterSetName = "Version")]
+        [parameter(Mandatory = $true, ParameterSetName = "Size")]
         [ValidateSet("equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
         [ValidateNotNullOrEmpty()]
         [string]$Operator,
@@ -88,7 +116,12 @@ function New-IntuneWin32AppRequirementRuleFile {
         [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Specify a string version object as the value, e.g. 1.0, 1.0.0 or 1.0.0.0 as input.")]
         [ValidateNotNullOrEmpty()]
         [ValidatePattern("^(\d+(\.\d+){0,3})$")]
-        [string]$VersionValue
+        [string]$VersionValue,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Size", HelpMessage = "Specify the file size in MB as a positive integer or 0.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^\d+$")]
+        [string]$SizeInMBValue
     )
     Process {
         switch ($PSCmdlet.ParameterSetName) {
@@ -98,7 +131,7 @@ function New-IntuneWin32AppRequirementRuleFile {
                     "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
                     "operator" = "notConfigured"
                     "detectionValue" = $null
-                    "path" = $Path
+                    "path" = [regex]::Escape($Path)
                     "fileOrFolderName" = $FileOrFolder
                     "check32BitOn64System" = $Check32BitOn64System
                     "detectionType" = $DetectionType
@@ -113,14 +146,26 @@ function New-IntuneWin32AppRequirementRuleFile {
                     "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
                     "operator" = $Operator
                     "detectionValue" = $DateValueString
-                    "path" = $Path
+                    "path" = [regex]::Escape($Path)
                     "fileOrFolderName" = $FileOrFolder
                     "check32BitOn64System" = $Check32BitOn64System
                     "detectionType" = "modifiedDate"
                 }
             }
             "DateCreated" {
+                # Convert input datetime object to ISO 8601 string
+                $DateValueString = ConvertTo-JSONDate -InputObject $DateValue
 
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleFile = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
+                    "operator" = $Operator
+                    "detectionValue" = $DateValueString
+                    "path" = [regex]::Escape($Path)
+                    "fileOrFolderName" = $FileOrFolder
+                    "check32BitOn64System" = $Check32BitOn64System
+                    "detectionType" = "createdDate"
+                }
             }
             "Version" {
                 # Construct ordered hash-table with least amount of required properties for default requirement rule
@@ -128,10 +173,22 @@ function New-IntuneWin32AppRequirementRuleFile {
                     "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
                     "operator" = $Operator
                     "detectionValue" = $VersionValue
-                    "path" = $Path
+                    "path" = [regex]::Escape($Path)
                     "fileOrFolderName" = $FileOrFolder
                     "check32BitOn64System" = $Check32BitOn64System
                     "detectionType" = "version"
+                }
+            }
+            "Size" {
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleFile = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
+                    "operator" = $Operator
+                    "detectionValue" = $SizeInMBValue
+                    "path" = [regex]::Escape($Path)
+                    "fileOrFolderName" = $FileOrFolder
+                    "check32BitOn64System" = $Check32BitOn64System
+                    "detectionType" = "sizeInMB"
                 }
             }
         }
