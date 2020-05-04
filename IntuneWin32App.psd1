@@ -112,7 +112,7 @@ PrivateData = @{
         # LicenseUri = ''
 
         # A URL to the main website for this project.
-        ProjectUri = 'https://github.com/MSEndpointMgr/Intune/tree/master/Modules/IntuneWin32App'
+        ProjectUri = 'https://github.com/MSEndpointMgr/IntuneWin32App'
 
         # A URL to an icon representing this module.
         # IconUri = ''
