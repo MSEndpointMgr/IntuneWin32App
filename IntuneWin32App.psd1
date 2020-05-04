@@ -81,7 +81,8 @@ FunctionsToExport = @('Get-IntuneWin32App',`
                       "New-IntuneWin32AppRequirementRule",
                       "Get-IntuneWin32AppAssignment",
                       "Remove-IntuneWin32AppAssignment",
-                      "New-IntuneWin32AppRequirementRuleFile"
+                      "New-IntuneWin32AppRequirementRuleFile",
+                      "New-IntuneWin32AppRequirementRuleRegistry"
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
