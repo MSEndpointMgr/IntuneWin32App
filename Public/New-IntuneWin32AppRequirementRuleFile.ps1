@@ -7,19 +7,19 @@ function New-IntuneWin32AppRequirementRuleFile {
         Create a new file based Requirement rule object to be used for the Add-IntuneWin32App function.
 
     .PARAMETER Existence
-        Define that the detection rule will be existence based, e.g. if a file or folder exists or does not exist.
+        Define that the requirement rule will be existence based, e.g. if a file or folder exists or does not exist.
 
     .PARAMETER DateModified
-        Define that the detection rule will be based on a file or folders date modified value.
+        Define that the requirement rule will be based on a file or folders date modified value.
 
     .PARAMETER DateCreated
-        Define that the detection rule will be based on when a file or folder was created.
+        Define that the requirement rule will be based on when a file or folder was created.
 
     .PARAMETER Version
-        Define that the detection rule will be based on the file version number specified as value.
+        Define that the requirement rule will be based on the file version number specified as value.
 
     .PARAMETER Size
-        Define that the detection rule will be based on the file size in MB specified as 0 or a positive integer value.
+        Define that the requirement rule will be based on the file size in MB specified as 0 or a positive integer value.
 
     .PARAMETER Path
         Specify a path that will be combined with what's passed for the FileOrFolder parameter, e.g. C:\Windows\Temp.
@@ -34,7 +34,7 @@ function New-IntuneWin32AppRequirementRuleFile {
         Specify the detection type of an file or folder, if it either exists or doesn't exist.
 
     .PARAMETER Operator
-        Specify the operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.
+        Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.
 
     .PARAMETER DateValue
         Specify a datetime object as the value.
@@ -56,19 +56,19 @@ function New-IntuneWin32AppRequirementRuleFile {
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Define that the detection rule will be existence based, e.g. if a file or folder exists or does not exist.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Define that the requirement rule will be existence based, e.g. if a file or folder exists or does not exist.")]
         [switch]$Existence,
 
-        [parameter(Mandatory = $true, ParameterSetName = "DateModified", HelpMessage = "Define that the detection rule will be based on a file or folders date modified value.")]
+        [parameter(Mandatory = $true, ParameterSetName = "DateModified", HelpMessage = "Define that the requirement rule will be based on a file or folders date modified value.")]
         [switch]$DateModified,
 
-        [parameter(Mandatory = $true, ParameterSetName = "DateCreated", HelpMessage = "Define that the detection rule will be based on when a file or folder was created.")]
+        [parameter(Mandatory = $true, ParameterSetName = "DateCreated", HelpMessage = "Define that the requirement rule will be based on when a file or folder was created.")]
         [switch]$DateCreated,
 
-        [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Define that the detection rule will be based on the file version number specified as value.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Define that the requirement rule will be based on the file version number specified as value.")]
         [switch]$Version,
 
-        [parameter(Mandatory = $true, ParameterSetName = "Size", HelpMessage = "Define that the detection rule will be based on the file size in MB specified as 0 or a positive integer value.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Size", HelpMessage = "Define that the requirement rule will be based on the file size in MB specified as 0 or a positive integer value.")]
         [switch]$Size,
         
         [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Specify a path that will be combined with what's passed for the FileOrFolder parameter, e.g. C:\Windows\Temp.")]
@@ -100,7 +100,7 @@ function New-IntuneWin32AppRequirementRuleFile {
         [ValidateNotNullOrEmpty()]
         [string]$DetectionType,
 
-        [parameter(Mandatory = $true, ParameterSetName = "DateModified", HelpMessage = "Specify the operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.")]
+        [parameter(Mandatory = $true, ParameterSetName = "DateModified", HelpMessage = "Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.")]
         [parameter(Mandatory = $true, ParameterSetName = "DateCreated")]
         [parameter(Mandatory = $true, ParameterSetName = "Version")]
         [parameter(Mandatory = $true, ParameterSetName = "Size")]

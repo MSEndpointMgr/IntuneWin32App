@@ -7,43 +7,46 @@ function New-IntuneWin32AppRequirementRuleRegistry {
         Create a new Requirement rule object to be used for the Add-IntuneWin32App function.
 
     .PARAMETER Existence
-        Define that the detection rule will be existence based, e.g. if a key or value exists or does not exist.
+        Define that the requirement rule will be existence based, e.g. if a key or value exists or does not exist.
 
-    .PARAMETER DateModified
-        
+    .PARAMETER StringComparison
+        Define that the requirement rule will be based on a specific string comparison.
 
-    .PARAMETER DateCreated
-        
+    .PARAMETER IntegerComparison
+        Define that the requirement rule will be based on an integer comparison.
 
-    .PARAMETER Version
-        
-
-    .PARAMETER Size
-        
+    .PARAMETER VersionComparison
+        Define that the requirement rule will be based on a version comparison.
 
     .PARAMETER KeyPath
         Specify a key path in the registry, e.g. 'HKLM\SOFTWARE\Microsoft'.
 
     .PARAMETER ValueName
-        Specify a value name, e.g. 'InstallVersion'.
+        Specify a registry value name, e.g. 'InstallVersion'.
 
     .PARAMETER Check32BitOn64System
         Decide whether to search in 32-bit registry on 64-bit environments.
 
     .PARAMETER DetectionType
-        Specify the detection type of an file or folder, if it either exists or doesn't exist.
+        Specify the detection type of a key or value, if it either exists or doesn't exist.
 
-    .PARAMETER Operator
-        Specify the operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.
+    .PARAMETER StringComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual.
 
-    .PARAMETER DateValue
-        Specify a datetime object as the value.
+    .PARAMETER VersionComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.
 
-    .PARAMETER VersionValue
+    .PARAMETER IntegerComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.        
+
+    .PARAMETER StringComparisonValue
+        Specify a string object as the value to be used in a string comparison.
+
+    .PARAMETER IntegerComparisonValue
+        Specify an integer object as the value to be used in an integer comparison.
+
+    .PARAMETER VersionComparisonValue
         Specify a string version object as the value, e.g. 1.0, 1.0.0 or 1.0.0.0 as input.
-
-    .PARAMETER SizeInMBValue
-        Specify the file size in MB as a positive integer or 0.
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -56,33 +59,36 @@ function New-IntuneWin32AppRequirementRuleRegistry {
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Define that the detection rule will be existence based, e.g. if a key or value exists or does not exist.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Define that the requirement rule will be existence based, e.g. if a key or value exists or does not exist.")]
         [switch]$Existence,
 
-        [parameter(Mandatory = $true, ParameterSetName = "DateModified", HelpMessage = "Define that the detection rule will be based on a file or folders date modified value.")]
-        [switch]$DateModified,
+        [parameter(Mandatory = $true, ParameterSetName = "StringComparison", HelpMessage = "Define that the requirement rule will be based on a specific string comparison.")]
+        [switch]$StringComparison,
 
-        [parameter(Mandatory = $true, ParameterSetName = "DateCreated", HelpMessage = "Define that the detection rule will be based on when a file or folder was created.")]
-        [switch]$DateCreated,
+        [parameter(Mandatory = $true, ParameterSetName = "VersionComparison", HelpMessage = "Define that the requirement rule will be based on a version comparison.")]
+        [switch]$VersionComparison,
 
-        [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Define that the detection rule will be based on the file version number specified as value.")]
-        [switch]$Version,
-
-        [parameter(Mandatory = $true, ParameterSetName = "Size", HelpMessage = "Define that the detection rule will be based on the file size in MB specified as 0 or a positive integer value.")]
-        [switch]$Size,
+        [parameter(Mandatory = $true, ParameterSetName = "IntegerComparison", HelpMessage = "Define that the requirement rule will be based on an integer comparison.")]
+        [switch]$IntegerComparison,
         
         [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Specify a key path in the registry, e.g. 'HKLM\SOFTWARE\Microsoft'.")]
-        [parameter(Mandatory = $true, ParameterSetName = "Size")]
+        [parameter(Mandatory = $true, ParameterSetName = "StringComparison")]
+        [parameter(Mandatory = $true, ParameterSetName = "IntegerComparison")]
+        [parameter(Mandatory = $true, ParameterSetName = "VersionComparison")]
         [ValidateNotNullOrEmpty()]
         [string]$KeyPath,
 
-        [parameter(Mandatory = $false, ParameterSetName = "Existence", HelpMessage = "Specify a value name, e.g. 'InstallVersion'.")]
-        [parameter(Mandatory = $false, ParameterSetName = "Size")]
+        [parameter(Mandatory = $false, ParameterSetName = "Existence", HelpMessage = "Specify a registry value name, e.g. 'InstallVersion'.")]
+        [parameter(Mandatory = $false, ParameterSetName = "StringComparison")]
+        [parameter(Mandatory = $false, ParameterSetName = "IntegerComparison")]
+        [parameter(Mandatory = $false, ParameterSetName = "VersionComparison")]
         [ValidateNotNullOrEmpty()]
         [string]$ValueName = $null,
 
         [parameter(Mandatory = $false, ParameterSetName = "Existence", HelpMessage = "Decide whether to search in 32-bit registry on 64-bit environments.")]
-        [parameter(Mandatory = $false, ParameterSetName = "Size")]
+        [parameter(Mandatory = $false, ParameterSetName = "StringComparison")]
+        [parameter(Mandatory = $false, ParameterSetName = "IntegerComparison")]
+        [parameter(Mandatory = $false, ParameterSetName = "VersionComparison")]
         [ValidateNotNullOrEmpty()]
         [bool]$Check32BitOn64System = $false,
 
@@ -91,11 +97,34 @@ function New-IntuneWin32AppRequirementRuleRegistry {
         [ValidateNotNullOrEmpty()]
         [string]$DetectionType,
 
-        [parameter(Mandatory = $true, ParameterSetName = "DateModified", HelpMessage = "Specify the operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.")]
-        [parameter(Mandatory = $true, ParameterSetName = "Size")]
+        [parameter(Mandatory = $true, ParameterSetName = "StringComparison", HelpMessage = "Specify the operator. Supported values are: equal, notEqual.")]
+        [ValidateSet("equal", "notEqual")]
+        [ValidateNotNullOrEmpty()]
+        [string]$StringComparisonOperator,
+
+        [parameter(Mandatory = $true, ParameterSetName = "IntegerComparison", HelpMessage = "Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.")]
         [ValidateSet("equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
         [ValidateNotNullOrEmpty()]
-        [string]$Operator
+        [string]$IntegerComparisonOperator,
+
+        [parameter(Mandatory = $true, ParameterSetName = "VersionComparison", HelpMessage = "Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.")]
+        [ValidateSet("equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
+        [ValidateNotNullOrEmpty()]
+        [string]$VersionComparisonOperator,        
+
+        [parameter(Mandatory = $true, ParameterSetName = "StringComparison", HelpMessage = "Specify a string object as the value to be used in a string comparison.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$StringComparisonValue,
+
+        [parameter(Mandatory = $true, ParameterSetName = "IntegerComparison", HelpMessage = "Specify an integer object as the value to be used in an integer comparison.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^\d+$")]
+        [string]$IntegerComparisonValue,
+
+        [parameter(Mandatory = $true, ParameterSetName = "VersionComparison", HelpMessage = "Specify a string version object as the value, e.g. 1.0, 1.0.0 or 1.0.0.0 as input.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^(\d+(\.\d+){0,3})$")]
+        [string]$VersionComparisonValue
     )
     Process {
         switch ($PSCmdlet.ParameterSetName) {
@@ -111,17 +140,40 @@ function New-IntuneWin32AppRequirementRuleRegistry {
                     "detectionType" = $DetectionType
                 }
             }
-            #
-            "Size" {
+            "StringComparison" {
                 # Construct ordered hash-table with least amount of required properties for default requirement rule
                 $RequirementRuleRegistry = [ordered]@{
-                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
-                    "operator" = $Operator
-                    "detectionValue" = $SizeInMBValue
-                    "path" = [regex]::Escape($Path)
-                    "fileOrFolderName" = $FileOrFolder
+                    "@odata.type" = "#microsoft.graph.win32LobAppRegistryRequirement"
+                    "operator" = $StringComparisonOperator
+                    "detectionValue" = $StringComparisonValue
                     "check32BitOn64System" = $Check32BitOn64System
-                    "detectionType" = "sizeInMB"
+                    "keyPath" = [regex]::Escape($KeyPath)
+                    "valueName" = $ValueName
+                    "detectionType" = "string"
+                }
+            }
+            "IntegerComparison" {
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleRegistry = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppRegistryRequirement"
+                    "operator" = $IntegerComparisonOperator
+                    "detectionValue" = $IntegerComparisonValue
+                    "check32BitOn64System" = $Check32BitOn64System
+                    "keyPath" = [regex]::Escape($KeyPath)
+                    "valueName" = $ValueName
+                    "detectionType" = "integer"
+                }
+            }            
+            "VersionComparison" {
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleRegistry = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppRegistryRequirement"
+                    "operator" = $VersionComparisonOperator
+                    "detectionValue" = $VersionComparisonValue
+                    "check32BitOn64System" = $Check32BitOn64System
+                    "keyPath" = [regex]::Escape($KeyPath)
+                    "valueName" = $ValueName
+                    "detectionType" = "version"
                 }
             }
         }
