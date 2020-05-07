@@ -124,6 +124,9 @@ function New-IntuneWin32AppRequirementRuleFile {
         [string]$SizeInMBValue
     )
     Process {
+        # Handle initial value for return
+        $RequirementRuleFile = $null
+
         switch ($PSCmdlet.ParameterSetName) {
             "Existence" {
                 # Construct ordered hash-table with least amount of required properties for default requirement rule

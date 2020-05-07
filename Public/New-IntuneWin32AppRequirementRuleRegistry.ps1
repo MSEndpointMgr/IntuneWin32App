@@ -1,10 +1,10 @@
 function New-IntuneWin32AppRequirementRuleRegistry {
     <#
     .SYNOPSIS
-        Create a new Requirement rule object to be used for the Add-IntuneWin32App function.
+        Create a new registry type of Requirement rule object to be used for the Add-IntuneWin32App function.
 
     .DESCRIPTION
-        Create a new Requirement rule object to be used for the Add-IntuneWin32App function.
+        Create a new registry type of Requirement rule object to be used for the Add-IntuneWin32App function.
 
     .PARAMETER Existence
         Define that the requirement rule will be existence based, e.g. if a key or value exists or does not exist.
@@ -127,6 +127,9 @@ function New-IntuneWin32AppRequirementRuleRegistry {
         [string]$VersionComparisonValue
     )
     Process {
+        # Handle initial value for return
+        $RequirementRuleRegistry = $null
+
         switch ($PSCmdlet.ParameterSetName) {
             "Existence" {
                 # Construct ordered hash-table with least amount of required properties for default requirement rule
