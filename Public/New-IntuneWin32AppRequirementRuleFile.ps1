@@ -36,7 +36,7 @@ function New-IntuneWin32AppRequirementRuleFile {
     .PARAMETER Operator
         Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.
 
-    .PARAMETER DateValue
+    .PARAMETER DateTimeValue
         Specify a datetime object as the value.
 
     .PARAMETER VersionValue
@@ -111,7 +111,7 @@ function New-IntuneWin32AppRequirementRuleFile {
         [parameter(Mandatory = $true, ParameterSetName = "DateModified", HelpMessage = "Specify a datetime object as the value.")]
         [parameter(Mandatory = $true, ParameterSetName = "DateCreated")]
         [ValidateNotNullOrEmpty()]
-        [datetime]$DateValue,
+        [datetime]$DateTimeValue,
 
         [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Specify a string version object as the value, e.g. 1.0, 1.0.0 or 1.0.0.0 as input.")]
         [ValidateNotNullOrEmpty()]
@@ -142,7 +142,7 @@ function New-IntuneWin32AppRequirementRuleFile {
             }
             "DateModified" {
                 # Convert input datetime object to ISO 8601 string
-                $DateValueString = ConvertTo-JSONDate -InputObject $DateValue
+                $DateValueString = ConvertTo-JSONDate -InputObject $DateTimeValue
 
                 # Construct ordered hash-table with least amount of required properties for default requirement rule
                 $RequirementRuleFile = [ordered]@{
@@ -157,7 +157,7 @@ function New-IntuneWin32AppRequirementRuleFile {
             }
             "DateCreated" {
                 # Convert input datetime object to ISO 8601 string
-                $DateValueString = ConvertTo-JSONDate -InputObject $DateValue
+                $DateValueString = ConvertTo-JSONDate -InputObject $DateTimeValue
 
                 # Construct ordered hash-table with least amount of required properties for default requirement rule
                 $RequirementRuleFile = [ordered]@{

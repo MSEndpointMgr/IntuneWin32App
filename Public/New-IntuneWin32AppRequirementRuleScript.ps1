@@ -29,50 +29,174 @@ function New-IntuneWin32AppRequirementRuleScript {
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [parameter(Mandatory = $true, HelpMessage = "Specify the full path to the PowerShell script file, e.g. 'C:\Scripts\Rule.ps1'.")]
+        [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Select output data type as a string, used when determining a detection match requirement.")]
+        [switch]$StringOutputDataType,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Integer", HelpMessage = "Select output data type as a integer, used when determining a detection match requirement.")]
+        [switch]$IntegerOutputDataType,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Boolean", HelpMessage = "Select output data type as a boolean, used when determining a detection match requirement.")]
+        [switch]$BooleanOutputDataType,
+
+        [parameter(Mandatory = $true, ParameterSetName = "DateTime", HelpMessage = "Select output data type as a date time, used when determining a detection match requirement.")]
+        [switch]$DateTimeOutputDataType,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Float", HelpMessage = "Select output data type as a floating point, used when determining a detection match requirement.")]
+        [switch]$FloatOutputDataType,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Select output data type as a version, used when determining a detection match requirement.")]
+        [switch]$VersionOutputDataType,
+
+        [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Specify the full path to the PowerShell script file, e.g. 'C:\Scripts\Rule.ps1'.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Integer")]
+        [parameter(Mandatory = $true, ParameterSetName = "Boolean")]
+        [parameter(Mandatory = $true, ParameterSetName = "DateTime")]
+        [parameter(Mandatory = $true, ParameterSetName = "Float")]
+        [parameter(Mandatory = $true, ParameterSetName = "Version")]
         [ValidateNotNullOrEmpty()]
         [string]$ScriptFile,
-        
-        [parameter(Mandatory = $true, HelpMessage = "Specify the output data type used when determining a detection match requirement. Supported values: string, integer, dateTime,")]
-        [ValidateSet("string", "integer", "dateTime")]
-        [ValidateNotNullOrEmpty()]
-        [string]$OutputDataType,
 
-        [parameter(Mandatory = $false, HelpMessage = "Set as True to run as a 32-bit process in a 64-bit environment.")]
+        [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Specify to either run the script in the local system context or with signed in user context.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Integer")]
+        [parameter(Mandatory = $true, ParameterSetName = "Boolean")]
+        [parameter(Mandatory = $true, ParameterSetName = "DateTime")]
+        [parameter(Mandatory = $true, ParameterSetName = "Float")]
+        [parameter(Mandatory = $true, ParameterSetName = "Version")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("system", "user")]
+        [string]$ScriptContext,
+               
+        [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Specify the operator. Supported values are: equal, notEqual.")]
+        [ValidateSet("equal", "notEqual")]
+        [ValidateNotNullOrEmpty()]
+        [string]$StringComparisonOperator,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Integer", HelpMessage = "Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.")]
+        [ValidateSet("equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
+        [ValidateNotNullOrEmpty()]
+        [string]$IntegerComparisonOperator,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Boolean", HelpMessage = "Specify the operator. Supported values are: equal, notEqual.")]
+        [ValidateSet("equal", "notEqual")]
+        [ValidateNotNullOrEmpty()]
+        [string]$BooleanComparisonOperator,
+
+        [parameter(Mandatory = $true, ParameterSetName = "DateTime", HelpMessage = "Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.")]
+        [ValidateSet("equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
+        [ValidateNotNullOrEmpty()]
+        [string]$DateTimeComparisonOperator,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Float", HelpMessage = "Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.")]
+        [ValidateSet("equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
+        [ValidateNotNullOrEmpty()]
+        [string]$FloatComparisonOperator,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.")]
+        [ValidateSet("equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
+        [ValidateNotNullOrEmpty()]
+        [string]$VersionComparisonOperator,
+
+        [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Specify the detection match value.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$StringValue,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Integer", HelpMessage = "Specify the detection match value.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$IntegerValue,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Boolean", HelpMessage = "Specify the detection match value.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$BooleanValue,
+
+        [parameter(Mandatory = $true, ParameterSetName = "DateTime", HelpMessage = "Specify the detection match value.")]
+        [ValidateNotNullOrEmpty()]
+        [datetime]$DateTimeValue,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Float", HelpMessage = "Specify the detection match value.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$FloatValue,
+
+        [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Specify the detection match value.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^(\d+(\.\d+){0,3})$")]
+        [string]$VersionValue,
+
+        [parameter(Mandatory = $false, ParameterSetName = "String", HelpMessage = "Set as True to run as a 32-bit process in a 64-bit environment.")]
+        [parameter(Mandatory = $false, ParameterSetName = "Integer")]
+        [parameter(Mandatory = $false, ParameterSetName = "Boolean")]
+        [parameter(Mandatory = $false, ParameterSetName = "DateTime")]
+        [parameter(Mandatory = $false, ParameterSetName = "Float")]
+        [parameter(Mandatory = $false, ParameterSetName = "Version")]        
         [ValidateNotNullOrEmpty()]
         [bool]$RunAs32BitOn64System = $false,
 
-        [parameter(Mandatory = $true, ParameterSetName = "IntegerComparison", HelpMessage = "Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.")]
-        [ValidateSet("equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
+        [parameter(Mandatory = $false, ParameterSetName = "String", HelpMessage = "Set as True to verify that the script executed is signed by a trusted publisher.")]
+        [parameter(Mandatory = $false, ParameterSetName = "Integer")]
+        [parameter(Mandatory = $false, ParameterSetName = "Boolean")]
+        [parameter(Mandatory = $false, ParameterSetName = "DateTime")]
+        [parameter(Mandatory = $false, ParameterSetName = "Float")]
+        [parameter(Mandatory = $false, ParameterSetName = "Version")]
         [ValidateNotNullOrEmpty()]
-        [string]$IntegerComparisonOperator
+        [bool]$EnforceSignatureCheck = $false        
     )
     Process {
         # Handle initial value for return
         $RequirementRuleScript = $null
 
         # Detect if passed script file exists
+        Write-Verbose -Message "Attempting to locate given script file in provided path: $($ScriptFile)"
         if (Test-Path -Path $ScriptFile) {
+            # Get script file name from provided path
+            $ScriptFileName = [System.IO.Path]::GetFileName("$($ScriptFile)")
+
             # Convert script file contents to base64 string
             $ScriptContent = [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes("$($ScriptFile)"))
 
             switch ($PSCmdlet.ParameterSetName) {
-                "Existence" {
+                "String" {
                     # Construct ordered hash-table with least amount of required properties for default requirement rule
-                    $RequirementRuleRegistry = [ordered]@{
-                        "@odata.type" = "#microsoft.graph.win32LobAppRegistryRequirement"
-                        "operator" = "notConfigured"
-                        "detectionValue" = $null
-                        "check32BitOn64System" = $Check32BitOn64System
-                        "keyPath" = [regex]::Escape($KeyPath)
-                        "valueName" = $ValueName
-                        "detectionType" = $DetectionType
+                    $RequirementRuleScript = [ordered]@{
+                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                        "operator" = $StringComparisonOperator
+                        "detectionValue" = $StringValue
+                        "displayName" = $ScriptFileName
+                        "enforceSignatureCheck" = $EnforceSignatureCheck
+                        "runAs32Bit" = $RunAs32BitOn64System
+                        "runAsAccount" = $ScriptContext
+                        "scriptContent" = $ScriptContent
+                        "detectionType" = "string"
+                    }
+                }
+                "Integer" {
+
+                }
+                "Boolean" {
+
+                }
+                "DateTime" {
+                    # Convert input datetime object to ISO 8601 string
+                    $DateValueString = ConvertTo-JSONDate -InputObject $DateTimeValue
+                    
+                    # Construct ordered hash-table with least amount of required properties for default requirement rule
+                    $RequirementRuleScript = [ordered]@{
+                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                        "operator" = $DateTimeComparisonOperator
+                        "detectionValue" = $DateValueString
+                        "displayName" = $ScriptFileName
+                        "enforceSignatureCheck" = $EnforceSignatureCheck
+                        "runAs32Bit" = $RunAs32BitOn64System
+                        "runAsAccount" = $ScriptContext
+                        "scriptContent" = $ScriptContent
+                        "detectionType" = "dateTime"
                     }
                 }
             }
         }
+        else {
+            Write-Warning -Message "Unable to detect specified script file in given path: $($ScriptFile)"
+        }
 
         # Handle return value with constructed requirement rule for file
-        return $RequirementRuleRegistry
+        return $RequirementRuleScript
     }
 }
