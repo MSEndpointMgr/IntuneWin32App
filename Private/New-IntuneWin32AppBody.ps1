@@ -73,6 +73,11 @@ function New-IntuneWin32AppBody {
         [ValidateNotNullOrEmpty()]
         [System.Collections.Specialized.OrderedDictionary]$RequirementRule,
 
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the additional requirement rules for the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.Specialized.OrderedDictionary[]]$AdditionalRequirementRule,
+
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide a Base64 encoded string as icon for the Win32 application body.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
@@ -150,7 +155,7 @@ function New-IntuneWin32AppBody {
                     "publisher" = $MSIPublisher
                     "requiresReboot" = $MSIRequiresReboot
                     "upgradeCode" = $MSIUpgradeCode
-                };
+                }
                 "notes" = ""
                 "owner" = ""
                 "privacyInformationUrl" = $null
@@ -158,13 +163,17 @@ function New-IntuneWin32AppBody {
                 "runAs32bit" = $false
             }
 
-            # Add icon property if pass on command line
+            # Add icon property if passed on command line
             if ($PSBoundParameters["Icon"]) {
                 $Win32AppBody.Add("largeIcon", @{
                     "type" = "image/png"
                     "value" = $Icon
                 })
             }
+
+            # Add additional requirement rules if passed on the command line
+
+            ### process each object in array
         }
         "EXE" {
             $Win32AppBody = [ordered]@{
@@ -194,7 +203,7 @@ function New-IntuneWin32AppBody {
                 "runAs32bit" = $false
             }
 
-            # Add icon property if pass on command line
+            # Add icon property if passed on command line
             if ($PSBoundParameters["Icon"]) {
                 $Win32AppBody.Add("largeIcon", @{
                     "type" = "image/png"

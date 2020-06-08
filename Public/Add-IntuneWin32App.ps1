@@ -42,6 +42,9 @@ function Add-IntuneWin32App {
     .PARAMETER RequirementRule
         Provide an OrderedDictionary object as requirement rule that will be used for the Win32 application.
 
+    .PARAMETER AdditionalRequirementRule
+        Provide an array of OrderedDictionary objects as additional requirement rule, e.g. for file, registry or script rules, that will be used for the Win32 application.
+
     .PARAMETER ReturnCode
         Provide an array of a single or multiple hash-tables for the Win32 application with return code information.
 
@@ -145,6 +148,11 @@ function Add-IntuneWin32App {
         [ValidateNotNullOrEmpty()]
         [System.Collections.Specialized.OrderedDictionary]$RequirementRule,
 
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide an array of OrderedDictionary objects as additional requirement rule, e.g. for file, registry or script rules, that will be used for the Win32 application.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.Specialized.OrderedDictionary[]]$AdditionalRequirementRule,
+
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide an array of a single or multiple hash-tables for the Win32 application with return code information.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
@@ -247,6 +255,9 @@ function Add-IntuneWin32App {
                         if ($PSBoundParameters["RequirementRule"]) {
                             $AppBodySplat.Add("RequirementRule", $RequirementRule)
                         }
+                        if ($PSBoundParameters["AdditionalRequirementRule"]) {
+                            $AppBodySplat.Add("AdditionalRequirementRule", $AdditionalRequirementRule)
+                        }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
                         Write-Verbose -Message "Constructed the basic layout for 'MSI' Win32 app body type"
@@ -271,6 +282,9 @@ function Add-IntuneWin32App {
                         }
                         if ($PSBoundParameters["RequirementRule"]) {
                             $AppBodySplat.Add("RequirementRule", $RequirementRule)
+                        }
+                        if ($PSBoundParameters["AdditionalRequirementRule"]) {
+                            $AppBodySplat.Add("AdditionalRequirementRule", $AdditionalRequirementRule)
                         }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat

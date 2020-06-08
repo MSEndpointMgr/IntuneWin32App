@@ -27,6 +27,18 @@ function Add-IntuneWin32AppAssignment {
     .PARAMETER Notification
         Specify the notification setting for the assignment of the Win32 app.
 
+    .PARAMETER Available
+        Specify a date time object for the availability of the assignment.
+
+    .PARAMETER Deadline
+        Specify a date time object for the deadline of the assignment.
+
+    .PARAMETER UseLocalTime
+        Specify to use either UTC of device local time for the assignment, set to 'True' for device local time and 'False' for UTC.
+
+    .PARAMETER DeliveryOptimizationPriority
+        Specify to download content in the background using default value of 'notConfigured', or set to download in foreground using 'foreground'.
+
     .PARAMETER ApplicationID
         Specify the Application ID of the app registration in Azure AD. By default, the script will attempt to use well known Microsoft Intune PowerShell app registration.
 
@@ -37,11 +49,12 @@ function Add-IntuneWin32AppAssignment {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-04
+        Updated:     2020-06-08
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-04-29) Added support for AllDevices target assignment type
+        1.0.2 - (2020-06-08) Added support for Available and Deadline settings, device local time and Delivery Optimization settings of the assignment
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -80,6 +93,27 @@ function Add-IntuneWin32AppAssignment {
         [ValidateNotNullOrEmpty()]
         [ValidateSet("showAll", "showReboot", "hideAll")]
         [string]$Notification = "showAll",
+
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify a date time object for the availability of the assignment.")]
+        [parameter(Mandatory = $false, ParameterSetName = "ID")]
+        [ValidateNotNullOrEmpty()]
+        [datetime]$Available,
+
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify a date time object for the deadline of the assignment.")]
+        [parameter(Mandatory = $false, ParameterSetName = "ID")]
+        [ValidateNotNullOrEmpty()]
+        [datetime]$Deadline,
+
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify to use either UTC of device local time for the assignment, set to 'True' for device local time and 'False' for UTC.")]
+        [parameter(Mandatory = $false, ParameterSetName = "ID")]
+        [ValidateNotNullOrEmpty()]
+        [bool]$UseLocalTime = $false,
+
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify to download content in the background using default value of 'notConfigured', or set to download in foreground using 'foreground'.")]
+        [parameter(Mandatory = $false, ParameterSetName = "ID")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("notConfigured", "foreground")]
+        [string]$DeliveryOptimizationPriority = "notConfigured",
         
         [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify the Application ID of the app registration in Azure AD. By default, the script will attempt to use well known Microsoft Intune PowerShell app registration.")]
         [parameter(Mandatory = $false, ParameterSetName = "ID")]
@@ -99,7 +133,25 @@ function Add-IntuneWin32AppAssignment {
         # Validate group identifier is passed as input if target is set to Group
         if ($Target -like "Group") {
             if (-not($PSBoundParameters["GroupID"])) {
-                Write-Warning -Message "Validation failed for parameter input, target set to Group but GroupID parameter was not specified"
+                Write-Warning -Message "Validation failed for parameter input, target set to Group but GroupID parameter was not specified"; break
+            }
+        }
+
+        # Validate that Available parameter input datetime object is in the past if the Deadline parameter is not passed on the command line
+        if ($PSBoundParameters["Available"]) {
+            if (-not($PSBoundParameters["Deadline"])) {
+                if ($Available -gt (Get-Date).AddDays(-1)) {
+                    Write-Warning -Message "Validation failed for parameter input, available date time needs to be before the current used 'as soon as possible' deadline date and time, with a offset of 1 day"; break
+                }
+            }
+        }
+
+        # Validate that Deadline parameter input datetime object is in the future if the Available parameter is not passed on the command line
+        if ($PSBoundParameters["Deadline"]) {
+            if (-not($PSBoundParameters["Available"])) {
+                if ($Deadline -lt (Get-Date)) {
+                    Write-Warning -Message "Validation failed for parameter input, deadline date time needs to be after the current used 'as soon as possible' available date and time"; break
+                }
             }
         }
     }
@@ -163,9 +215,37 @@ function Add-IntuneWin32AppAssignment {
                     "@odata.type" = "#microsoft.graph.win32LobAppAssignmentSettings"
                     "notifications" = $Notification
                     "restartSettings" = $null
+                    "deliveryOptimizationPriority" = $DeliveryOptimizationPriority
                     "installTimeSettings" = $null
                 }
             }
+
+            # Amend installTimeSettings property if Available parameter is specified
+            if (($PSBoundParameters["Available"]) -and (-not($PSBoundParameters["Deadline"]))) {
+                $Win32AppAssignmentBody.settings.installTimeSettings = @{
+                    "useLocalTime" = $UseLocalTime
+                    "startDateTime" = (ConvertTo-JSONDate -InputObject $Available)
+                    "deadlineDateTime" = $null
+                }
+            }
+
+            # Amend installTimeSettings property if Deadline parameter is specified
+            if (($PSBoundParameters["Deadline"]) -and (-not($PSBoundParameters["Available"]))) {
+                $Win32AppAssignmentBody.settings.installTimeSettings = @{
+                    "useLocalTime" = $UseLocalTime
+                    "startDateTime" = $null
+                    "deadlineDateTime" = (ConvertTo-JSONDate -InputObject $Deadline)
+                }
+            }
+
+            # Amend installTimeSettings property if Available and Deadline parameter is specified
+            if (($PSBoundParameters["Available"]) -and ($PSBoundParameters["Deadline"])) {
+                $Win32AppAssignmentBody.settings.installTimeSettings = @{
+                    "useLocalTime" = $UseLocalTime
+                    "startDateTime" = (ConvertTo-JSONDate -InputObject $Available)
+                    "deadlineDateTime" = (ConvertTo-JSONDate -InputObject $Deadline)
+                }
+            }            
 
             try {
                 # Attempt to call Graph and create new assignment for Win32 app

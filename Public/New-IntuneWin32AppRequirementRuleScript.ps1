@@ -6,18 +6,72 @@ function New-IntuneWin32AppRequirementRuleScript {
     .DESCRIPTION
         Create a new script type of Requirement rule object to be used for the Add-IntuneWin32App function.
 
-    .PARAMETER 
-        
+    .PARAMETER StringOutputDataType
+        Select output data type as a string, used when determining a detection match requirement.
 
-    .PARAMETER 
-        
+    .PARAMETER IntegerOutputDataType
+        Select output data type as a integer, used when determining a detection match requirement.
 
-    .PARAMETER 
-        
+    .PARAMETER BooleanOutputDataType
+        Select output data type as a boolean, used when determining a detection match requirement.
 
-    .PARAMETER 
-        
+    .PARAMETER DateTimeOutputDataType
+        Select output data type as a date time, used when determining a detection match requirement.
 
+    .PARAMETER FloatOutputDataType
+        Select output data type as a floating point, used when determining a detection match requirement.
+
+    .PARAMETER VersionOutputDataType
+        Select output data type as a version, used when determining a detection match requirement.
+
+    .PARAMETER ScriptFile
+        Specify the full path to the PowerShell script file, e.g. 'C:\Scripts\Rule.ps1'.
+
+    .PARAMETER ScriptContext
+        Specify to either run the script in the local system context or with signed in user context.
+
+    .PARAMETER StringComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual.
+
+    .PARAMETER IntegerComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.
+
+    .PARAMETER BooleanComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual.
+
+    .PARAMETER DateTimeComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.
+    
+    .PARAMETER FloatComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.
+
+    .PARAMETER VersionComparisonOperator
+        Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.
+
+    .PARAMETER StringValue
+        Specify the detection match value.
+
+    .PARAMETER IntegerValue
+        Specify the detection match value.
+
+    .PARAMETER BooleanValue
+        Specify the detection match value.
+
+    .PARAMETER DateTimeValue
+        Specify the detection match value.
+
+    .PARAMETER FloatValue
+        Specify the detection match value.
+
+    .PARAMETER VersionValue
+        Specify the detection match value.
+
+    .PARAMETER RunAs32BitOn64System
+        Set as True to run as a 32-bit process in a 64-bit environment.
+
+    .PARAMETER EnforceSignatureCheck
+        Set as True to verify that the script executed is signed by a trusted publisher.
+                
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
@@ -106,7 +160,7 @@ function New-IntuneWin32AppRequirementRuleScript {
 
         [parameter(Mandatory = $true, ParameterSetName = "Boolean", HelpMessage = "Specify the detection match value.")]
         [ValidateNotNullOrEmpty()]
-        [string]$BooleanValue,
+        [bool]$BooleanValue,
 
         [parameter(Mandatory = $true, ParameterSetName = "DateTime", HelpMessage = "Specify the detection match value.")]
         [ValidateNotNullOrEmpty()]
@@ -114,6 +168,7 @@ function New-IntuneWin32AppRequirementRuleScript {
 
         [parameter(Mandatory = $true, ParameterSetName = "Float", HelpMessage = "Specify the detection match value.")]
         [ValidateNotNullOrEmpty()]
+        [ValidateSet("^((\+|-)?(0|([1-9][0-9]*))(\.[0-9]+)?)$")]
         [string]$FloatValue,
 
         [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Specify the detection match value.")]
@@ -137,7 +192,7 @@ function New-IntuneWin32AppRequirementRuleScript {
         [parameter(Mandatory = $false, ParameterSetName = "Float")]
         [parameter(Mandatory = $false, ParameterSetName = "Version")]
         [ValidateNotNullOrEmpty()]
-        [bool]$EnforceSignatureCheck = $false        
+        [bool]$EnforceSignatureCheck = $false
     )
     Process {
         # Handle initial value for return
@@ -150,6 +205,7 @@ function New-IntuneWin32AppRequirementRuleScript {
             $ScriptFileName = [System.IO.Path]::GetFileName("$($ScriptFile)")
 
             # Convert script file contents to base64 string
+            Write-Verbose -Message ""
             $ScriptContent = [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes("$($ScriptFile)"))
 
             switch ($PSCmdlet.ParameterSetName) {
@@ -168,10 +224,32 @@ function New-IntuneWin32AppRequirementRuleScript {
                     }
                 }
                 "Integer" {
-
+                    # Construct ordered hash-table with least amount of required properties for default requirement rule
+                    $RequirementRuleScript = [ordered]@{
+                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                        "operator" = $IntegerComparisonOperator
+                        "detectionValue" = $IntegerValue
+                        "displayName" = $ScriptFileName
+                        "enforceSignatureCheck" = $EnforceSignatureCheck
+                        "runAs32Bit" = $RunAs32BitOn64System
+                        "runAsAccount" = $ScriptContext
+                        "scriptContent" = $ScriptContent
+                        "detectionType" = "integer"
+                    }
                 }
                 "Boolean" {
-
+                    # Construct ordered hash-table with least amount of required properties for default requirement rule
+                    $RequirementRuleScript = [ordered]@{
+                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                        "operator" = $BooleanComparisonOperator
+                        "detectionValue" = $BooleanValue
+                        "displayName" = $ScriptFileName
+                        "enforceSignatureCheck" = $EnforceSignatureCheck
+                        "runAs32Bit" = $RunAs32BitOn64System
+                        "runAsAccount" = $ScriptContext
+                        "scriptContent" = $ScriptContent
+                        "detectionType" = "boolean"
+                    }
                 }
                 "DateTime" {
                     # Convert input datetime object to ISO 8601 string
@@ -188,6 +266,34 @@ function New-IntuneWin32AppRequirementRuleScript {
                         "runAsAccount" = $ScriptContext
                         "scriptContent" = $ScriptContent
                         "detectionType" = "dateTime"
+                    }
+                }
+                "Float" {
+                    # Construct ordered hash-table with least amount of required properties for default requirement rule
+                    $RequirementRuleScript = [ordered]@{
+                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                        "operator" = $FloatComparisonOperator
+                        "detectionValue" = $FloatValue
+                        "displayName" = $ScriptFileName
+                        "enforceSignatureCheck" = $EnforceSignatureCheck
+                        "runAs32Bit" = $RunAs32BitOn64System
+                        "runAsAccount" = $ScriptContext
+                        "scriptContent" = $ScriptContent
+                        "detectionType" = "float"
+                    }
+                }
+                "Version" {
+                    # Construct ordered hash-table with least amount of required properties for default requirement rule
+                    $RequirementRuleScript = [ordered]@{
+                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                        "operator" = $IntegerComparisonOperator
+                        "detectionValue" = $IntegerValue
+                        "displayName" = $ScriptFileName
+                        "enforceSignatureCheck" = $EnforceSignatureCheck
+                        "runAs32Bit" = $RunAs32BitOn64System
+                        "runAsAccount" = $ScriptContext
+                        "scriptContent" = $ScriptContent
+                        "detectionType" = "version"
                     }
                 }
             }
