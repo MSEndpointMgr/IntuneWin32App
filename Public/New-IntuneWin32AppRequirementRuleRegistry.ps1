@@ -19,7 +19,7 @@ function New-IntuneWin32AppRequirementRuleRegistry {
         Define that the requirement rule will be based on a version comparison.
 
     .PARAMETER KeyPath
-        Specify a key path in the registry, e.g. 'HKLM\SOFTWARE\Microsoft'.
+        Specify a key path in the registry, e.g. 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft'.
 
     .PARAMETER ValueName
         Specify a registry value name, e.g. 'InstallVersion'.
@@ -71,7 +71,7 @@ function New-IntuneWin32AppRequirementRuleRegistry {
         [parameter(Mandatory = $true, ParameterSetName = "IntegerComparison", HelpMessage = "Define that the requirement rule will be based on an integer comparison.")]
         [switch]$IntegerComparison,
         
-        [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Specify a key path in the registry, e.g. 'HKLM\SOFTWARE\Microsoft'.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Existence", HelpMessage = "Specify a key path in the registry, e.g. 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft'.")]
         [parameter(Mandatory = $true, ParameterSetName = "StringComparison")]
         [parameter(Mandatory = $true, ParameterSetName = "IntegerComparison")]
         [parameter(Mandatory = $true, ParameterSetName = "VersionComparison")]
@@ -138,7 +138,7 @@ function New-IntuneWin32AppRequirementRuleRegistry {
                     "operator" = "notConfigured"
                     "detectionValue" = $null
                     "check32BitOn64System" = $Check32BitOn64System
-                    "keyPath" = [regex]::Escape($KeyPath)
+                    "keyPath" = $KeyPath
                     "valueName" = $ValueName
                     "detectionType" = $DetectionType
                 }
@@ -150,7 +150,7 @@ function New-IntuneWin32AppRequirementRuleRegistry {
                     "operator" = $StringComparisonOperator
                     "detectionValue" = $StringComparisonValue
                     "check32BitOn64System" = $Check32BitOn64System
-                    "keyPath" = [regex]::Escape($KeyPath)
+                    "keyPath" = $KeyPath
                     "valueName" = $ValueName
                     "detectionType" = "string"
                 }
@@ -162,7 +162,7 @@ function New-IntuneWin32AppRequirementRuleRegistry {
                     "operator" = $IntegerComparisonOperator
                     "detectionValue" = $IntegerComparisonValue
                     "check32BitOn64System" = $Check32BitOn64System
-                    "keyPath" = [regex]::Escape($KeyPath)
+                    "keyPath" = $KeyPath
                     "valueName" = $ValueName
                     "detectionType" = "integer"
                 }
@@ -174,7 +174,7 @@ function New-IntuneWin32AppRequirementRuleRegistry {
                     "operator" = $VersionComparisonOperator
                     "detectionValue" = $VersionComparisonValue
                     "check32BitOn64System" = $Check32BitOn64System
-                    "keyPath" = [regex]::Escape($KeyPath)
+                    "keyPath" = $KeyPath
                     "valueName" = $ValueName
                     "detectionType" = "version"
                 }

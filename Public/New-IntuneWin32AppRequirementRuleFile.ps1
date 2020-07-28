@@ -134,7 +134,7 @@ function New-IntuneWin32AppRequirementRuleFile {
                     "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
                     "operator" = "notConfigured"
                     "detectionValue" = $null
-                    "path" = [regex]::Escape($Path)
+                    "path" = $Path
                     "fileOrFolderName" = $FileOrFolder
                     "check32BitOn64System" = $Check32BitOn64System
                     "detectionType" = $DetectionType
@@ -149,7 +149,7 @@ function New-IntuneWin32AppRequirementRuleFile {
                     "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
                     "operator" = $Operator
                     "detectionValue" = $DateValueString
-                    "path" = [regex]::Escape($Path)
+                    "path" = $Path
                     "fileOrFolderName" = $FileOrFolder
                     "check32BitOn64System" = $Check32BitOn64System
                     "detectionType" = "modifiedDate"
@@ -164,7 +164,7 @@ function New-IntuneWin32AppRequirementRuleFile {
                     "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
                     "operator" = $Operator
                     "detectionValue" = $DateValueString
-                    "path" = [regex]::Escape($Path)
+                    "path" = $Path
                     "fileOrFolderName" = $FileOrFolder
                     "check32BitOn64System" = $Check32BitOn64System
                     "detectionType" = "createdDate"
@@ -176,7 +176,7 @@ function New-IntuneWin32AppRequirementRuleFile {
                     "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
                     "operator" = $Operator
                     "detectionValue" = $VersionValue
-                    "path" = [regex]::Escape($Path)
+                    "path" = $Path
                     "fileOrFolderName" = $FileOrFolder
                     "check32BitOn64System" = $Check32BitOn64System
                     "detectionType" = "version"
@@ -188,7 +188,7 @@ function New-IntuneWin32AppRequirementRuleFile {
                     "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
                     "operator" = $Operator
                     "detectionValue" = $SizeInMBValue
-                    "path" = [regex]::Escape($Path)
+                    "path" = $Path
                     "fileOrFolderName" = $FileOrFolder
                     "check32BitOn64System" = $Check32BitOn64System
                     "detectionType" = "sizeInMB"

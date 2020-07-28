@@ -28,7 +28,6 @@ function Invoke-AzureStorageBlobUploadFinalize {
         [System.Object]$ChunkID
     )
     $Uri = "$($StorageUri)&comp=blocklist"
-	$Request = "PUT $($Uri)"
 	$XML = '<?xml version="1.0" encoding="utf-8"?><BlockList>'
 	foreach ($Chunk in $ChunkID) {
 		$XML += "<Latest>$($Chunk)</Latest>"
@@ -36,7 +35,7 @@ function Invoke-AzureStorageBlobUploadFinalize {
 	$XML += '</BlockList>'
 
 	try {
-		Invoke-RestMethod -Uri $Uri -Method "Put" -Body $XML -ErrorAction Stop
+		$WebResponse = Invoke-RestMethod -Uri $Uri -Method "Put" -Body $XML -ErrorAction Stop
 	}
 	catch {
 		Write-Warning -Message "Failed to finalize Azure Storage blob upload. Error message: $($_.Exception.Message)"

@@ -32,7 +32,6 @@ function Invoke-AzureStorageBlobUploadChunk {
         [System.Object]$Bytes
     )
 	$Uri = "$($StorageUri)&comp=block&blockid=$($ChunkID)"
-	$Request = "PUT $($Uri)"
 	$ISOEncoding = [System.Text.Encoding]::GetEncoding("iso-8859-1")
 	$EncodedBytes = $ISOEncoding.GetString($Bytes)
 	$Headers = @{
@@ -40,7 +39,7 @@ function Invoke-AzureStorageBlobUploadChunk {
 	}
 
 	try	{
-		$WebResponse = Invoke-WebRequest $Uri -Method "Put" -Headers $Headers -Body $EncodedBytes
+		$WebResponse = Invoke-WebRequest $Uri -Method "Put" -Headers $Headers -Body $EncodedBytes -ErrorAction Stop
 	}
 	catch {
         Write-Warning -Message "Failed to upload chunk to Azure Storage blob. Error message: $($_.Exception.Message)"

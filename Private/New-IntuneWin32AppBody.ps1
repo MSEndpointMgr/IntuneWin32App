@@ -6,14 +6,71 @@ function New-IntuneWin32AppBody {
     .DESCRIPTION
         Retrieves meta data from the detection.xml file inside the packaged Win32 application .intunewin file.
 
-    .PARAMETER FilePath
-        Specify an existing local path to where the win32 app .intunewin file is located.
+    .PARAMETER MSI
+        Define that the Win32 application body will be MSI based.
 
+    .PARAMETER EXE
+        Define that the Win32 application body will be File based.
+    
+    .PARAMETER DisplayName
+        Specify a display name for the Win32 application body.
+
+    .PARAMETER Description
+        Specify a description for the Win32 application body.
+
+    .PARAMETER Publisher
+        Specify a publisher name for the Win32 application body.
+
+    .PARAMETER Developer
+        Specify a developer name for the Win32 application body.
+
+    .PARAMETER FileName
+        Specify the file name (e.g. name.intunewin) for the Win32 application body.
+
+    .PARAMETER SetupFileName
+        Specify the setup file name (e.g. setup.exe) for the Win32 application body.
+    
+    .PARAMETER InstallExperience
+        Specify the installation experience for the Win32 application body.
+    
+    .PARAMETER RestartBehavior
+        Specify the installation experience for the Win32 application body.
+
+    .PARAMETER RequirementRule
+        Specify the requirement rules for the Win32 application body.
+
+    .PARAMETER Icon
+        Provide a Base64 encoded string as icon for the Win32 application body.
+
+    .PARAMETER InstallCommandLine
+        Specify the install command line for the Win32 application body.
+
+    .PARAMETER UninstallCommandLine
+        Specify the uninstall command line for the Win32 application body.
+    
+    .PARAMETER MSIInstallPurpose
+        Specify the MSI installation purpose for the Win32 application body.
+    
+    .PARAMETER MSIProductCode
+        Specify the MSI product code for the Win32 application body.
+
+    .PARAMETER MSIProductName
+        Specify the MSI product name for the Win32 application body.
+
+    .PARAMETER MSIProductVersion
+        Specify the MSI product version for the Win32 application body.
+    
+    .PARAMETER MSIRequiresReboot
+        Specify the MSI requires reboot value for the Win32 application body.
+    
+    .PARAMETER MSIUpgradeCode
+        Specify the MSI upgrade code for the Win32 application body.
+            
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-04
+        Updated:     2020-01-27
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -72,11 +129,6 @@ function New-IntuneWin32AppBody {
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [System.Collections.Specialized.OrderedDictionary]$RequirementRule,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the additional requirement rules for the Win32 application body.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [System.Collections.Specialized.OrderedDictionary[]]$AdditionalRequirementRule,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide a Base64 encoded string as icon for the Win32 application body.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
@@ -170,10 +222,6 @@ function New-IntuneWin32AppBody {
                     "value" = $Icon
                 })
             }
-
-            # Add additional requirement rules if passed on the command line
-
-            ### process each object in array
         }
         "EXE" {
             $Win32AppBody = [ordered]@{

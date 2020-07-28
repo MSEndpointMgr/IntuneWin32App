@@ -16,16 +16,17 @@ function Expand-IntuneWin32AppPackage {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-04
+        Updated:     2020-06-10
 
         Version history:
         1.0.0 - (2020-01-04) Function created
+        1.0.1 - (2020-06-10) Amended the pattern validation for FilePath parameter to only require a single folder instead of two-level folder structure
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the full path of the locally available packaged Win32 application, e.g. 'C:\Temp\AppName.intunewin'.")]
         [ValidateNotNullOrEmpty()]
-        [ValidatePattern("^[A-Za-z]{1}:\\\w+\\\w+")]
+        [ValidatePattern("^[A-Za-z]{1}:\\\w+")]
         [ValidateScript({
             # Check if path contains any invalid characters
             if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {

@@ -52,7 +52,8 @@ function Invoke-AzureStorageBlobUpload {
         $Bytes = $BinaryReader.ReadBytes($Length)
         $CurrentChunk = $Chunk + 1
 
-        Write-Progress -Activity "Uploading File to Azure Storage blob" -Status "Uploading chunk $CurrentChunk of $ChunkCount" -PercentComplete ($CurrentChunk / $ChunkCount * 100)
+        Write-Progress -Activity "Uploading file to Azure Storage blob" -Status "Uploading chunk $($CurrentChunk) of $($ChunkCount)" -PercentComplete ($CurrentChunk / $ChunkCount * 100)
+        Write-Verbose -Message "Uploading file to Azure Storage blob, processing chunk '$($CurrentChunk)' of '$($ChunkCount)'"
         $UploadResponse = Invoke-AzureStorageBlobUploadChunk -StorageUri $StorageUri -ChunkID $ChunkID -Bytes $Bytes
         if (($CurrentChunk -lt $ChunkCount) -and ($SASRenewalTimer.ElapsedMilliseconds -ge 450000)) {
             Invoke-AzureStorageBlobUploadRenew -Resource $Resource

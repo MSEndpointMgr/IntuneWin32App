@@ -158,29 +158,34 @@ function Add-IntuneWin32AppAssignment {
     Process {
         switch ($PSCmdlet.ParameterSetName) {
             "DisplayName" {
-                $MobileApps = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps" -Method "GET"
-                if ($MobileApps.value.Count -ge 1) {
-                    $Win32MobileApps = $MobileApps.value | Where-Object { $_.'@odata.type' -like "#microsoft.graph.win32LobApp" }
-                    if ($Win32MobileApps -ne $null) {
-                        $Win32App = $Win32MobileApps | Where-Object { $_.displayName -like $DisplayName }
-                        if ($Win32App -ne $null) {
-                            Write-Verbose -Message "Detected Win32 app with ID: $($Win32App.id)"
+                Write-Verbose -Message "Attempting to retrieve all win32LobApp mobileApps type resources to determine ID of Win32 app with display name: $($DisplayName)"
+                $Win32MobileApps = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps?`$filter=isof('microsoft.graph.win32LobApp')" -Method "GET").value
+                if ($Win32MobileApps.Count -ge 1) {
+                    $Win32MobileApp = $Win32MobileApps | Where-Object { $_.displayName -like "$($DisplayName)" }
+                    if ($Win32MobileApp -ne $null) {
+                        if ($Win32MobileApp.Count -eq 1) {
+                            Write-Verbose -Message "Querying for Win32 app using ID: $($Win32MobileApp.id)"
+                            $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileApp.id)" -Method "GET"
                             $Win32AppID = $Win32App.id
                         }
                         else {
-                            Write-Warning -Message "Query for Win32 apps returned empty a result, no apps matching the specified search criteria was found"
+                            Write-Verbose -Message "Multiple Win32 apps was returned after filtering for display name, please refine the input parameters"
                         }
                     }
                     else {
-                        Write-Warning -Message "Query for Win32 apps returned empty a result, no apps matching type 'win32LobApp' was found in tenant"
+                        Write-Warning -Message "Query for Win32 app returned an empty result, no apps matching the specified search criteria with display name '$($DisplayName)' was found"
                     }
-                }
-                else {
-                    Write-Warning -Message "Query for mobileApps resources returned empty"
                 }
             }
             "ID" {
-                $Win32AppID = $ID
+                Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
+                $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
+                if ($Win32App -ne $null) {
+                    $Win32AppID = $Win32App.id   
+                }
+                else {
+                    Write-Warning -Message "Query for Win32 app returned an empty result, no apps matching the specified search criteria with ID '$($ID)' was found"
+                }
             }
         }
 
@@ -245,7 +250,14 @@ function Add-IntuneWin32AppAssignment {
                     "startDateTime" = (ConvertTo-JSONDate -InputObject $Available)
                     "deadlineDateTime" = (ConvertTo-JSONDate -InputObject $Deadline)
                 }
-            }            
+            }
+
+            #
+            ## Placeholder for handling additional restartSettings if apps restart behavior is set to baseOnReturnCode
+            if ($Win32App.installExperience.deviceRestartBehavior -like "basedOnReturnCode") {
+                # Configure additional settings, if specified...
+            }
+            #
 
             try {
                 # Attempt to call Graph and create new assignment for Win32 app
