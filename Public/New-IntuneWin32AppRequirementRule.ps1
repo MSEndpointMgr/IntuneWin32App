@@ -77,6 +77,7 @@ function New-IntuneWin32AppRequirementRule {
         "1809" = "v10_1809"
         "1903" = "v10_1903"
         "1909" = "v10_1909"
+        "2004" = "v10_2004"
     }
 
     # Construct ordered hash-table with least amount of required properties for default requirement rule

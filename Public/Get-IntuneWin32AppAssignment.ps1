@@ -6,9 +6,6 @@ function Get-IntuneWin32AppAssignment {
     .DESCRIPTION
         Retrieve all assignments for a Win32 app.
 
-    .PARAMETER TenantName
-        Specify the tenant name, e.g. domain.onmicrosoft.com.
-
     .PARAMETER DisplayName
         Specify the display name for a Win32 application.
 
@@ -17,12 +14,6 @@ function Get-IntuneWin32AppAssignment {
 
     .PARAMETER GroupName
         Specify a group name to scope assignments targeted for that group.
-
-    .PARAMETER ApplicationID
-        Specify the Application ID of the app registration in Azure AD. By default, the script will attempt to use well known Microsoft Intune PowerShell app registration.
-
-    .PARAMETER PromptBehavior
-        Set the prompt behavior when acquiring a token.
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -36,12 +27,6 @@ function Get-IntuneWin32AppAssignment {
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [parameter(Mandatory = $true, ParameterSetName = "DisplayName", HelpMessage = "Specify the tenant name, e.g. domain.onmicrosoft.com.")]
-        [parameter(Mandatory = $true, ParameterSetName = "ID")]
-        [parameter(Mandatory = $true, ParameterSetName = "Group")]
-        [ValidateNotNullOrEmpty()]
-        [string]$TenantName,
-
         [parameter(Mandatory = $true, ParameterSetName = "DisplayName", HelpMessage = "Specify the display name for a Win32 application.")]
         [ValidateNotNullOrEmpty()]
         [string]$DisplayName,
@@ -52,24 +37,25 @@ function Get-IntuneWin32AppAssignment {
 
         [parameter(Mandatory = $true, ParameterSetName = "Group", HelpMessage = "Specify a group name to scope assignments targeted for that group.")]
         [ValidateNotNullOrEmpty()]
-        [string]$GroupName,
-        
-        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify the Application ID of the app registration in Azure AD. By default, the script will attempt to use well known Microsoft Intune PowerShell app registration.")]
-        [parameter(Mandatory = $false, ParameterSetName = "ID")]
-        [parameter(Mandatory = $false, ParameterSetName = "Group")]
-        [ValidateNotNullOrEmpty()]
-        [string]$ApplicationID = "d1ddf0e4-d672-4dae-b554-9d5bdfd93547",
-    
-        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Set the prompt behavior when acquiring a token.")]
-        [parameter(Mandatory = $false, ParameterSetName = "ID")]
-        [parameter(Mandatory = $false, ParameterSetName = "Group")]
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet("Auto", "Always", "Never", "RefreshSession")]
-        [string]$PromptBehavior = "Auto"        
+        [string]$GroupName     
     )
     Begin {
-        # Ensure required auth token exists or retrieve a new one
-        Get-AuthToken -TenantName $TenantName -ApplicationID $ApplicationID -PromptBehavior $PromptBehavior
+        # Ensure required auth token exists
+        if ($Global:AuthToken -eq $null) {
+            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+        }
+        else {
+            $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
+            if ($AuthTokenLifeTime -le 0) {
+                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneHGraph to request a new authentication token"; break
+            }
+            else {
+                Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"
+            }
+        }
+
+        # Set script variable for error action preference
+        $ErrorActionPreference = "Stop"
     }
     Process {
         switch ($PSCmdlet.ParameterSetName) {

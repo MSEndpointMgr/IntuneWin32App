@@ -151,6 +151,13 @@ function New-IntuneWin32AppDetectionRule {
         [ValidateNotNullOrEmpty()]
         [bool]$RunAs32Bit = $false
     )
+    Write-Warning -Message "This function is no longer under active development and will be removed in an upcoming release"
+    Write-Warning -Message "Use any of the following functions instead:"
+    Write-Warning -Message "- New-IntuneWin32AppDetectionRuleFile"
+    Write-Warning -Message "- New-IntuneWin32AppDetectionRuleMSI"
+    Write-Warning -Message "- New-IntuneWin32AppDetectionRuleRegistry"
+    Write-Warning -Message "- New-IntuneWin32AppDetectionRuleScript"
+
     # Handle initial value for return
     $DetectionRule = $null
 

@@ -13,10 +13,11 @@ function Invoke-AzureStorageBlobUpload {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-04
+        Updated:     2020-09-20
 
         Version history:
         1.0.0 - (2020-01-04) Function created
+        1.0.1 - (2020-09-20) Fixed an issue where the System.IO.BinaryReader wouldn't open a file path containing whitespaces
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -39,7 +40,8 @@ function Invoke-AzureStorageBlobUpload {
     # Find the file size and open the file
     $FileSize = (Get-Item -Path $FilePath).Length
     $ChunkCount = [System.Math]::Ceiling($FileSize / $ChunkSizeInBytes)
-    $BinaryReader = New-Object -TypeName System.IO.BinaryReader([System.IO.File]::Open($FilePath, [System.IO.FileMode]::Open))
+    $BinaryReader = New-Object -TypeName System.IO.BinaryReader([System.IO.File]::Open($FilePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite))
+
     $Position = $BinaryReader.BaseStream.Seek(0, [System.IO.SeekOrigin]::Begin)
 
     # Upload each chunk. Check whether a SAS URI renewal is required after each chunk is uploaded and renew if needed

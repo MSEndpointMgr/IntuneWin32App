@@ -6,9 +6,6 @@ function Add-IntuneWin32AppAssignment {
     .DESCRIPTION
         Add an assignment to a Win32 app.
 
-    .PARAMETER TenantName
-        Specify the tenant name, e.g. domain.onmicrosoft.com.
-
     .PARAMETER DisplayName
         Specify the display name for a Win32 application.
 
@@ -21,16 +18,19 @@ function Add-IntuneWin32AppAssignment {
     .PARAMETER Intent
         Specify the intent of the assignment, either required or available.
 
+    .PARAMETER GroupMode
+        Specify whether the assignment should be set to include or to exclude.
+
     .PARAMETER GroupID
         Specify the ID for an Azure AD group.
 
     .PARAMETER Notification
         Specify the notification setting for the assignment of the Win32 app.
 
-    .PARAMETER Available
+    .PARAMETER AvailableTime
         Specify a date time object for the availability of the assignment.
 
-    .PARAMETER Deadline
+    .PARAMETER DeadlineTime
         Specify a date time object for the deadline of the assignment.
 
     .PARAMETER UseLocalTime
@@ -39,30 +39,32 @@ function Add-IntuneWin32AppAssignment {
     .PARAMETER DeliveryOptimizationPriority
         Specify to download content in the background using default value of 'notConfigured', or set to download in foreground using 'foreground'.
 
-    .PARAMETER ApplicationID
-        Specify the Application ID of the app registration in Azure AD. By default, the script will attempt to use well known Microsoft Intune PowerShell app registration.
+    .PARAMETER EnableRestartGracePeriod
+        Specify whether Restart Grace Period functionality for this assignment should be configured, additional parameter input using at least RestartGracePeriod and RestartCountDownDisplay is required.
 
-    .PARAMETER PromptBehavior
-        Set the prompt behavior when acquiring a token.
+    .PARAMETER RestartGracePeriod
+        Specify the device restart grace period in minutes.
+
+    .PARAMETER RestartCountDownDisplay
+        Specify a count in minutes when the restart count down display box is shown.
+
+    .PARAMETER RestartNotificationSnooze
+        Specify a count in minutes for snoozing the restart notification, if not specified the snooze functionality is now allowed.
 
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-06-08
+        Updated:     2020-08-05
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-04-29) Added support for AllDevices target assignment type
         1.0.2 - (2020-06-08) Added support for Available and Deadline settings, device local time and Delivery Optimization settings of the assignment
+        1.0.3 - (2020-08-05) Added support for additional restart settings
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [parameter(Mandatory = $true, ParameterSetName = "DisplayName", HelpMessage = "Specify the tenant name, e.g. domain.onmicrosoft.com.")]
-        [parameter(Mandatory = $true, ParameterSetName = "ID")]
-        [ValidateNotNullOrEmpty()]
-        [string]$TenantName,
-
         [parameter(Mandatory = $true, ParameterSetName = "DisplayName", HelpMessage = "Specify the display name for a Win32 application.")]
         [ValidateNotNullOrEmpty()]
         [string]$DisplayName,
@@ -80,8 +82,14 @@ function Add-IntuneWin32AppAssignment {
         [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify the intent of the assignment, either required or available.")]
         [parameter(Mandatory = $false, ParameterSetName = "ID")]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet("required", "available")]
+        [ValidateSet("required", "available", "uninstall")]
         [string]$Intent = "available",
+
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify whether the assignment should be set to include or to exclude.")]
+        [parameter(Mandatory = $false, ParameterSetName = "ID")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("Include", "Exclude")]
+        [string]$GroupMode = "Include",
 
         [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify the ID for an Azure AD group.")]
         [parameter(Mandatory = $false, ParameterSetName = "ID")]
@@ -97,12 +105,12 @@ function Add-IntuneWin32AppAssignment {
         [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify a date time object for the availability of the assignment.")]
         [parameter(Mandatory = $false, ParameterSetName = "ID")]
         [ValidateNotNullOrEmpty()]
-        [datetime]$Available,
+        [datetime]$AvailableTime,
 
         [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify a date time object for the deadline of the assignment.")]
         [parameter(Mandatory = $false, ParameterSetName = "ID")]
         [ValidateNotNullOrEmpty()]
-        [datetime]$Deadline,
+        [datetime]$DeadlineTime,
 
         [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify to use either UTC of device local time for the assignment, set to 'True' for device local time and 'False' for UTC.")]
         [parameter(Mandatory = $false, ParameterSetName = "ID")]
@@ -114,21 +122,53 @@ function Add-IntuneWin32AppAssignment {
         [ValidateNotNullOrEmpty()]
         [ValidateSet("notConfigured", "foreground")]
         [string]$DeliveryOptimizationPriority = "notConfigured",
+
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify whether Restart Grace Period functionality for this assignment should be configured, additional parameter input using at least RestartGracePeriod and RestartCountDownDisplay is required.")]
+        [parameter(Mandatory = $false, ParameterSetName = "ID")]
+        [ValidateNotNullOrEmpty()]
+        [bool]$EnableRestartGracePeriod = $false,
+
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify the device restart grace period in minutes.")]
+        [parameter(Mandatory = $false, ParameterSetName = "ID")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateRange("1", "20160")]
+        [int]$RestartGracePeriod = 1440,
+
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify a count in minutes when the restart count down display box is shown.")]
+        [parameter(Mandatory = $false, ParameterSetName = "ID")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateRange("1", "240")]
+        [int]$RestartCountDownDisplay = 15,
         
-        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify the Application ID of the app registration in Azure AD. By default, the script will attempt to use well known Microsoft Intune PowerShell app registration.")]
+        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Specify a count in minutes for snoozing the restart notification, if not specified the snooze functionality is now allowed.")]
         [parameter(Mandatory = $false, ParameterSetName = "ID")]
         [ValidateNotNullOrEmpty()]
-        [string]$ApplicationID = "d1ddf0e4-d672-4dae-b554-9d5bdfd93547",
-    
-        [parameter(Mandatory = $false, ParameterSetName = "DisplayName", HelpMessage = "Set the prompt behavior when acquiring a token.")]
-        [parameter(Mandatory = $false, ParameterSetName = "ID")]
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet("Auto", "Always", "Never", "RefreshSession")]
-        [string]$PromptBehavior = "Auto"        
+        [ValidateRange("1", "712")]
+        [int]$RestartNotificationSnooze = 240
     )
     Begin {
-        # Ensure required auth token exists or retrieve a new one
-        Get-AuthToken -TenantName $TenantName -ApplicationID $ApplicationID -PromptBehavior $PromptBehavior
+        Write-Warning -Message "This function is no longer under active development and will be removed in an upcoming release"
+        Write-Warning -Message "Use any of the following functions instead:"
+        Write-Warning -Message "- Add-IntuneWin32AppAssignmentAllDevices"
+        Write-Warning -Message "- Add-IntuneWin32AppAssignmentAllUsers"
+        Write-Warning -Message "- Add-IntuneWin32AppAssignmentGroup"
+
+        # Ensure required auth token exists
+        if ($Global:AuthToken -eq $null) {
+            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+        }
+        else {
+            $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
+            if ($AuthTokenLifeTime -le 0) {
+                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneHGraph to request a new authentication token"; break
+            }
+            else {
+                Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"
+            }
+        }
+
+        # Set script variable for error action preference
+        $ErrorActionPreference = "Stop"
 
         # Validate group identifier is passed as input if target is set to Group
         if ($Target -like "Group") {
@@ -137,25 +177,51 @@ function Add-IntuneWin32AppAssignment {
             }
         }
 
+        # Validate correct intent is used when target is AllDevices or AllUsers
+        if ($Target -in @("AllDevices", "AllUsers")) {
+            Write-Verbose -Message "Target was specified as '$($Target)', setting intent to: Required"
+            $Intent = "required"
+        }
+
         # Validate that Available parameter input datetime object is in the past if the Deadline parameter is not passed on the command line
-        if ($PSBoundParameters["Available"]) {
-            if (-not($PSBoundParameters["Deadline"])) {
-                if ($Available -gt (Get-Date).AddDays(-1)) {
+        if ($PSBoundParameters["AvailableTime"]) {
+            if (-not($PSBoundParameters["DeadlineTime"])) {
+                if ($AvailableTime -gt (Get-Date).AddDays(-1)) {
                     Write-Warning -Message "Validation failed for parameter input, available date time needs to be before the current used 'as soon as possible' deadline date and time, with a offset of 1 day"; break
                 }
             }
         }
 
         # Validate that Deadline parameter input datetime object is in the future if the Available parameter is not passed on the command line
-        if ($PSBoundParameters["Deadline"]) {
-            if (-not($PSBoundParameters["Available"])) {
-                if ($Deadline -lt (Get-Date)) {
+        if ($PSBoundParameters["DeadlineTime"]) {
+            if (-not($PSBoundParameters["AvailableTime"])) {
+                if ($DeadlineTime -lt (Get-Date)) {
                     Write-Warning -Message "Validation failed for parameter input, deadline date time needs to be after the current used 'as soon as possible' available date and time"; break
                 }
             }
         }
+
+        # Output warning message that additional required parameters for restart grace period was not specified and default values will be used
+        if ($PSBoundParameters["EnableRestartGracePeriod"]) {
+            if (-not($PSBoundParameters["RestartGracePeriod"])) {
+                Write-Warning -Message "EnableRestartGracePeriod parameter was specified but required parameter RestartGracePeriod was not, using default value of: $($RestartGracePeriod)"
+            }
+
+            if (-not($PSBoundParameters["RestartCountDownDisplay"])) {
+                Write-Warning -Message "EnableRestartGracePeriod parameter was specified but required parameter RestartCountDownDisplay was not, using default value of: $($RestartCountDownDisplay)"
+            }
+        }
+
+        # Disable RestartNotificationSnooze functionality and set object to null if not passed on command line
+        if (-not($PSBoundParameters["RestartNotificationSnooze"])) {
+            [System.Object]$RestartNotificationSnooze = $null
+            Write-Verbose -Message "RestartNotificationSnooze parameter was not specified, which means 'Allow user to snooze the restart notification' functionality will be disabled for this assignment"
+        }
     }
     Process {
+        # Static variables
+        $ProceedExecution = $true
+
         switch ($PSCmdlet.ParameterSetName) {
             "DisplayName" {
                 Write-Verbose -Message "Attempting to retrieve all win32LobApp mobileApps type resources to determine ID of Win32 app with display name: $($DisplayName)"
@@ -163,13 +229,13 @@ function Add-IntuneWin32AppAssignment {
                 if ($Win32MobileApps.Count -ge 1) {
                     $Win32MobileApp = $Win32MobileApps | Where-Object { $_.displayName -like "$($DisplayName)" }
                     if ($Win32MobileApp -ne $null) {
-                        if ($Win32MobileApp.Count -eq 1) {
+                        if (($Win32MobileApp | Measure-Object).Count -eq 1) {
                             Write-Verbose -Message "Querying for Win32 app using ID: $($Win32MobileApp.id)"
                             $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileApp.id)" -Method "GET"
                             $Win32AppID = $Win32App.id
                         }
                         else {
-                            Write-Verbose -Message "Multiple Win32 apps was returned after filtering for display name, please refine the input parameters"
+                            Write-Warning -Message "Multiple Win32 apps was returned after filtering for display name, please refine the input parameters"; break
                         }
                     }
                     else {
@@ -195,16 +261,22 @@ function Add-IntuneWin32AppAssignment {
                 "AllUsers" {
                     $TargetAssignment = @{
                         "@odata.type" = "#microsoft.graph.allLicensedUsersAssignmentTarget"
+                        "deviceAndAppManagementAssignmentFilterId" = $null
+                        "deviceAndAppManagementAssignmentFilterType" = "none"
                     }                    
                 }
                 "AllDevices" {
                     $TargetAssignment = @{
                         "@odata.type" = "#microsoft.graph.allDevicesAssignmentTarget"
+                        "deviceAndAppManagementAssignmentFilterId" = $null
+                        "deviceAndAppManagementAssignmentFilterType" = "none"
                     }                    
                 }
                 "Group" {
                     $TargetAssignment = @{
                         "@odata.type" = "#microsoft.graph.groupAssignmentTarget"
+                        "deviceAndAppManagementAssignmentFilterId" = $null
+                        "deviceAndAppManagementAssignmentFilterType" = "none"
                         "groupId" = $GroupID
                     }
                 }
@@ -252,23 +324,82 @@ function Add-IntuneWin32AppAssignment {
                 }
             }
 
-            #
-            ## Placeholder for handling additional restartSettings if apps restart behavior is set to baseOnReturnCode
-            if ($Win32App.installExperience.deviceRestartBehavior -like "basedOnReturnCode") {
-                # Configure additional settings, if specified...
-            }
-            #
+            # Amend restartSettings if app restart behavior is set to baseOnReturnCode and EnableRestartGracePeriod is set to True
+            if ($EnableRestartGracePeriod -eq $true) {
+                if ($Win32App.installExperience.deviceRestartBehavior -like "basedOnReturnCode") {
+                    Write-Verbose -Message "Detected that Win32 app was configured for restart settings, adding parameter inputs to request"
 
+                    $Win32AppAssignmentBody.settings.restartSettings = @{
+                        "gracePeriodInMinutes" = $RestartGracePeriod
+                        "countdownDisplayBeforeRestartInMinutes" = $RestartCountDownDisplay
+                        "restartNotificationSnoozeDurationInMinutes" = $RestartNotificationSnooze
+                    }
+                }
+                else {
+                    Write-Warning -Message "Win32 app was not configured for restart settings, ensure restart behavior is configured with 'Based on return code'"
+                }
+            }
+
+            # Validate that targeted Win32 app doesn't already have an assignment for the target type of either AllDevices, AllUsers or an existing security group before attempting to post the assignment request
             try {
-                # Attempt to call Graph and create new assignment for Win32 app
-                $Win32AppAssignmentResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments" -Method "POST" -Body ($Win32AppAssignmentBody | ConvertTo-Json) -ContentType "application/json" -ErrorAction Stop
-                if ($Win32AppAssignmentResponse.id) {
-                    Write-Verbose -Message "Successfully created Win32 app assignment with ID: $($Win32AppAssignmentResponse.id)"
-                    Write-Output -InputObject $Win32AppAssignmentResponse
+                Write-Verbose -Message "Retrieving any existing Win32 app assignments to validate existing assignments for duplicate resources"
+                $Win32AppAssignments = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments" -Method "GET" -ErrorAction Stop
+                $Win32AppAssignmentsCount = ($Win32AppAssignments.value | Measure-Object).Count
+                if ($Win32AppAssignmentsCount -ge 1) {
+                    Write-Verbose -Message "Detected count of '$($Win32AppAssignmentsCount)' existing assignments, processing each item for validation"
+
+                    # Define target types for AllDevices and AllUsers
+                    switch ($Target) {
+                        "AllDevices" {
+                            $TargetType = "allDevicesAssignmentTarget"
+                        }
+                        "AllUsers" {
+                            $TargetType = "allLicensedUsersAssignmentTarget"
+                        }
+                    }
+                    
+                    # Validate existing target types
+                    switch ($Target) {
+                        "Group" {
+                            foreach ($Win32AppAssignment in $Win32AppAssignments.value) {
+                                if ($Win32AppAssignment.target.'@odata.type' -match "groupAssignmentTarget") {
+                                    if ($Win32AppAssignment.target.groupId -like $GroupID) {
+                                        Write-Warning -Message "Win32 app assignment with id '$($Win32AppAssignment.id)' of target type '$($Target)' and GroupID '$($Win32AppAssignment.target.groupId)' already exists, duplicate assignments of this type is not permitted"
+                                        $ProceedExecution = $false
+                                    }
+                                }
+                            }
+                        }
+                        default {
+                            foreach ($Win32AppAssignment in $Win32AppAssignments.value) {
+                                if ($Win32AppAssignment.target.'@odata.type' -match $TargetType) {
+                                    Write-Warning -Message "Win32 app assignment with id '$($Win32AppAssignment.id)' of target type '$($Target)' already exists, duplicate assignments of this type is not permitted"
+                                    $ProceedExecution = $false
+                                }
+                            }
+                        }
+                    }
+
+                    if ($ProceedExecution -eq $true) {
+                        try {
+                            # Attempt to call Graph and create new assignment for Win32 app
+                            $Win32AppAssignmentResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments" -Method "POST" -Body ($Win32AppAssignmentBody | ConvertTo-Json) -ContentType "application/json" -ErrorAction Stop
+                            if ($Win32AppAssignmentResponse.id) {
+                                Write-Verbose -Message "Successfully created Win32 app assignment with ID: $($Win32AppAssignmentResponse.id)"
+                                Write-Output -InputObject $Win32AppAssignmentResponse
+                            }
+                        }
+                        catch [System.Exception] {
+                            Write-Warning -Message "An error occurred while creating a Win32 app assignment: $($TargetFilePath). Error message: $($_.Exception.Message)"
+                        }
+                    }
+                }
+                else {
+                    Write-Verbose -Message "Detected count of '$($Win32AppAssignmentsCount)', skipping assignment validation for existence of AllDevices or AllUsers"
                 }
             }
             catch [System.Exception] {
-                Write-Warning -Message "An error occurred while creating a Win32 app assignment: $($TargetFilePath). Error message: $($_.Exception.Message)"
+                Write-Warning -Message "Failed to validate if Win32 app already has an existing assignment target type of '$($Target)'"
             }
         }
         else {

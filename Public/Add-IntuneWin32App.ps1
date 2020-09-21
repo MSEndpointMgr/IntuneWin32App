@@ -6,9 +6,6 @@ function Add-IntuneWin32App {
     .DESCRIPTION
         Create a new Win32 application in Microsoft Intune.
 
-    .PARAMETER TenantName
-        Specify the tenant name, e.g. domain.onmicrosoft.com.
-
     .PARAMETER FilePath
         Specify a local path to where the win32 app .intunewin file is located.
 
@@ -23,6 +20,21 @@ function Add-IntuneWin32App {
     
     .PARAMETER Developer
         Specify the developer name for the Win32 application.
+
+    .PARAMETER Owner
+        Specify the owner property for the Win32 application.
+
+    .PARAMETER Notes
+        Specify the notes property for the Win32 application.
+
+    .PARAMETER InformationURL
+        Specify the information URL for the Win32 application.
+    
+    .PARAMETER PrivacyURL
+        Specify the privacy URL for the Win32 application.
+    
+    .PARAMETER CompanyPortalFeaturedApp
+        Specify whether to have the Win32 application featured in Company Portal or not.
 
     .PARAMETER InstallCommandLine
         Specify the install command line for the Win32 application.
@@ -51,33 +63,19 @@ function Add-IntuneWin32App {
     .PARAMETER Icon
         Provide a Base64 encoded string of the PNG/JPG/JPEG file.
 
-    .PARAMETER ApplicationID
-        Specify the Application ID of the app registration in Azure AD. By default, the script will attempt to use well known Microsoft Intune PowerShell app registration.
-
-    .PARAMETER PromptBehavior
-        Set the prompt behavior when acquiring a token.
-
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-04
+        Updated:     2020-09-20
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-01-27) Added support for RequirementRule parameter input
-
-        Required modules:
-        AzureAD (Install-Module -Name AzureAD)
-        PSIntuneAuth (Install-Module -Name PSIntuneAuth)
+        1.0.2 - (2020-09-20) Added support for Owner, Notes, InformationURL, PrivacyURL and CompanyPortalFeaturedApp parameter inputs
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
-        [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify the tenant name, e.g. domain.onmicrosoft.com.")]
-        [parameter(Mandatory = $true, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [string]$TenantName,
-
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a local path to where the win32 app .intunewin file is located.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
@@ -99,17 +97,17 @@ function Add-IntuneWin32App {
         })]
         [string]$FilePath,
 
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify a display name for the Win32 application.")]
+        [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a display name for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [string]$DisplayName,
 
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify a description for the Win32 application.")]
+        [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a description for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [string]$Description,
 
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify a publisher name for the Win32 application.")]
+        [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a publisher name for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [string]$Publisher,
@@ -117,6 +115,28 @@ function Add-IntuneWin32App {
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the developer name for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [string]$Developer = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the owner property for the Win32 application.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [string]$Owner = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the notes property for the Win32 application.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [string]$Notes = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the information URL for the Win32 application.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
+        [string]$InformationURL = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the privacy URL for the Win32 application.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
+        [string]$PrivacyURL = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify whether to have the Win32 application featured in Company Portal or not.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [bool]$CompanyPortalFeaturedApp = $false,
 
         [parameter(Mandatory = $true, ParameterSetName = "EXE", HelpMessage = "Specify the install command line for the Win32 application.")]
         [ValidateNotNullOrEmpty()]
@@ -161,22 +181,22 @@ function Add-IntuneWin32App {
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide a Base64 encoded string of the PNG/JPG/JPEG file.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
-        [string]$Icon,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the Application ID of the app registration in Azure AD. By default, the script will attempt to use well known Microsoft Intune PowerShell app registration.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [string]$ApplicationID = "d1ddf0e4-d672-4dae-b554-9d5bdfd93547",
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Set the prompt behavior when acquiring a token.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet("Auto", "Always", "Never", "RefreshSession")]
-        [string]$PromptBehavior = "Auto"
+        [string]$Icon
     )
     Begin {
-        # Ensure required auth token exists or retrieve a new one
-        Get-AuthToken -TenantName $TenantName -ApplicationID $ApplicationID -PromptBehavior $PromptBehavior
+        # Ensure required auth token exists
+        if ($Global:AuthToken -eq $null) {
+            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+        }
+        else {
+            $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
+            if ($AuthTokenLifeTime -le 0) {
+                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneHGraph to request a new authentication token"; break
+            }
+            else {
+                Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"
+            }
+        }
 
         # Set script variable for error action preference
         $ErrorActionPreference = "Stop"
@@ -238,6 +258,11 @@ function Add-IntuneWin32App {
                             "Description" = $Description
                             "Publisher" = $Publisher
                             "Developer" = $Developer
+                            "Owner" = $Owner
+                            "Notes" = $Notes
+                            "InformationURL" = $InformationURL
+                            "PrivacyURL" = $PrivacyURL
+                            "CompanyPortalFeaturedApp" = $CompanyPortalFeaturedApp
                             "FileName" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
                             "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
                             "InstallExperience" = $InstallExperience
@@ -267,6 +292,11 @@ function Add-IntuneWin32App {
                             "Description" = $Description
                             "Publisher" = $Publisher
                             "Developer" = $Developer
+                            "Owner" = $Owner
+                            "Notes" = $Notes
+                            "InformationURL" = $InformationURL
+                            "PrivacyURL" = $PrivacyURL
+                            "CompanyPortalFeaturedApp" = $CompanyPortalFeaturedApp
                             "FileName" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
                             "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
                             "InstallExperience" = $InstallExperience
@@ -336,7 +366,7 @@ function Add-IntuneWin32App {
                         Write-Verbose -Message "Successfully created contentVersions resource with ID: $($Win32MobileAppContentVersionRequest.id)"
 
                         # Extract compressed .intunewin file to subfolder
-                        $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName ($IntuneWinXMLMetaData.ApplicationInfo.Name).Replace(".intunewin", "")
+                        $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName "Expand"
                         if ($IntuneWinFilePath -ne $null) {
                             # Create a new file entry in Intune for the upload of the .intunewin file
                             Write-Verbose -Message "Constructing Win32 app content file body for uploading of .intunewin file"
@@ -352,7 +382,7 @@ function Add-IntuneWin32App {
                             # Create the contentVersions files resource
                             $Win32MobileAppFileContentRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions/$($Win32MobileAppContentVersionRequest.id)/files" -Method "POST" -Body ($Win32AppFileBody | ConvertTo-Json)
                             if ([string]::IsNullOrEmpty($Win32MobileAppFileContentRequest.id)) {
-                                Write-Warning -Message "Failed to create Azure Storage blob for contentVersions/files resource for Win32 app"; break
+                                Write-Warning -Message "Failed to create Azure Storage blob for contentVersions/files resource for Win32 app"
                             }
                             else {
                                 # Wait for the Win32 app file content URI to be created
@@ -398,6 +428,9 @@ function Add-IntuneWin32App {
                                 $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)" -Method "GET"
                                 Write-Output -InputObject $Win32MobileAppRequest
                             }
+
+                            # Cleanup extracted .intunewin file in Extract folder
+                            Remove-Item -Path (Split-Path -Path $IntuneWinFilePath -Parent) -Recurse -Force -Confirm:$false | Out-Null
                         }
                     }                     
                 }

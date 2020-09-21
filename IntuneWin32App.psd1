@@ -29,7 +29,7 @@ CompanyName = 'MSEndpointMgr.com'
 Copyright = '(c) 2020 Nickolaj Andersen. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'Provides a set of functions to package and add an Intune Win32 app to Microsoft Endpoint Manager (Intune).'
+Description = 'Provides a set of functions to manage Win32 apps in Microsoft Endpoint Manager (Intune).'
 
 # Minimum version of the Windows PowerShell engine required by this module
 PowerShellVersion = '5.0'
@@ -68,22 +68,30 @@ RequiredModules = @("AzureAD", "PSIntuneAuth")
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Get-IntuneWin32App',`
-                      'New-IntuneWin32AppPackage',`
-                      'Add-IntuneWin32App',`
-                      'Add-IntuneWin32AppAssignment',`
-                      'New-IntuneWin32AppDetectionRule',`
-                      'Get-IntuneWin32AppMetaData',`
-                      'New-IntuneWin32AppReturnCode',`
-                      'New-IntuneWin32AppIcon',`
-                      'Expand-IntuneWin32AppPackage',`
-                      'Get-MSIMetaData',`
-                      "New-IntuneWin32AppRequirementRule",
+FunctionsToExport = @('Add-IntuneWin32App',
+                      'Add-IntuneWin32AppAssignment',
+                      'Add-IntuneWin32AppAssignmentAllDevices',
+                      'Add-IntuneWin32AppAssignmentAllUsers',
+                      'Add-IntuneWin32AppAssignmentGroup',
+                      'Connect-MSIntuneGraph',
+                      'Expand-IntuneWin32AppPackage',
+                      'Get-IntuneWin32App',
                       "Get-IntuneWin32AppAssignment",
-                      "Remove-IntuneWin32AppAssignment",
+                      'Get-IntuneWin32AppMetaData',
+                      'Get-MSIMetaData', 
+                      'New-IntuneWin32AppDetectionRule',
+                      "New-IntuneWin32AppDetectionRuleFile",
+                      "New-IntuneWin32AppDetectionRuleMSI",
+                      "New-IntuneWin32AppDetectionRuleRegistry",
+                      "New-IntuneWin32AppDetectionRuleScript",
+                      'New-IntuneWin32AppIcon',
+                      'New-IntuneWin32AppPackage',
+                      "New-IntuneWin32AppRequirementRule",
                       "New-IntuneWin32AppRequirementRuleFile",
                       "New-IntuneWin32AppRequirementRuleRegistry",
-                      "New-IntuneWin32AppRequirementRuleScript"
+                      "New-IntuneWin32AppRequirementRuleScript",
+                      'New-IntuneWin32AppReturnCode',
+                      "Remove-IntuneWin32AppAssignment"
 )
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

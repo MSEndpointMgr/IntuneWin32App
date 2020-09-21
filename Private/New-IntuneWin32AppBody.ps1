@@ -24,6 +24,21 @@ function New-IntuneWin32AppBody {
     .PARAMETER Developer
         Specify a developer name for the Win32 application body.
 
+    .PARAMETER Owner
+        Specify the owner property for the Win32 application body.
+
+    .PARAMETER Notes
+        Specify the notes property for the Win32 application body.
+
+    .PARAMETER InformationURL
+        Specify the information URL for the Win32 application body.
+    
+    .PARAMETER PrivacyURL
+        Specify the privacy URL for the Win32 application body.
+    
+    .PARAMETER CompanyPortalFeaturedApp
+        Specify the featured in Company Portal property for the Win32 application body.
+
     .PARAMETER FileName
         Specify the file name (e.g. name.intunewin) for the Win32 application body.
 
@@ -70,11 +85,12 @@ function New-IntuneWin32AppBody {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-27
+        Updated:     2020-09-20
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-01-27) Added support for RequirementRule parameter input
+        1.0.2 - (2020-09-20) Added support for Owner, Notes, InformationURL, PrivacyURL and CompanyPortalFeaturedApp parameter inputs
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -102,6 +118,26 @@ function New-IntuneWin32AppBody {
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify a developer name for the Win32 application body.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [string]$Developer = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the owner property for the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [string]$Owner = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the notes property for the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [string]$Notes = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the information URL for the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [string]$InformationURL = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the privacy URL for the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [string]$PrivacyURL = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the featured in Company Portal property for the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [bool]$CompanyPortalFeaturedApp = $false,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify the file name (e.g. name.intunewin) for the Win32 application body.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
@@ -187,6 +223,11 @@ function New-IntuneWin32AppBody {
                 "applicableArchitectures" = $ApplicableArchitectures
                 "description" = $Description
                 "developer" = $Developer
+                "owner" = $Owner
+                "notes" = $Notes
+                "informationUrl" = $InformationURL
+                "privacyInformationUrl" = $PrivacyURL
+                "isFeatured" = $CompanyPortalFeaturedApp
                 "displayName" = $DisplayName
                 "fileName" = $FileName
                 "setupFilePath" = $SetupFileName
@@ -196,8 +237,6 @@ function New-IntuneWin32AppBody {
                     "runAsAccount" = $InstallExperience
                     "deviceRestartBehavior" = $RestartBehavior
                 }
-                "informationUrl" = $null
-                "isFeatured" = $false
                 "minimumSupportedOperatingSystem" = $MinimumSupportedOperatingSystem
                 "msiInformation" = @{
                     "packageType" = $MSIInstallPurpose
@@ -208,9 +247,6 @@ function New-IntuneWin32AppBody {
                     "requiresReboot" = $MSIRequiresReboot
                     "upgradeCode" = $MSIUpgradeCode
                 }
-                "notes" = ""
-                "owner" = ""
-                "privacyInformationUrl" = $null
                 "publisher" = $Publisher
                 "runAs32bit" = $false
             }
@@ -226,9 +262,14 @@ function New-IntuneWin32AppBody {
         "EXE" {
             $Win32AppBody = [ordered]@{
                 "@odata.type" = "#microsoft.graph.win32LobApp"
-                "applicableArchitectures" = "x64,x86"
+                "applicableArchitectures" = $ApplicableArchitectures
                 "description" = $Description
                 "developer" = $Developer
+                "owner" = $Owner
+                "notes" = $Notes
+                "informationUrl" = $InformationURL
+                "privacyInformationUrl" = $PrivacyURL
+                "isFeatured" = $CompanyPortalFeaturedApp
                 "displayName" = $DisplayName
                 "fileName" = $FileName
                 "setupFilePath" = $SetupFileName
@@ -238,15 +279,8 @@ function New-IntuneWin32AppBody {
                     "runAsAccount" = $InstallExperience
                     "deviceRestartBehavior" = $RestartBehavior
                 }
-                "informationUrl" = $null
-                "isFeatured" = $false
-                "minimumSupportedOperatingSystem" = @{
-                    "v10_1607" = $true
-                }
+                "minimumSupportedOperatingSystem" = $MinimumSupportedOperatingSystem
                 "msiInformation" = $null
-                "notes" = ""
-                "owner" = ""
-                "privacyInformationUrl" = $null
                 "publisher" = $Publisher
                 "runAs32bit" = $false
             }
