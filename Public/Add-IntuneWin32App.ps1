@@ -191,7 +191,7 @@ function Add-IntuneWin32App {
         else {
             $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
             if ($AuthTokenLifeTime -le 0) {
-                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneHGraph to request a new authentication token"; break
+                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
             }
             else {
                 Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"
@@ -200,6 +200,9 @@ function Add-IntuneWin32App {
 
         # Set script variable for error action preference
         $ErrorActionPreference = "Stop"
+
+        # Validate that DetectionRule parameter input doesn't consist of a mix of Script and other detection rule types
+        ####
     }
     Process {
         try {
