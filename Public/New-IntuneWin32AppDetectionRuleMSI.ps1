@@ -6,13 +6,13 @@ function New-IntuneWin32AppDetectionRuleMSI {
     .DESCRIPTION
         Create a new MSI based detection rule object to be used for the Add-IntuneWin32App function.
 
-    .PARAMETER MSIProductCode
+    .PARAMETER ProductCode
         Specify the MSI product code for the application.
 
-    .PARAMETER MSIProductVersionOperator
+    .PARAMETER ProductVersionOperator
         Specify the MSI product version operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.
 
-    .PARAMETER MSIProductVersion
+    .PARAMETER ProductVersion
         Specify the MSI product version, e.g. 1.0.0.
 
     .NOTES
@@ -33,7 +33,7 @@ function New-IntuneWin32AppDetectionRuleMSI {
         [parameter(Mandatory = $false, HelpMessage = "Specify the MSI product version operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("notConfigured", "equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
-        [string]$Operator = "notConfigured",
+        [string]$ProductVersionOperator = "notConfigured",
 
         [parameter(Mandatory = $false, HelpMessage = "Specify the MSI product version, e.g. 1.0.0.")]
         [ValidateNotNullOrEmpty()]
@@ -46,7 +46,7 @@ function New-IntuneWin32AppDetectionRuleMSI {
         $DetectionRule = [ordered]@{
             "@odata.type" = "#microsoft.graph.win32LobAppProductCodeDetection"
             "productCode" = $ProductCode
-            "productVersionOperator" = $Operator
+            "productVersionOperator" = $ProductVersionOperator
             "productVersion" = $ProductVersion
         }
 

@@ -39,7 +39,7 @@ function Remove-IntuneWin32AppAssignment {
         else {
             $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
             if ($AuthTokenLifeTime -le 0) {
-                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneHGraph to request a new authentication token"; break
+                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
             }
             else {
                 Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"
