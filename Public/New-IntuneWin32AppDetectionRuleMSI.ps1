@@ -28,16 +28,16 @@ function New-IntuneWin32AppDetectionRuleMSI {
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the MSI product code for the application.")]
         [ValidateNotNullOrEmpty()]
-        [string]$MSIProductCode,
+        [string]$ProductCode,
 
         [parameter(Mandatory = $false, HelpMessage = "Specify the MSI product version operator. Supported values are: notConfigured, equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual or lessThan.")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("notConfigured", "equal", "notEqual", "greaterThanOrEqual", "greaterThan", "lessThanOrEqual", "lessThan")]
-        [string]$MSIProductVersionOperator = "notConfigured",
+        [string]$Operator = "notConfigured",
 
         [parameter(Mandatory = $false, HelpMessage = "Specify the MSI product version, e.g. 1.0.0.")]
         [ValidateNotNullOrEmpty()]
-        [string]$MSIProductVersion = [string]::Empty
+        [string]$ProductVersion = [string]::Empty
     )
     Process {
         # Handle initial value for return
@@ -45,9 +45,9 @@ function New-IntuneWin32AppDetectionRuleMSI {
 
         $DetectionRule = [ordered]@{
             "@odata.type" = "#microsoft.graph.win32LobAppProductCodeDetection"
-            "productCode" = $MSIProductCode
-            "productVersionOperator" = $MSIProductVersionOperator
-            "productVersion" = $MSIProductVersion
+            "productCode" = $ProductCode
+            "productVersionOperator" = $Operator
+            "productVersion" = $ProductVersion
         }
 
         # Handle return value with constructed detection rule

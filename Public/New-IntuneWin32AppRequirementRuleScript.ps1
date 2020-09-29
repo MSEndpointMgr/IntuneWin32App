@@ -205,7 +205,6 @@ function New-IntuneWin32AppRequirementRuleScript {
             $ScriptFileName = [System.IO.Path]::GetFileName("$($ScriptFile)")
 
             # Convert script file contents to base64 string
-            Write-Verbose -Message ""
             $ScriptContent = [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes("$($ScriptFile)"))
 
             switch ($PSCmdlet.ParameterSetName) {

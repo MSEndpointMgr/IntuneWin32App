@@ -200,6 +200,9 @@ function Add-IntuneWin32App {
 
         # Set script variable for error action preference
         $ErrorActionPreference = "Stop"
+
+        # Validate that DetectionRule parameter input doesn't consist of a mix of Script and other detection rule types
+        ####
     }
     Process {
         try {

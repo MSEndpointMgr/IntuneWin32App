@@ -15,15 +15,19 @@ function Get-IntuneWin32AppAssignment {
     .PARAMETER GroupName
         Specify a group name to scope assignments targeted for that group.
 
+    .PARAMETER Intent
+        Specify the intent to further scope the group name assignment.
+
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-04-29
-        Updated:     2020-04-29
+        Updated:     2020-09-23
 
         Version history:
         1.0.0 - (2020-04-29) Function created
         1.0.1 - (2020-05-26) Added new parameter GroupName to be able to retrieve assignments associated with a given group
+        1.0.2 - (2020-09-23) Added Intent parameter to be able to further scope the desired assignments being retrieved
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -37,7 +41,12 @@ function Get-IntuneWin32AppAssignment {
 
         [parameter(Mandatory = $true, ParameterSetName = "Group", HelpMessage = "Specify a group name to scope assignments targeted for that group.")]
         [ValidateNotNullOrEmpty()]
-        [string]$GroupName     
+        [string]$GroupName,
+
+        [parameter(Mandatory = $false, ParameterSetName = "Group", HelpMessage = "Specify the intent to further scope the group name assignment.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("required", "available", "uninstall")]
+        [string]$Intent
     )
     Begin {
         # Ensure required auth token exists
@@ -108,27 +117,32 @@ function Get-IntuneWin32AppAssignment {
                         # Attempt to call Graph and retrieve all assignments for each Win32 app
                         $Win32AppAssignmentResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileApp.id)/assignments" -Method "GET" -ErrorAction Stop
                         if ($Win32AppAssignmentResponse.value -ne $null) {
-                            foreach ($Win32AppAssignment in $Win32AppAssignmentResponse.value) {
-                                if ($Win32AppAssignment.target.'@odata.type' -like "*groupAssignmentTarget") {
-                                    try {
-                                        # Retrieve group name from given group id
-                                        $AzureADGroupResponse = Invoke-AzureADGraphRequest -Resource "groups/$($Win32AppAssignment.target.groupId)" -Method "GET"
-                                        if ($AzureADGroupResponse.displayName -like "*$($GroupName)*") {
-                                            Write-Verbose -Message "Win32 app assignment '$($Win32AppAssignment.id)' for app '$($Win32MobileApp.displayName)' matched group name: $($GroupName)"
+                            if ($PSBoundParameters["Intent"]) {
+                                $Win32AppAssignmentMatches = $Win32AppAssignmentResponse.value | Where-Object { ($PSItem.target.'@odata.type' -like "*groupAssignmentTarget") -and ($PSItem.intent -like $Intent) }
+                            }
+                            else {
+                                $Win32AppAssignmentMatches = $Win32AppAssignmentResponse.value | Where-Object { $PSItem.target.'@odata.type' -like "*groupAssignmentTarget" }
+                            }
 
-                                            # Create a custom object for return value
-                                            $PSObject = [PSCustomObject]@{
-                                                AppName = $Win32MobileApp.displayName
-                                                GroupID = $Win32AppAssignment.target.groupId
-                                                GroupName = $AzureADGroupResponse.displayName
-                                                Intent = $Win32AppAssignment.intent
-                                            }
-                                            Write-Output -InputObject $PSObject
+                            foreach ($Win32AppAssignment in $Win32AppAssignmentMatches) {
+                                try {
+                                    # Retrieve group name from given group id
+                                    $AzureADGroupResponse = Invoke-AzureADGraphRequest -Resource "groups/$($Win32AppAssignment.target.groupId)" -Method "GET"
+                                    if ($AzureADGroupResponse.displayName -like "*$($GroupName)*") {
+                                        Write-Verbose -Message "Win32 app assignment '$($Win32AppAssignment.id)' for app '$($Win32MobileApp.displayName)' matched group name: $($GroupName)"
+
+                                        # Create a custom object for return value
+                                        $PSObject = [PSCustomObject]@{
+                                            AppName = $Win32MobileApp.displayName
+                                            GroupID = $Win32AppAssignment.target.groupId
+                                            GroupName = $AzureADGroupResponse.displayName
+                                            Intent = $Win32AppAssignment.intent
                                         }
+                                        Write-Output -InputObject $PSObject
                                     }
-                                    catch [System.Exception] {
-                                        Write-Warning -Message "An error occurred while resolving groupId for assignment with ID: $($Win32AppAssignment.id). Error message: $($_.Exception.Message)"
-                                    }
+                                }
+                                catch [System.Exception] {
+                                    Write-Warning -Message "An error occurred while resolving groupId for assignment with ID: $($Win32AppAssignment.id). Error message: $($_.Exception.Message)"
                                 }
                             }
                         }
