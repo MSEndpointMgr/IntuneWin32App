@@ -131,7 +131,7 @@ function New-IntuneWin32AppDetectionRuleFile {
             "Existence" {
                 # Construct ordered hash-table with least amount of required properties for default detection rule
                 $DetectionRuleFile = [ordered]@{
-                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
+                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemDetection"
                     "operator" = "notConfigured"
                     "detectionValue" = $null
                     "path" = $Path
@@ -146,7 +146,7 @@ function New-IntuneWin32AppDetectionRuleFile {
 
                 # Construct ordered hash-table with least amount of required properties for default detection rule
                 $DetectionRuleFile = [ordered]@{
-                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
+                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemDetection"
                     "operator" = $Operator
                     "detectionValue" = $DateValueString
                     "path" = $Path
@@ -161,7 +161,7 @@ function New-IntuneWin32AppDetectionRuleFile {
 
                 # Construct ordered hash-table with least amount of required properties for default detection rule
                 $DetectionRuleFile = [ordered]@{
-                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
+                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemDetection"
                     "operator" = $Operator
                     "detectionValue" = $DateValueString
                     "path" = $Path
@@ -173,7 +173,7 @@ function New-IntuneWin32AppDetectionRuleFile {
             "Version" {
                 # Construct ordered hash-table with least amount of required properties for default detection rule
                 $DetectionRuleFile = [ordered]@{
-                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
+                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemDetection"
                     "operator" = $Operator
                     "detectionValue" = $VersionValue
                     "path" = $Path
@@ -185,7 +185,7 @@ function New-IntuneWin32AppDetectionRuleFile {
             "Size" {
                 # Construct ordered hash-table with least amount of required properties for default detection rule
                 $DetectionRuleFile = [ordered]@{
-                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemRequirement"
+                    "@odata.type" = "#microsoft.graph.win32LobAppFileSystemDetection"
                     "operator" = $Operator
                     "detectionValue" = $SizeInMBValue
                     "path" = $Path
