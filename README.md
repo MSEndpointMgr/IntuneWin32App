@@ -2,15 +2,31 @@
 This module was created to provide means to automate the packaging, creation and publishing of Win32 applications in Microsoft Intune.
 
 Currently the following functions are supported in the module:
-- Get-IntuneWin32App
-- Get-IntuneWin32AppMetaData
 - Add-IntuneWin32App
 - Add-IntuneWin32AppAssignment
-- New-IntuneWin32AppPackage
-- New-IntuneWin32AppDetectionRule
-- New-IntuneWin32AppReturnCode
-- New-IntuneWin32AppIcon
+- Add-IntuneWin32AppAssignmentAllDevices
+- Add-IntuneWin32AppAssignmentAllUsers
+- Add-IntuneWin32AppAssignmentGroup
+- Connect-MSIntuneGraph
 - Expand-IntuneWin32AppPackage
+- Get-IntuneWin32App
+- Get-IntuneWin32AppAssignment
+- Get-IntuneWin32AppMetaData
+- Get-MSIMetaData
+- New-IntuneWin32AppDetectionRule
+- New-IntuneWin32AppDetectionRuleFile
+- New-IntuneWin32AppDetectionRuleMSI
+- New-IntuneWin32AppDetectionRuleRegistry
+- New-IntuneWin32AppDetectionRuleScript
+- New-IntuneWin32AppIcon
+- New-IntuneWin32AppPackage
+- New-IntuneWin32AppRequirementRule
+- New-IntuneWin32AppRequirementRuleFile
+- New-IntuneWin32AppRequirementRuleRegistry
+- New-IntuneWin32AppRequirementRuleScript
+- New-IntuneWin32AppReturnCode
+- Remove-IntuneWin32AppAssignment
+- Update-IntuneWin32AppPackageFile
 
 ## Installing the module from PSGallery
 The IntuneWin32App module is published to the PowerShell Gallery. Install it on your system by running the following in an elevated PowerShell console:
