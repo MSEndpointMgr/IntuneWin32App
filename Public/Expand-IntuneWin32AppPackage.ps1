@@ -78,13 +78,15 @@ function Expand-IntuneWin32AppPackage {
                         # Extract encoded .intunewin from Contents folder
                         Write-Verbose -Message "Attempting to extract encoded .intunewin file from inside Contents folder of the Win32 application package"
                         $ExtractedIntuneWinFile = $FilePath + ".extracted"
-                        $ZipFile = [System.IO.Compression.ZipFile]::OpenRead($IntuneWinFile)
-                        $IntuneWinFileName = Split-Path -Path $FilePath -Leaf
+                        $ZipFile = [System.IO.Compression.ZipFile]::OpenRead($FilePath)
+                        #$IntuneWinFileName = Split-Path -Path $FilePath -Leaf
+                        $IntuneWinFileName = $IntuneWinMetaData.ApplicationInfo.FileName
                         $ZipFile.Entries | Where-Object { $_.Name -like $IntuneWinFileName } | ForEach-Object {
                             [System.IO.Compression.ZipFileExtensions]::ExtractToFile($_, $ExtractedIntuneWinFile, $true)
                         }
 
                         # Dispose of ZipFile from memory
+                        Write-Verbose -Message "Successfully extracted encoded .intunewin file from Contents folder, disposing ZipFile object"
                         $ZipFile.Dispose()
 
                         try {
