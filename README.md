@@ -34,44 +34,41 @@ The IntuneWin32App module is published to the PowerShell Gallery. Install it on 
 Install-Module -Name "IntuneWin32App"
 ```
 
-## Module and authentication requirements
-IntuneWin32App module requires the following modules to be installed on the system where it's used:
+## Module dependencies
+IntuneWin32App module requires the following modules, which will be automatically installed as dependencies:
 - AzureAD
 - PSIntuneAuth
 
-Delegated authentication (username / password) is currently the only authentication mechanism that's being supported. App-based authentication will be added in a future release.
+## Authentication
+In the previous versions of this module, the functions that interact with Microsoft Intune (essentially query the Graph API for resources), used have common parameters that required input on a per function basis. With the release of version 1.2.0 and going forward, the IntuneWin32App module replaces these common parameter requirements and replaces them with a single function, Connect-MSIntuneGraph, to streamline the authentication token retrieval with other modules and how they work.
 
-## Common parameter inputs
-A set of functions in this module, those that interact with Microsoft Intune (essentially query the Graph API for resources), all have common parameters that requires input. These parameters are:
-- TenantName
-  - This parameter should be given the full tenant name, e.g. name.onmicrosoft.com.
-- ApplicationID (optional)
-  - Provide the Application ID of the app registration in Azure AD. By default, the script will attempt to use the well known Microsoft Intune PowerShell app registration.
-- PromptBehavior (optional)
-  - Define the prompt behavior when acquiring a token. Possible values are: Auto, Always, Never, RefreshSession
+Before using any of the functions within this module that interacts with Graph API, ensure that an authentication token is acquired using the following command:
+```PowerShell
+Connect-MSIntuneGraph
+```
 
-The functions that have these parameters, an authorization token is acquired. This will by default happen for the sign-in user, if possible. For scenarios when another credential is required to acquire the authorization token, specify Always as the value for PromptBehavior.
+Delegated authentication (username / password) is currently the only authentication mechanism that's being supported. App-based authentication, with a ClientID and ClientSecret, will be added in a future release.
 
 ## Get existing Win32 apps
 Get-IntuneWin32App function can be used to retrieve existing Win32 apps in Microsoft Intune. Retrieving an existing Win32 app could either be done passing the display name of the app, which performs a wildcard search meaning it's not required to specify the full name of the Win32 app. The ID if a specific Win32 app could also be used for this function. Additionally, by not specifying either a display name or an ID, all Win32 apps available will be retrieved. Below are a few examples of how this function could be used:
 ```PowerShell
 # Get all Win32 apps
-Get-IntuneWin32App -TenantName "name.onmicrosoft.com" -Verbose
+Get-IntuneWin32App -Verbose
 
 # Get a specific Win32 app by it's display name
-Get-IntuneWin32App -TenantName "name.onmicrosoft.com" -DisplayName "7-zip" -Verbose
+Get-IntuneWin32App -DisplayName "7-zip" -Verbose
 
 # Get a specific Win32 app by it's id
-Get-IntuneWin32App -TenantName "name.onmicrosoft.com" -ID "<Win32 app ID>" -Verbose
+Get-IntuneWin32App -ID "<Win32 app ID>" -Verbose
 ```
 
 ## Package application source files into Win32 app package (.intunewin)
 Use the New-IntuneWin32AppPackage function in the module to create a content package for a Win32 app. MSI, EXE and script-based applications are supported by this function. This function automatically downloads the IntuneWinAppUtil.exe application that's essentially the engine behind the packaging and encryption process. The utility will be downloaded to the temporary directory of the user running the function, more specifically the location of the environment variable %TEMP%. If required, a custom path to where IntuneWinAppUtil.exe already exists is possible to pass to the function using the IntuneWinAppUtilPath parameter. In the sample below, application source files for 7-Zip including the setup file are specified and being packaged into an .intunewin encrypted file. Package will be exported to the output folder.
 ```PowerShell
 # Package MSI as .intunewin file
-$SourceFolder = "C:\IntuneWinAppUtil\Source\7-Zip"
+$SourceFolder = "C:\Win32Apps\Source\7-Zip"
 $SetupFile = "7z1900-x64.msi"
-$OutputFolder = "C:\IntuneWinAppUtil\Output"
+$OutputFolder = "C:\Win32Apps\Output"
 New-IntuneWin32AppPackage -SourceFolder $SourceFolder -SetupFile $SetupFile -OutputFolder $OutputFolder -Verbose
 ```
 
@@ -79,17 +76,18 @@ New-IntuneWin32AppPackage -SourceFolder $SourceFolder -SetupFile $SetupFile -Out
 Use the New-IntuneWin32AppPackage function to first create the packaged Win32 app content file (.intunewin). Then call the Add-IntuneWin32App function to create a new Win32 app in Microsoft Intune. This function has dependencies for other functions in the module. For instance when passing the detection rule for the Win32 app, you need to use the New-IntuneWin32AppDetectionRule function to create the required input object. Below is an example how the dependent functions in this module can be used together with the Add-IntuneWin32App function to successfully upload a packaged Win32 app content file to Microsoft Intune:
 ```PowerShell
 # Get MSI meta data from .intunewin file
-$IntuneWinFile = "C:\IntuneWinAppUtil\Output\7z1900-x64.intunewin"
+$IntuneWinFile = "C:\Win32Apps\Output\7z1900-x64.intunewin"
 $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 
 # Create custom display name like 'Name' and 'Version'
 $DisplayName = $IntuneWinMetaData.ApplicationInfo.Name + " " + $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
+$Publisher = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiPublisher
 
 # Create MSI detection rule
-$DetectionRule = New-IntuneWin32AppDetectionRule -MSI -MSIProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode
+$DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 
 # Add new MSI Win32 app
-Add-IntuneWin32App -TenantName "name.onmicrosoft.com" -FilePath $IntuneWinFile -DisplayName $DisplayName -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -Verbose
+Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Decscription "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -Verbose
 ```
 
 ## Create a new EXE/script based installation as a Win32 app
@@ -100,20 +98,20 @@ Use the New-IntuneWin32AppPackage function to first create the packaged Win32 ap
 The detection rule is also constructed differently, for example in the below script it's using a PowerShell script as the detection logic. In the example below a Win32 app is created that's essentially a PowerShell script that executes and another PowerShell script used for detection:
 ```PowerShell
 # Get MSI meta data from .intunewin file
-$IntuneWinFile = "C:\IntuneWinAppUtil\Output\Enable-BitLockerEncryption.intunewin"
+$IntuneWinFile = "C:\Win32Apps\Output\Enable-BitLockerEncryption.intunewin"
 $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 
 # Create custom display name like 'Name' and 'Version'
 $DisplayName = "Enable BitLocker Encryption 1.0"
 
 # Create PowerShell script detection rule
-$DetectionScriptFile = "C:\IntuneWinAppUtil\Output\Get-BitLockerEncryptionDetection.ps1"
-$DetectionRule = New-IntuneWin32AppDetectionRule -PowerShellScript -ScriptFile $DetectionScriptFile -EnforceSignatureCheck $false -RunAs32Bit $false
+$DetectionScriptFile = "C:\Win32Apps\Output\Get-BitLockerEncryptionDetection.ps1"
+$DetectionRule = New-IntuneWin32AppDetectionRuleScript -ScriptFile $DetectionScriptFile -EnforceSignatureCheck $false -RunAs32Bit $false
 
 # Add new EXE Win32 app
 $InstallCommandLine = "powershell.exe -ExecutionPolicy Bypass -File .\Enable-BitLockerEncryption.ps1"
 $UninstallCommandLine = "cmd.exe /c"
-Add-IntuneWin32App -TenantName "name.onmicrosoft.com" -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Start BitLocker silent encryption" -Publisher "SCConfigMgr" -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Verbose
+Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Start BitLocker silent encryption" -Publisher "MSEndpointMgr" -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Verbose
 ```
 
 ## Additional parameters for Add-IntuneWin32App function
@@ -124,32 +122,41 @@ When creating a Win32 app, additional configuration is possible when using the A
 $ReturnCode = New-IntuneWin32AppReturnCode -ReturnCode 1337 -Type "retry"
 
 # Convert image file to icon
-$ImageFile = "C:\IntuneWinAppUtil\Logos\Image.png"
+$ImageFile = "C:\Win32Apps\Logos\Image.png"
 $Icon = New-IntuneWin32AppIcon -FilePath $ImageFile
 ```
 
 ## Create a Win32 app assignment
-IntuneWin32App module also supports adding assignments. In version 1.0.0, functionality for creating an assignment for an existing Win32 app in Microsoft Intune (or one created with the Add-IntuneWin32App function), consists of targeting for:
+IntuneWin32App module also supports adding assignments. Since version 1.2.0, functionality for creating an assignment for an existing Win32 app in Microsoft Intune (or one created with the Add-IntuneWin32App function), are aligned with the new functionality released for Win32 apps over the recent service releases of Intune, and includes the following taregeting possibilities:
 - All Users
+- All Devices
 - Specified group
 
 Assignments created with this module doesn't currently support specifying an installation deadline or available time. The assignment will by default be created with the settings for installation deadline and availability configured as 'As soon as possible'. Below is an example of how to add assignments using the module:
 ### Adding for a group
 ```PowerShell
 # Get a specific Win32 app by it's display name
-$Win32App = Get-IntuneWin32App -TenantName "name.onmicrosoft.com" -DisplayName "7-zip" -Verbose
+$Win32App = Get-IntuneWin32App -DisplayName "7-zip" -Verbose
 
-# Add assignment for a specific Azure AD group
+# Add an include assignment for a specific Azure AD group
 $GroupID = "<Azure AD group ID>"
-Add-IntuneWin32AppAssignment -TenantName "name.onmicrosoft.com" -DisplayName $Win32App.displayName -Target "Group" -GroupID $GroupID -Intent "available" -Notification "showAll" -Verbose
+Add-IntuneWin32AppAssignmentGroup -Include -ID $Win32App.id -GroupID $GroupID -Intent "available" -Notification "showAll" -Verbose
 ```
 ### Adding for all users
 ```PowerShell
 # Get a specific Win32 app by it's display name
-$Win32App = Get-IntuneWin32App -TenantName "name.onmicrosoft.com" -DisplayName "7-zip" -Verbose
+$Win32App = Get-IntuneWin32App -DisplayName "7-zip" -Verbose
 
 # Add assignment for all users
-Add-IntuneWin32AppAssignment -TenantName "name.onmicrosoft.com" -DisplayName $Win32App.displayName -Target "AllUsers" -Intent "available" -Notification "showAll" -Verbose
+Add-IntuneWin32AppAssignmentAllUsers -ID $Win32App.id -Intent "available" -Notification "showAll" -Verbose
+```
+### Adding for all devices
+```PowerShell
+# Get a specific Win32 app by it's display name
+$Win32App = Get-IntuneWin32App -DisplayName "7-zip" -Verbose
+
+# Add assignment for all devices
+Add-IntuneWin32AppAssignmentAllDevices -ID $Win32App.id -Intent "available" -Notification "showAll" -Verbose
 ```
 
 ## Expand
@@ -157,17 +164,18 @@ The New-IntuneWin32AppPackage function packages and encrypts a Win32 app content
 
 ```PowerShell
 # Decode an existing Win32 app content file
-$IntuneWinFile = "C:\IntuneWinAppUtil\Output\7z1900-x64.intunewin"
+$IntuneWinFile = "C:\Win32Apps\Output\7z1900-x64.intunewin"
 Expand-IntuneWin32AppPackage -FilePath $IntuneWinFile -Force -Verbose
 ```
 
 ## Full example of packaging and creating a Win32 app
 Below is an example that automates the complete process of creating the Win32 app content file, adding a new Win32 app in Microsoft Intune and assigns it to all users.
+
 ```PowerShell
 # Package MSI as .intunewin file
-$SourceFolder = "C:\IntuneWinAppUtil\Source\7-Zip"
+$SourceFolder = "C:\Win32Apps\Source\7-Zip"
 $SetupFile = "7z1900-x64.msi"
-$OutputFolder = "C:\IntuneWinAppUtil\Output"
+$OutputFolder = "C:\Win32Apps\Output"
 $Win32AppPackage = New-IntuneWin32AppPackage -SourceFolder $SourceFolder -SetupFile $SetupFile -OutputFolder $OutputFolder -Verbose
 
 # Get MSI meta data from .intunewin file
@@ -176,20 +184,21 @@ $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 
 # Create custom display name like 'Name' and 'Version'
 $DisplayName = $IntuneWinMetaData.ApplicationInfo.Name + " " + $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
+$Publisher = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiPublisher
 
 # Create MSI detection rule
-$DetectionRule = New-IntuneWin32AppDetectionRule -MSI -MSIProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode
+$DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 
 # Create custom return code
 $ReturnCode = New-IntuneWin32AppReturnCode -ReturnCode 1337 -Type "retry"
 
 # Convert image file to icon
-$ImageFile = "C:\IntuneWinAppUtil\Logos\7-Zip.png"
+$ImageFile = "C:\Win32Apps\Logos\7-Zip.png"
 $Icon = New-IntuneWin32AppIcon -FilePath $ImageFile
 
 # Add new MSI Win32 app
-$Win32App = Add-IntuneWin32App -TenantName "name.onmicrosoft.com" -FilePath $IntuneWinFile -DisplayName $DisplayName -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -Icon $Icon -Verbose
+$Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Decscription "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -Icon $Icon -Verbose
 
 # Add assignment for all users
-Add-IntuneWin32AppAssignment -TenantName "name.onmicrosoft.com" -DisplayName $Win32App.displayName -Target "AllUsers" -Intent "available" -Notification "showAll" -Verbose
+Add-IntuneWin32AppAssignmentAllUsers -ID $Win32App.id -Intent "available" -Notification "showAll" -Verbose
 ```
