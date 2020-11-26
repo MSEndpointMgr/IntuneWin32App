@@ -87,7 +87,7 @@ $Publisher = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiPublisher
 $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 
 # Add new MSI Win32 app
-Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Decscription "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -Verbose
+Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -Verbose
 ```
 
 ## Create a new EXE/script based installation as a Win32 app
@@ -197,7 +197,7 @@ $ImageFile = "C:\Win32Apps\Logos\7-Zip.png"
 $Icon = New-IntuneWin32AppIcon -FilePath $ImageFile
 
 # Add new MSI Win32 app
-$Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Decscription "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -Icon $Icon -Verbose
+$Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -Icon $Icon -Verbose
 
 # Add assignment for all users
 Add-IntuneWin32AppAssignmentAllUsers -ID $Win32App.id -Intent "available" -Notification "showAll" -Verbose
