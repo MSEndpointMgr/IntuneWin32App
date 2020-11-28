@@ -91,6 +91,7 @@ FunctionsToExport = @('Add-IntuneWin32App',
                       "New-IntuneWin32AppRequirementRuleRegistry",
                       "New-IntuneWin32AppRequirementRuleScript",
                       'New-IntuneWin32AppReturnCode',
+                      "Remove-IntuneWin32App",
                       "Remove-IntuneWin32AppAssignment",
                       "Update-IntuneWin32AppPackageFile"
 )
