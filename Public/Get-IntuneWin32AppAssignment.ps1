@@ -22,12 +22,13 @@ function Get-IntuneWin32AppAssignment {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-04-29
-        Updated:     2020-09-23
+        Updated:     2020-12-18
 
         Version history:
         1.0.0 - (2020-04-29) Function created
         1.0.1 - (2020-05-26) Added new parameter GroupName to be able to retrieve assignments associated with a given group
         1.0.2 - (2020-09-23) Added Intent parameter to be able to further scope the desired assignments being retrieved
+        1.0.3 - (2020-12-18) Improved output to a list instead, also added a new output property 'GroupMode' to show if the assignment is either Include or Exclude
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -110,6 +111,9 @@ function Get-IntuneWin32AppAssignment {
             }
         }
 
+        # Construct list for output of matches
+        $Win32AppAssignmentList = New-Object -TypeName "System.Collections.ArrayList"
+
         switch ($PSCmdlet.ParameterSetName) {
             "Group" {
                 foreach ($Win32MobileApp in $Win32MobileAppsList) {
@@ -131,14 +135,24 @@ function Get-IntuneWin32AppAssignment {
                                     if ($AzureADGroupResponse.displayName -like "*$($GroupName)*") {
                                         Write-Verbose -Message "Win32 app assignment '$($Win32AppAssignment.id)' for app '$($Win32MobileApp.displayName)' matched group name: $($GroupName)"
 
+                                        switch ($Win32AppAssignment.target.'@odata.type') {
+                                            "#microsoft.graph.groupAssignmentTarget" {
+                                                $GroupMode = "Include"
+                                            }
+                                            "#microsoft.graph.exclusionGroupAssignmentTarget" {
+                                                $GroupMode = "Exclude"
+                                            }
+                                        }
+
                                         # Create a custom object for return value
                                         $PSObject = [PSCustomObject]@{
                                             AppName = $Win32MobileApp.displayName
                                             GroupID = $Win32AppAssignment.target.groupId
                                             GroupName = $AzureADGroupResponse.displayName
                                             Intent = $Win32AppAssignment.intent
+                                            GroupMode = $GroupMode
                                         }
-                                        Write-Output -InputObject $PSObject
+                                        $Win32AppAssignmentList.Add($PSObject) | Out-Null
                                     }
                                 }
                                 catch [System.Exception] {
@@ -176,5 +190,8 @@ function Get-IntuneWin32AppAssignment {
                 }
             }
         }
+
+        # Handle return value
+        return $Win32AppAssignmentList
     }
 }
