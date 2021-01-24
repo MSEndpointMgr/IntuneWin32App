@@ -181,7 +181,12 @@ function Add-IntuneWin32App {
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide a Base64 encoded string of the PNG/JPG/JPEG file.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
-        [string]$Icon
+        [string]$Icon,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "The version displayed in the UX for this app.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [string]$DisplayVersion
     )
     Begin {
         # Ensure required auth token exists
@@ -283,6 +288,9 @@ function Add-IntuneWin32App {
                         if ($PSBoundParameters["RequirementRule"]) {
                             $AppBodySplat.Add("RequirementRule", $RequirementRule)
                         }
+                        if ($PSBoundParameters["DisplayVersion"]) {
+                            $AppBodySplat.Add("DisplayVersion", $DisplayVersion)
+                        }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
                         Write-Verbose -Message "Constructed the basic layout for 'MSI' Win32 app body type"
@@ -312,6 +320,9 @@ function Add-IntuneWin32App {
                         }
                         if ($PSBoundParameters["RequirementRule"]) {
                             $AppBodySplat.Add("RequirementRule", $RequirementRule)
+                        }
+                        if ($PSBoundParameters["DisplayVersion"]) {
+                            $AppBodySplat.Add("DisplayVersion", $DisplayVersion)
                         }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat

@@ -80,6 +80,9 @@ function New-IntuneWin32AppBody {
     
     .PARAMETER MSIUpgradeCode
         Specify the MSI upgrade code for the Win32 application body.
+        
+    .PARAMETER DisplayVersion
+        The version displayed in the UX for this app.
             
     .NOTES
         Author:      Nickolaj Andersen
@@ -202,7 +205,12 @@ function New-IntuneWin32AppBody {
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify the MSI upgrade code for the Win32 application body.")]
         [ValidateNotNullOrEmpty()]
-        [string]$MSIUpgradeCode
+        [string]$MSIUpgradeCode,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "The version displayed in the UX for this app.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [string]$DisplayVersion
     )
     # Determine values for requirement rules
     if ($PSBoundParameters["RequirementRule"]) {
@@ -258,6 +266,11 @@ function New-IntuneWin32AppBody {
                     "value" = $Icon
                 })
             }
+
+            # Add DisplayVersion property if passed on command line
+            if ($PSBoundParameters["DisplayVersion"]) {
+                $Win32AppBody.Add("displayVersion", $DisplayVersion)
+            }
         }
         "EXE" {
             $Win32AppBody = [ordered]@{
@@ -291,6 +304,11 @@ function New-IntuneWin32AppBody {
                     "type" = "image/png"
                     "value" = $Icon
                 })
+            }
+
+            # Add DisplayVersion property if passed on command line
+            if ($PSBoundParameters["DisplayVersion"]) {
+                $Win32AppBody.Add("displayVersion", $DisplayVersion)
             }
         }
     }
