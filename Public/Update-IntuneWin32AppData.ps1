@@ -9,9 +9,6 @@ function Update-IntuneWin32AppData {
     .PARAMETER ApplicationId
         Specify the win 32 application ID to update.
 
-    .PARAMETER FilePath
-        Specify a local path to where the win32 app .intunewin file is located.
-
     .PARAMETER DisplayName
         Specify a display name for the Win32 application.
     
@@ -20,24 +17,6 @@ function Update-IntuneWin32AppData {
     
     .PARAMETER Publisher
         Specify a publisher name for the Win32 application.
-    
-    .PARAMETER Developer
-        Specify the developer name for the Win32 application.
-
-    .PARAMETER Owner
-        Specify the owner property for the Win32 application.
-
-    .PARAMETER Notes
-        Specify the notes property for the Win32 application.
-
-    .PARAMETER InformationURL
-        Specify the information URL for the Win32 application.
-    
-    .PARAMETER PrivacyURL
-        Specify the privacy URL for the Win32 application.
-    
-    .PARAMETER CompanyPortalFeaturedApp
-        Specify whether to have the Win32 application featured in Company Portal or not.
 
     .PARAMETER InstallCommandLine
         Specify the install command line for the Win32 application.
@@ -54,28 +33,17 @@ function Update-IntuneWin32AppData {
     .PARAMETER DetectionRule
         Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.
 
-    .PARAMETER RequirementRule
-        Provide an OrderedDictionary object as requirement rule that will be used for the Win32 application.
-
-    .PARAMETER AdditionalRequirementRule
-        Provide an array of OrderedDictionary objects as additional requirement rule, e.g. for file, registry or script rules, that will be used for the Win32 application.
-
-    .PARAMETER ReturnCode
-        Provide an array of a single or multiple hash-tables for the Win32 application with return code information.
-
     .PARAMETER Icon
         Provide a Base64 encoded string of the PNG/JPG/JPEG file.
 
     .NOTES
-        Author:      Nickolaj Andersen
-        Contact:     @NickolajA
-        Created:     2020-01-04
-        Updated:     2020-09-20
+        Author:      Christof Van Geendertaelen
+        Contact:     @christofvg
+        Created:     2021-01-23
+        Updated:     2021-01-23
 
         Version history:
-        1.0.0 - (2020-01-04) Function created
-        1.0.1 - (2020-01-27) Added support for RequirementRule parameter input
-        1.0.2 - (2020-09-20) Added support for Owner, Notes, InformationURL, PrivacyURL and CompanyPortalFeaturedApp parameter inputs
+        1.0.0 - (2021-01-23) Function created
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
@@ -83,27 +51,6 @@ function Update-IntuneWin32AppData {
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [string]$ApplicationId,
-
-        [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a local path to where the win32 app .intunewin file is located.")]
-        [parameter(Mandatory = $true, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [ValidatePattern("^[A-Za-z]{1}:\\\w+")]
-        [ValidateScript({
-            # Check if path contains any invalid characters
-            if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains invalid characters"; break
-            }
-            else {
-            # Check if file extension is intunewin
-                if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
-                    return $true
-                }
-                else {
-                    Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains unsupported file extension. Supported extension is '.intunewin'"; break
-                }
-            }
-        })]
-        [string]$FilePath,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a display name for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
@@ -119,32 +66,6 @@ function Update-IntuneWin32AppData {
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [string]$Publisher,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the developer name for the Win32 application.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [string]$Developer = [string]::Empty,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the owner property for the Win32 application.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [string]$Owner = [string]::Empty,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the notes property for the Win32 application.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [string]$Notes = [string]::Empty,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the information URL for the Win32 application.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
-        [string]$InformationURL = [string]::Empty,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the privacy URL for the Win32 application.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
-        [string]$PrivacyURL = [string]::Empty,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify whether to have the Win32 application featured in Company Portal or not.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [bool]$CompanyPortalFeaturedApp = $false,
 
         [parameter(Mandatory = $true, ParameterSetName = "EXE", HelpMessage = "Specify the install command line for the Win32 application.")]
         [ValidateNotNullOrEmpty()]
@@ -175,11 +96,6 @@ function Update-IntuneWin32AppData {
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [System.Collections.Specialized.OrderedDictionary]$RequirementRule,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide an array of OrderedDictionary objects as additional requirement rule, e.g. for file, registry or script rules, that will be used for the Win32 application.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [System.Collections.Specialized.OrderedDictionary[]]$AdditionalRequirementRule,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide an array of a single or multiple hash-tables for the Win32 application with return code information.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
@@ -222,115 +138,24 @@ function Update-IntuneWin32AppData {
 
             # Generate Win32 application body data table with different parameters based upon parameter set name
             Write-Verbose -Message "Start constructing basic layout of Win32 app body"
-            switch ($PSCmdlet.ParameterSetName) {
-                "MSI" {
-                    # Determine the execution context of the MSI installer and define the installation purpose
-                    $MSIExecutionContext = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiExecutionContext
-                    $MSIInstallPurpose = "DualPurpose"
-                    switch ($MSIExecutionContext) {
-                        "System" {
-                            $MSIInstallPurpose = "PerMachine"
-                        }
-                        "User" {
-                            $MSIInstallPurpose = "PerUser"
-                        }
-                    }
-
-                    # Handle special meta data variable values
-                    $MSIRequiresReboot = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiRequiresReboot
-                    switch ($MSIRequiresReboot) {
-                        "true" {
-                            $MSIRequiresReboot = $true
-                        }
-                        "false" {
-                            $MSIRequiresReboot = $false
-                        }
-                    }
-
-                    # Handle special parameter inputs
-                    if (-not($PSBoundParameters["DisplayName"])) {
-                        $DisplayName = $IntuneWinXMLMetaData.ApplicationInfo.Name
-                    }
-                    if (-not($PSBoundParameters["Description"])) {
-                        $Description = $IntuneWinXMLMetaData.ApplicationInfo.Name
-                    }
-                    if (-not($PSBoundParameters["Publisher"])) {
-                        $Publisher = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiPublisher
-                    }
-                    if (-not($PSBoundParameters["Developer"])) {
-                        $Developer = [string]::Empty
-                    }
-                    
-                    # Generate Win32 application body
-                    $AppBodySplat = @{
-                        "MSI" = $true
-                        "DisplayName" = $DisplayName
-                        "Description" = $Description
-                        "Publisher" = $Publisher
-                        "Developer" = $Developer
-                        "Owner" = $Owner
-                        "Notes" = $Notes
-                        "InformationURL" = $InformationURL
-                        "PrivacyURL" = $PrivacyURL
-                        "CompanyPortalFeaturedApp" = $CompanyPortalFeaturedApp
-                        "FileName" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
-                        "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
-                        "InstallExperience" = $InstallExperience
-                        "RestartBehavior" = $RestartBehavior
-                        "MSIInstallPurpose" = $MSIInstallPurpose
-                        "MSIProductCode" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiProductCode
-                        "MSIProductName" = $DisplayName
-                        "MSIProductVersion" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
-                        "MSIRequiresReboot" = $MSIRequiresReboot
-                        "MSIUpgradeCode" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiUpgradeCode
-                    }
-                    if ($PSBoundParameters["Icon"]) {
-                        $AppBodySplat.Add("Icon", $Icon)
-                    }
-                    if ($PSBoundParameters["RequirementRule"]) {
-                        $AppBodySplat.Add("RequirementRule", $RequirementRule)
-                    }
-                    if ($PSBoundParameters["DisplayVersion"]) {
-                        $AppBodySplat.Add("DisplayVersion", $DisplayVersion)
-                    }
-
-                    $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
-                    Write-Verbose -Message "Constructed the basic layout for 'MSI' Win32 app body type"
-                }
-                "EXE" {
-                    # Generate Win32 application body
-                    $AppBodySplat = @{
-                        "EXE" = $true
-                        "DisplayName" = $DisplayName
-                        "Description" = $Description
-                        "Publisher" = $Publisher
-                        "Developer" = $Developer
-                        "Owner" = $Owner
-                        "Notes" = $Notes
-                        "InformationURL" = $InformationURL
-                        "PrivacyURL" = $PrivacyURL
-                        "CompanyPortalFeaturedApp" = $CompanyPortalFeaturedApp
-                        "FileName" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
-                        "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
-                        "InstallExperience" = $InstallExperience
-                        "RestartBehavior" = $RestartBehavior
-                        "InstallCommandLine" = $InstallCommandLine
-                        "UninstallCommandLine" = $UninstallCommandLine
-                    }
-                    if ($PSBoundParameters["Icon"]) {
-                        $AppBodySplat.Add("Icon", $Icon)
-                    }
-                    if ($PSBoundParameters["RequirementRule"]) {
-                        $AppBodySplat.Add("RequirementRule", $RequirementRule)
-                    }
-                    if ($PSBoundParameters["DisplayVersion"]) {
-                        $AppBodySplat.Add("DisplayVersion", $DisplayVersion)
-                    }
-
-                    $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
-                    Write-Verbose -Message "Constructed the basic layout for 'EXE' Win32 app body type"
-                }
+            
+            # Generate Win32 application body
+            $AppBodySplat = @{
+                "DisplayName" = $DisplayName
+                "Description" = $Description
+                "Publisher" = $Publisher
+                "InstallExperience" = $InstallExperience
+                "RestartBehavior" = $RestartBehavior
             }
+            if ($PSBoundParameters["Icon"]) {
+                $AppBodySplat.Add("Icon", $Icon)
+            }
+            if ($PSBoundParameters["DisplayVersion"]) {
+                $AppBodySplat.Add("DisplayVersion", $DisplayVersion)
+            }
+
+            $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
+            Write-Verbose -Message "Constructed the basic layout for Win32 app body type"
 
             # Validate that correct detection rules have been passed on command line, only 1 PowerShell script based detection rule is allowed
             if (($DetectionRule.'@odata.type' -contains "#microsoft.graph.win32LobAppPowerShellScriptDetection") -and (@($DetectionRules).'@odata.type'.Count -gt 1)) {
@@ -356,11 +181,6 @@ function Update-IntuneWin32AppData {
             # Add return codes to Win32 app body object
             Write-Verbose -Message "Adding array of return codes to Win32 app body construction"
             $Win32AppBody.Add("returnCodes", $DefaultReturnCodes)
-
-            # Add additional requirement rules to Win32 app body object
-            if ($PSBoundParameters["AdditionalRequirementRule"]) {
-                $Win32AppBody.Add("requirementRules", $AdditionalRequirementRule)
-            }
 
             # Create the Win32 app
             Write-Verbose -Message "Attempting to create Win32 app using constructed body converted to JSON content"
