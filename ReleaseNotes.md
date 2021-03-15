@@ -1,4 +1,7 @@
 # Release notes for IntuneWin32App module
+## 1.2.1
+- Get-IntuneWin32AppAssignment function now includes the GroupMode property (Include/Exclude) in the output
+- Add-IntuneWin32App function includes a fix in private functions it relies upon to successfully upload the packaged content. This fix addresses bug #3 where the SAS Uri renewal process wasn't working properly.
 
 ## 1.2.0
 - Connect-MSIntuneGraph function has been added to replace the TenantName parameter for all functions that requires an authentication token. Use this function to retrieve the authentication token before running any of the functions that creates, updates or changes any aspect of a Win32 app.
