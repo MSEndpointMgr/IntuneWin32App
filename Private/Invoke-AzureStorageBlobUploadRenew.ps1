@@ -17,12 +17,13 @@ function Invoke-AzureStorageBlobUploadRenew {
 
         Version history:
         1.0.0 - (2020-01-04) Function created
+        1.0.1 - (2021-03-15) Fixed an issue where SAS Uri renewal wasn't working correctly
     #>    
     param(
         [parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$Resource
     )
-    $RenewSASURIRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "$($Resource)/renewUpload" -Method "POST" -Body ""
+    $RenewSASURIRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "$($Resource)/renewUpload" -Method "POST" -Body "{}"
     $FilesProcessingRequest = Wait-IntuneWin32AppFileProcessing -Stage "AzureStorageUriRenewal" -Resource $Resource
 }
