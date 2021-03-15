@@ -47,7 +47,7 @@ function Invoke-AzureStorageBlobUpload {
     # Upload each chunk and dheck whether a SAS URI renewal is required after each chunk is uploaded and renew if needed
     $ChunkIDs = @()
     for ($Chunk = 0; $Chunk -lt $ChunkCount; $Chunk++) {
-        Write-Verbose -Message "SAS Uri renewal timer has elapsed: $($SASRenewalTimer.Elapsed.Minutes) minute $($SASRenewalTimer.Elapsed.Seconds) seconds"
+        Write-Verbose -Message "SAS Uri renewal timer has elapsed for: $($SASRenewalTimer.Elapsed.Minutes) minute $($SASRenewalTimer.Elapsed.Seconds) seconds"
 
         # Convert and calculate required chunk elements for content upload
         $ChunkID = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Chunk.ToString("0000")))
