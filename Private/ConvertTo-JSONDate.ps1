@@ -25,7 +25,7 @@ function ConvertTo-JSONDate {
         [datetime]$InputObject
     )
     # Convert input datetime object to ISO 8601
-    $DateTimeString = Get-Date -Year $InputObject.Year -Month $InputObject.Month -Day $InputObject.Day -Hour $InputObject.Hour -Second $InputObject.Second -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
+    $DateTimeString = Get-Date -Year $InputObject.Year -Month $InputObject.Month -Day $InputObject.Day -Hour $InputObject.Hour -Minute $InputObject.Minute -Second $InputObject.Second -UFormat '+%Y-%m-%dT%H:%M:%S.000Z'
 
     # Return converted datetime object as a string
     return $DateTimeString
