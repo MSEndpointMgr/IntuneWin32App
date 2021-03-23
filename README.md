@@ -1,4 +1,6 @@
 # Overview
+![PowerShell Gallery](https://img.shields.io/powershellgallery/dt/IntuneWin32App)
+
 This module was created to provide means to automate the packaging, creation and publishing of Win32 applications in Microsoft Intune.
 
 Currently the following functions are supported in the module:
