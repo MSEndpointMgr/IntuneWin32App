@@ -13,7 +13,7 @@ function Invoke-AzureStorageBlobUploadRenew {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-04
+        Updated:     2021-03-15
 
         Version history:
         1.0.0 - (2020-01-04) Function created
