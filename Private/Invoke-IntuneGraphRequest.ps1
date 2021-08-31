@@ -10,11 +10,12 @@ function Invoke-IntuneGraphRequest {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-04-29
+        Updated:     2020-08-31
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-04-29) Added support for DELETE operations
+        1.0.2 - (2021-08-31) Updated to use new authentication header
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -48,16 +49,16 @@ function Invoke-IntuneGraphRequest {
         # Call Graph API and get JSON response
         switch ($Method) {
             "GET" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthToken -Method $Method -ErrorAction Stop -Verbose:$false
+                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction Stop -Verbose:$false
             }
             "POST" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthToken -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
+                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
             }
             "PATCH" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthToken -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
+                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
             }
             "DELETE" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthToken -Method $Method -ErrorAction Stop -Verbose:$false
+                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction Stop -Verbose:$false
             }
         }
 

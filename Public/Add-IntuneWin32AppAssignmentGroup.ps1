@@ -52,10 +52,13 @@ function Add-IntuneWin32AppAssignmentGroup {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-09-20
-        Updated:     2020-09-20
+        Updated:     2021-08-31
 
         Version history:
         1.0.0 - (2020-09-20) Function created
+        1.0.1 - (2021-04-01) Fixed a warning message text that was referencing an incorrect variable
+        1.0.2 - (2021-04-01) Updated token expired message to a warning instead of verbose output
+        1.0.3 - (2021-08-31) Updated to use new authentication header
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -123,17 +126,17 @@ function Add-IntuneWin32AppAssignmentGroup {
         [int]$RestartNotificationSnooze = 240
     )
     Begin {
-        # Ensure required auth token exists
-        if ($Global:AuthToken -eq $null) {
+        # Ensure required authentication header variable exists
+        if ($Global:AuthenticationHeader -eq $null) {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
         }
         else {
-            $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
-            if ($AuthTokenLifeTime -le 0) {
-                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
+            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
+            if ($TokenLifeTime -le 0) {
+                Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
             }
             else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"
+                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
             }
         }
 
@@ -275,7 +278,7 @@ function Add-IntuneWin32AppAssignmentGroup {
                     }
                 }
                 catch [System.Exception] {
-                    Write-Warning -Message "An error occurred while creating a Win32 app assignment: $($TargetFilePath). Error message: $($_.Exception.Message)"
+                    Write-Warning -Message "An error occurred while creating a Win32 app assignment. Error message: $($_.Exception.Message)"
                 }
             }
         }

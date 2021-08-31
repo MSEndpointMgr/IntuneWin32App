@@ -19,7 +19,8 @@ function Update-IntuneWin32AppPackageFile {
         Updated:     2020-10-01
 
         Version history:
-        1.0.0 - (2020-010-01) Function created
+        1.0.0 - (2020-10-01) Function created
+        1.0.1 - (2021-04-01) Updated token expired message to a warning instead of verbose output
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -55,7 +56,7 @@ function Update-IntuneWin32AppPackageFile {
         else {
             $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
             if ($AuthTokenLifeTime -le 0) {
-                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
+                Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
             }
             else {
                 Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"

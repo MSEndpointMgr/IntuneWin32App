@@ -9,12 +9,17 @@ Currently the following functions are supported in the module:
 - Add-IntuneWin32AppAssignmentAllDevices
 - Add-IntuneWin32AppAssignmentAllUsers
 - Add-IntuneWin32AppAssignmentGroup
+- Add-IntuneWin32AppDependency
+- Add-IntuneWin32AppSupersedence
 - Connect-MSIntuneGraph
 - Expand-IntuneWin32AppPackage
 - Get-IntuneWin32App
 - Get-IntuneWin32AppAssignment
+- Get-IntuneWin32AppDependency
 - Get-IntuneWin32AppMetaData
+- Get-IntuneWin32AppSupersedence
 - Get-MSIMetaData
+- New-IntuneWin32AppDependency
 - New-IntuneWin32AppDetectionRule
 - New-IntuneWin32AppDetectionRuleFile
 - New-IntuneWin32AppDetectionRuleMSI
@@ -27,7 +32,11 @@ Currently the following functions are supported in the module:
 - New-IntuneWin32AppRequirementRuleRegistry
 - New-IntuneWin32AppRequirementRuleScript
 - New-IntuneWin32AppReturnCode
+- New-IntuneWin32AppSupersedence
+- Remove-IntuneWin32App
 - Remove-IntuneWin32AppAssignment
+- Remove-IntuneWin32AppDependency
+- Remove-IntuneWin32AppSupersedence
 - Update-IntuneWin32AppPackageFile
 
 ## Installing the module from PSGallery
@@ -38,18 +47,17 @@ Install-Module -Name "IntuneWin32App"
 
 ## Module dependencies
 IntuneWin32App module requires the following modules, which will be automatically installed as dependencies:
-- AzureAD
-- PSIntuneAuth
+- MSAL.PS
 
 ## Authentication
 In the previous versions of this module, the functions that interact with Microsoft Intune (essentially query the Graph API for resources), used have common parameters that required input on a per function basis. With the release of version 1.2.0 and going forward, the IntuneWin32App module replaces these common parameter requirements and replaces them with a single function, Connect-MSIntuneGraph, to streamline the authentication token retrieval with other modules and how they work.
 
 Before using any of the functions within this module that interacts with Graph API, ensure that an authentication token is acquired using the following command:
 ```PowerShell
-Connect-MSIntuneGraph
+Connect-MSIntuneGraph -TenantID "domain.onmicrosoft.com"
 ```
 
-Delegated authentication (username / password) is currently the only authentication mechanism that's being supported. App-based authentication, with a ClientID and ClientSecret, will be added in a future release.
+Delegated authentication (username / password) together with DeviceCode is currently the only authentication methods that are supported.
 
 ## Get existing Win32 apps
 Get-IntuneWin32App function can be used to retrieve existing Win32 apps in Microsoft Intune. Retrieving an existing Win32 app could either be done passing the display name of the app, which performs a wildcard search meaning it's not required to specify the full name of the Win32 app. The ID if a specific Win32 app could also be used for this function. Additionally, by not specifying either a display name or an ID, all Win32 apps available will be retrieved. Below are a few examples of how this function could be used:

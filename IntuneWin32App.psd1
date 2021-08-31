@@ -11,7 +11,7 @@
 RootModule = 'IntuneWin32App.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.2.1'
+ModuleVersion = '1.3.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -50,7 +50,7 @@ PowerShellVersion = '5.0'
 # ProcessorArchitecture = ''
 
 # Modules that must be imported into the global environment prior to importing this module
-RequiredModules = @("AzureAD", "PSIntuneAuth")
+RequiredModules = @("MSAL.PS")
 
 # Assemblies that must be loaded prior to importing this module
 # RequiredAssemblies = @()
@@ -68,30 +68,39 @@ RequiredModules = @("AzureAD", "PSIntuneAuth")
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Add-IntuneWin32App',
-                      'Add-IntuneWin32AppAssignment',
-                      'Add-IntuneWin32AppAssignmentAllDevices',
-                      'Add-IntuneWin32AppAssignmentAllUsers',
-                      'Add-IntuneWin32AppAssignmentGroup',
-                      'Connect-MSIntuneGraph',
-                      'Expand-IntuneWin32AppPackage',
-                      'Get-IntuneWin32App',
+FunctionsToExport = @("Add-IntuneWin32App",
+                      "Add-IntuneWin32AppAssignment",
+                      "Add-IntuneWin32AppAssignmentAllDevices",
+                      "Add-IntuneWin32AppAssignmentAllUsers",
+                      "Add-IntuneWin32AppAssignmentGroup",
+                      "Add-IntuneWin32AppDependency",
+                      "Add-IntuneWin32AppSupersedence"
+                      "Connect-MSIntuneGraph",
+                      "Expand-IntuneWin32AppPackage",
+                      "Get-IntuneWin32App",
                       "Get-IntuneWin32AppAssignment",
-                      'Get-IntuneWin32AppMetaData',
-                      'Get-MSIMetaData', 
-                      'New-IntuneWin32AppDetectionRule',
+                      "Get-IntuneWin32AppDependency",
+                      "Get-IntuneWin32AppMetaData",
+                      "Get-IntuneWin32AppSupersedence",
+                      "Get-MSIMetaData",
+                      "New-IntuneWin32AppDependency",
+                      "New-IntuneWin32AppDetectionRule",
                       "New-IntuneWin32AppDetectionRuleFile",
                       "New-IntuneWin32AppDetectionRuleMSI",
                       "New-IntuneWin32AppDetectionRuleRegistry",
                       "New-IntuneWin32AppDetectionRuleScript",
-                      'New-IntuneWin32AppIcon',
-                      'New-IntuneWin32AppPackage',
+                      "New-IntuneWin32AppIcon",
+                      "New-IntuneWin32AppPackage",
                       "New-IntuneWin32AppRequirementRule",
                       "New-IntuneWin32AppRequirementRuleFile",
                       "New-IntuneWin32AppRequirementRuleRegistry",
                       "New-IntuneWin32AppRequirementRuleScript",
-                      'New-IntuneWin32AppReturnCode',
+                      "New-IntuneWin32AppReturnCode",
+                      "New-IntuneWin32AppSupersedence",
+                      "Remove-IntuneWin32App",
                       "Remove-IntuneWin32AppAssignment",
+                      "Remove-IntuneWin32AppDependency",
+                      "Remove-IntuneWin32AppSupersedence",
                       "Update-IntuneWin32AppPackageFile"
 )
 

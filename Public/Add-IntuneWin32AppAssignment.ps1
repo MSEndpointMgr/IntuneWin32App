@@ -55,13 +55,15 @@ function Add-IntuneWin32AppAssignment {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-08-05
+        Updated:     2021-08-31
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-04-29) Added support for AllDevices target assignment type
         1.0.2 - (2020-06-08) Added support for Available and Deadline settings, device local time and Delivery Optimization settings of the assignment
         1.0.3 - (2020-08-05) Added support for additional restart settings
+        1.0.4 - (2021-04-01) Updated token expired message to a warning instead of verbose output
+        1.0.5 - (2021-08-31) Updated to use new authentication header
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -153,17 +155,17 @@ function Add-IntuneWin32AppAssignment {
         Write-Warning -Message "- Add-IntuneWin32AppAssignmentAllUsers"
         Write-Warning -Message "- Add-IntuneWin32AppAssignmentGroup"
 
-        # Ensure required auth token exists
-        if ($Global:AuthToken -eq $null) {
+        # Ensure required authentication header variable exists
+        if ($Global:AuthenticationHeader -eq $null) {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
         }
         else {
-            $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
-            if ($AuthTokenLifeTime -le 0) {
-                Write-Verbose -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
+            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
+            if ($TokenLifeTime -le 0) {
+                Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
             }
             else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"
+                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
             }
         }
 

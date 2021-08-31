@@ -13,10 +13,11 @@ function Invoke-AzureStorageBlobUploadChunk {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-04
+        Updated:     2021-04-02
 
         Version history:
         1.0.0 - (2020-01-04) Function created
+        1.0.1 - (2021-04-02) Added UseBasicParsing to support conditions where IE first run experience have not been completed
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -39,7 +40,7 @@ function Invoke-AzureStorageBlobUploadChunk {
 	}
 
 	try	{
-		$WebResponse = Invoke-WebRequest $Uri -Method "Put" -Headers $Headers -Body $EncodedBytes -ErrorAction Stop
+		$WebResponse = Invoke-WebRequest $Uri -Method "Put" -Headers $Headers -Body $EncodedBytes -UseBasicParsing -ErrorAction Stop
 	}
 	catch {
         Write-Warning -Message "Failed to upload chunk to Azure Storage blob. Error message: $($_.Exception.Message)"

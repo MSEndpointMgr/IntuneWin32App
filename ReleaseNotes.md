@@ -1,4 +1,18 @@
 # Release notes for IntuneWin32App module
+
+## 1.3.0
+- Switched from PSIntuneAuth module to use the MSAL.PS module. Delegated authentication including DeviceCode flows are now supported.
+- New function added to extend the functionality of the module:
+  - Remove-IntuneWin32App
+  - Get-IntuneWin32AppDependency
+  - New-IntuneWin32AppDependency
+  - Add-IntuneWin32AppDependency
+  - Remove-IntuneWin32AppDependency
+  - Get-IntuneWin32AppSupersedence
+  - New-IntuneWin32AppSupersedence
+  - Add-IntuneWin32AppSupersedence
+  - Remove-IntuneWin32AppSupersedence
+
 ## 1.2.1
 - Get-IntuneWin32AppAssignment function now includes the GroupMode property (Include/Exclude) in the output
 - Add-IntuneWin32App function includes a fix in private functions it relies upon to successfully upload the packaged content. This fix addresses bug #3 where the SAS Uri renewal process wasn't working properly.

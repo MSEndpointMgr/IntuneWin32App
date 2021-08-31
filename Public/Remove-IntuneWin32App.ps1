@@ -1,10 +1,10 @@
-function Remove-IntuneWin32AppAssignment {
+function Remove-IntuneWin32App {
     <#
     .SYNOPSIS
-        Remove all assignments for a Win32 app.
+        Remove an existing Win32 app.
 
     .DESCRIPTION
-        Remove all assignments for a Win32 app.
+        Remove an existing Win32 app.
 
     .PARAMETER DisplayName
         Specify the display name for a Win32 application.
@@ -13,25 +13,24 @@ function Remove-IntuneWin32AppAssignment {
         Specify the ID for a Win32 application.
 
     .NOTES
-        Author:      Nickolaj Andersen
-        Contact:     @NickolajA
-        Created:     2020-04-29
+        Author:      Nickolaj Andersen & Christof Van Geendertaelen
+        Contact:     @NickolajA & @cvangeendert
+        Created:     2021-04-02
         Updated:     2021-08-31
 
         Version history:
-        1.0.0 - (2020-04-29) Function created
-        1.0.1 - (2021-04-01) Updated token expired message to a warning instead of verbose output
-        1.0.2 - (2021-08-31) Updated to use new authentication header
+        1.0.0 - (2021-04-02) Function created
+        1.0.1 - (2021-08-31) Updated to use new authentication header
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [parameter(Mandatory = $true, ParameterSetName = "DisplayName", HelpMessage = "Specify the display name for a Win32 application.")]
         [ValidateNotNullOrEmpty()]
         [string]$DisplayName,
-
+        
         [parameter(Mandatory = $true, ParameterSetName = "ID", HelpMessage = "Specify the ID for a Win32 application.")]
         [ValidateNotNullOrEmpty()]
-        [string]$ID      
+        [string]$ID 
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -82,38 +81,15 @@ function Remove-IntuneWin32AppAssignment {
 
         if (-not([string]::IsNullOrEmpty($Win32AppID))) {
             try {
-                # Attempt to call Graph and retrieve all assignments for Win32 app
-                $Win32AppAssignmentResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments" -Method "GET" -ErrorAction Stop
-                if ($Win32AppAssignmentResponse.value -ne $null) {
-                    Write-Verbose -Message "Count of assignments for Win32 app before attempted removal process: $(($Win32AppAssignmentResponse.value | Measure-Object).Count)"
-
-                    # Process each assignment for removal
-                    foreach ($Win32AppAssignment in $Win32AppAssignmentResponse.value) {
-                        Write-Verbose -Message "Attempting to remove Win32 app assignment with ID: $($Win32AppAssignment.id)"
-                        
-                        try {
-                            # Remove current assignment
-                            $Win32AppAssignmentRemoveResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments/$($Win32AppAssignment.id)" -Method "DELETE" -ErrorAction Stop
-                        }
-                        catch [System.Exception] {
-                            Write-Warning -Message "An error occurred while retrieving Win32 app assignments for app with ID: $($Win32AppID). Error message: $($_.Exception.Message)"
-                        }
-                    }
-
-                    # Calculate amount of remaining assignments after attempted removal process
-                    $Win32AppAssignmentResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments" -Method "GET" -ErrorAction Stop
-                    Write-Verbose -Message "Count of assignments for Win32 app after attempted removal process: $(($Win32AppAssignmentResponse.value | Measure-Object).Count)"
-                }
-                else {
-                    Write-Verbose -Message "Unable to locate any instances for removal, Win32 app does not have any existing assignments"
-                }
+                # Attempt to call Graph and delete Win32 app
+                $Win32AppDeletionResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)" -Method "DELETE" -ErrorAction Stop
             }
             catch [System.Exception] {
-                Write-Warning -Message "An error occurred while retrieving Win32 app assignments for app with ID: $($Win32AppID). Error message: $($_.Exception.Message)"
+                Write-Warning -Message "An error occurred while deleting Win32 app with ID: $($Win32AppID). Error message: $($_.Exception.Message)"
             }
         }
         else {
-            Write-Warning -Message "Unable to determine the Win32 app identification for assignment"
+            Write-Warning -Message "Unable to determine the Win32 app identification for deletion"
         }
     }
 }
