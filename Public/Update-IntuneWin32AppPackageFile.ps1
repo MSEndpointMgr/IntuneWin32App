@@ -16,11 +16,13 @@ function Update-IntuneWin32AppPackageFile {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-10-01
-        Updated:     2020-10-01
+        Updated:     2021-08-31
 
         Version history:
         1.0.0 - (2020-10-01) Function created
         1.0.1 - (2021-04-01) Updated token expired message to a warning instead of verbose output
+        1.0.2 - (2021-08-31) Updated to use new authentication header
+        1.0.3 - (2021-08-31) Fixed an issue where the PATCH operation would remove the largeIcon property value of the Win32 app
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -49,17 +51,17 @@ function Update-IntuneWin32AppPackageFile {
         [string]$FilePath
     )
     Begin {
-        # Ensure required auth token exists
-        if ($Global:AuthToken -eq $null) {
+        # Ensure required authentication header variable exists
+        if ($Global:AuthenticationHeader -eq $null) {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
         }
         else {
-            $AuthTokenLifeTime = ($Global:AuthToken.ExpiresOn.datetime - (Get-Date).ToUniversalTime()).Minutes
-            if ($AuthTokenLifeTime -le 0) {
+            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
+            if ($TokenLifeTime -le 0) {
                 Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
             }
             else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($AuthTokenLifeTime)"
+                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
             }
         }
 
@@ -141,6 +143,7 @@ function Update-IntuneWin32AppPackageFile {
                             $Win32AppFileCommitBody = [ordered]@{
                                 "@odata.type" = "#microsoft.graph.win32LobApp"
                                 "committedContentVersion" = $Win32AppContentVersionRequest.id
+                                "largeIcon" = $Win32App.largeIcon
                             }
                             $Win32AppFileCommitBodyRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32App.id)" -Method "PATCH" -Body ($Win32AppFileCommitBody | ConvertTo-Json)
 

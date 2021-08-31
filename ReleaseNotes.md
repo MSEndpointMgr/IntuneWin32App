@@ -1,5 +1,10 @@
 # Release notes for IntuneWin32App module
 
+## 1.3.1
+- Added AppVersion optional parameter for Add-IntuneWin32App function
+- Fixed an issue in the Update-IntuneWin32AppPackageFile function where the PATCH operation would remove the largeIcon property value of the Win32 app
+- Fixed an issue in the New-IntuneWin32AppDetectionRuleScript and New-IntuneWin32AppRequirementRuleScript functions when using a non-UTF encoded multi-line script file, it would not be imported to Intune
+
 ## 1.3.0
 - Switched from PSIntuneAuth module to use the MSAL.PS module. Delegated authentication including DeviceCode flows are now supported.
 - New function added to extend the functionality of the module:

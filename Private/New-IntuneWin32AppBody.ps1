@@ -21,6 +21,9 @@ function New-IntuneWin32AppBody {
     .PARAMETER Publisher
         Specify a publisher name for the Win32 application body.
 
+    .PARAMETER AppVersion
+        Specify the app version for the Win32 application body.
+
     .PARAMETER Developer
         Specify a developer name for the Win32 application body.
 
@@ -85,12 +88,13 @@ function New-IntuneWin32AppBody {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-09-20
+        Updated:     2021-08-31
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-01-27) Added support for RequirementRule parameter input
         1.0.2 - (2020-09-20) Added support for Owner, Notes, InformationURL, PrivacyURL and CompanyPortalFeaturedApp parameter inputs
+        1.0.3 - (2021-08-31) Added AppVersion optional parameter
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -114,6 +118,10 @@ function New-IntuneWin32AppBody {
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [string]$Publisher,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the app version for the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [string]$AppVersion = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify a developer name for the Win32 application body.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
@@ -223,6 +231,7 @@ function New-IntuneWin32AppBody {
                 "applicableArchitectures" = $ApplicableArchitectures
                 "description" = $Description
                 "developer" = $Developer
+                "displayVersion" = $AppVersion
                 "owner" = $Owner
                 "notes" = $Notes
                 "informationUrl" = $InformationURL
@@ -265,6 +274,7 @@ function New-IntuneWin32AppBody {
                 "applicableArchitectures" = $ApplicableArchitectures
                 "description" = $Description
                 "developer" = $Developer
+                "displayVersion" = $AppVersion
                 "owner" = $Owner
                 "notes" = $Notes
                 "informationUrl" = $InformationURL

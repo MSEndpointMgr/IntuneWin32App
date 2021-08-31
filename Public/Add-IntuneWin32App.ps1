@@ -17,6 +17,9 @@ function Add-IntuneWin32App {
     
     .PARAMETER Publisher
         Specify a publisher name for the Win32 application.
+
+    .PARAMETER AppVersion
+        Specify the app version for the Win32 application.
     
     .PARAMETER Developer
         Specify the developer name for the Win32 application.
@@ -76,6 +79,7 @@ function Add-IntuneWin32App {
         1.0.3 - (2021-04-01) Removed unused comments
         1.0.4 - (2021-04-01) Updated token expired message to a warning instead of verbose output
         1.0.5 - (2021-08-31) Updated to use new authentication header
+        1.0.6 - (2021-08-31) Added AppVersion optional parameter
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
@@ -114,6 +118,10 @@ function Add-IntuneWin32App {
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [string]$Publisher,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the app version for the Win32 application.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [string]$AppVersion = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the developer name for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
@@ -260,6 +268,7 @@ function Add-IntuneWin32App {
                             "DisplayName" = $DisplayName
                             "Description" = $Description
                             "Publisher" = $Publisher
+                            "AppVersion" = $AppVersion
                             "Developer" = $Developer
                             "Owner" = $Owner
                             "Notes" = $Notes
@@ -294,6 +303,7 @@ function Add-IntuneWin32App {
                             "DisplayName" = $DisplayName
                             "Description" = $Description
                             "Publisher" = $Publisher
+                            "AppVersion" = $AppVersion
                             "Developer" = $Developer
                             "Owner" = $Owner
                             "Notes" = $Notes
