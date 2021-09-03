@@ -28,7 +28,7 @@ function New-AuthenticationHeader {
         $AuthenticationHeader = @{
             "Content-Type" = "application/json"
             "Authorization" = $AccessToken.CreateAuthorizationHeader()
-            "ExpiresOn" = $AccessToken.ExpiresOn.LocalDateTime
+            "ExpiresOn" = $AccessToken.ExpiresOn.UTCDateTime
         }
 
         # Handle return value
