@@ -38,7 +38,6 @@ function Invoke-IntuneGraphRequest {
 
         [parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet("application/json", "image/png")]
         [string]$ContentType = "application/json"
     )
     try {
