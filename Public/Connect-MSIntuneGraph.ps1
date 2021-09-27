@@ -24,7 +24,7 @@
 		Specify to refresh an existing access token.
 	
 	.PARAMETER ClientSecret
-		A description of the ClientSecret parameter.
+		Specify the ClientSecret when using a ClientID other then the Microsoft Intune PowerShell service principal.
 	
 	.NOTES
 		Author:      Nickolaj Andersen
