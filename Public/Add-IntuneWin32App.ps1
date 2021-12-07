@@ -196,17 +196,8 @@ function Add-IntuneWin32App {
     )
     Begin {
         # Ensure required authentication header variable exists
-        if ($Global:AuthenticationHeader -eq $null) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
-        }
-        else {
-            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
-            if ($TokenLifeTime -le 0) {
-                Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
-            }
-            else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
-            }
+        if ($null -eq (Get-MgContext)) {
+            Write-Warning -Message "Authentication token was not found, use Connect-MgGraph before using this function"; break
         }
 
         # Set script variable for error action preference

@@ -33,7 +33,7 @@ function Invoke-AzureADGraphRequest {
         # Call Graph API and get JSON response
         switch ($Method) {
             "GET" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthToken -Method $Method -ErrorAction Stop -Verbose:$false
+                $GraphResponse = Invoke-MgGraphRequest -Uri $GraphURI -Method $Method -ErrorAction Stop -Verbose:$false
             }
         }
 

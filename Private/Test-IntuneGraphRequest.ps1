@@ -30,7 +30,7 @@ function Test-IntuneGraphRequest {
         $GraphURI = "https://graph.microsoft.com/$($APIVersion)/deviceAppManagement/$($Resource)"
 
         # Call Graph API and get JSON response
-        $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $AuthToken -Method "GET" -ErrorAction Stop -Verbose:$false
+        $GraphResponse = Invoke-MgGraphRequest -Uri $GraphURI -Method "GET" -ErrorAction Stop -Verbose:$false
         if ($GraphResponse -ne $null) {
             return $true
         }
