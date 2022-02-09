@@ -376,7 +376,7 @@ function Add-IntuneWin32AppAssignment {
                     if ($ProceedExecution -eq $true) {
                         try {
                             # Attempt to call Graph and create new assignment for Win32 app
-                            $Win32AppAssignmentResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments" -Method "POST" -Body ($Win32AppAssignmentBody | ConvertTo-Json) -ContentType "application/json" -ErrorAction Stop
+                            $Win32AppAssignmentResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments" -Method "POST" -Body ($Win32AppAssignmentBody | ConvertTo-Json) -ErrorAction Stop
                             if ($Win32AppAssignmentResponse.id) {
                                 Write-Verbose -Message "Successfully created Win32 app assignment with ID: $($Win32AppAssignmentResponse.id)"
                                 Write-Output -InputObject $Win32AppAssignmentResponse
