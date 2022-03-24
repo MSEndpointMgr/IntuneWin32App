@@ -286,8 +286,8 @@ function New-IntuneWin32AppRequirementRuleScript {
                     # Construct ordered hash-table with least amount of required properties for default requirement rule
                     $RequirementRuleScript = [ordered]@{
                         "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
-                        "operator" = $IntegerComparisonOperator
-                        "detectionValue" = $IntegerValue
+                        "operator" = $VersionComparisonOperator
+                        "detectionValue" = $VersionValue
                         "displayName" = $ScriptFileName
                         "enforceSignatureCheck" = $EnforceSignatureCheck
                         "runAs32Bit" = $RunAs32BitOn64System
