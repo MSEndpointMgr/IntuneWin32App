@@ -1,5 +1,8 @@
 # Release notes for IntuneWin32App module
 
+## 1.3.3
+- Added ClientSecret parameter in the Connect-MSIntuneGraph function to support the client secret auth flow
+
 ## 1.3.2
 - New-IntuneWin32AppReturnCode function now supports Failed as a return code type
 - Fixed an issue where the ExpiresOn property of the access token was stored in local time instead of UTC
