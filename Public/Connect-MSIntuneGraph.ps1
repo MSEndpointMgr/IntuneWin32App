@@ -12,6 +12,9 @@ function Connect-MSIntuneGraph {
     .PARAMETER ClientID
         Application ID (Client ID) for an Azure AD service principal. Uses by default the 'Microsoft Intune PowerShell' service principal Application ID.
 
+    .PARAMETER ClientSecret
+        Application secret (Client Secret) for an Azure AD service principal.
+
     .PARAMETER RedirectUri
         Specify the Redirect URI (also known as Reply URL) of the custom Azure AD service principal.
 
@@ -28,10 +31,11 @@ function Connect-MSIntuneGraph {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2021-08-31
+        Updated:     2022-03-28
 
         Version history:
         1.0.0 - (2021-08-31) Script created
+        1.0.1 - (2022-03-28) Added ClientSecret parameter input to support client secret auth flow
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -47,7 +51,7 @@ function Connect-MSIntuneGraph {
         [ValidateNotNullOrEmpty()]
         [string]$ClientID,
 
-        [parameter(Mandatory = $false, HelpMessage = "Application Secret (Client Secret) for an Azure AD service principal.")]
+        [parameter(Mandatory = $false, HelpMessage = "Application secret (Client Secret) for an Azure AD service principal.")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
         [ValidateNotNullOrEmpty()]
         [string]$ClientSecret,
@@ -85,10 +89,11 @@ function Connect-MSIntuneGraph {
             }
         }
         else {
-            Write-Verbose "Uses the default 'Microsoft Intune PowerShell' service principal Application ID."
+            # Define static variables
             $ClientID = "d1ddf0e4-d672-4dae-b554-9d5bdfd93547"
             $RedirectUri = "urn:ietf:wg:oauth:2.0:oob"
 
+            Write-Verbose -Message "Using the default 'Microsoft Intune PowerShell' service principal with Application ID: $($ClientID)"
             Write-Verbose -Message "Using RedirectUri with value: $($RedirectUri)"
 
             # Set default error action preference configuration
