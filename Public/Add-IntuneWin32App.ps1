@@ -70,7 +70,7 @@ function Add-IntuneWin32App {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2021-08-31
+        Updated:     2022-09-02
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -80,6 +80,7 @@ function Add-IntuneWin32App {
         1.0.4 - (2021-04-01) Updated token expired message to a warning instead of verbose output
         1.0.5 - (2021-08-31) Updated to use new authentication header
         1.0.6 - (2021-08-31) Added AppVersion optional parameter
+        1.0.7 - (2022-09-02) Removed break command that would prevent the Win32 app body JSON output from being display in case an error occured
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
@@ -363,8 +364,8 @@ function Add-IntuneWin32App {
                 Write-Verbose -Message "Attempting to create Win32 app using constructed body converted to JSON content"
                 $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps" -Method "POST" -Body ($Win32AppBody | ConvertTo-Json)
                 if ($Win32MobileAppRequest.'@odata.type' -notlike "#microsoft.graph.win32LobApp") {
-                    Write-Warning -Message "Failed to create Win32 app using constructed body. Passing converted body as JSON to output."; break
-                    Write-Output -InputObject ($Win32AppBody | ConvertTo-Json)
+                    Write-Warning -Message "Failed to create Win32 app using constructed body. Passing converted body as JSON to output."
+                    Write-Warning -Message ($Win32AppBody | ConvertTo-Json); break
                 }
                 else {
                     Write-Verbose -Message "Successfully created Win32 app with ID: $($Win32MobileAppRequest.id)"
@@ -373,7 +374,7 @@ function Add-IntuneWin32App {
                     Write-Verbose -Message "Attempting to create contentVersions resource for the Win32 app"
                     $Win32MobileAppContentVersionRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions" -Method "POST" -Body "{}"
                     if ([string]::IsNullOrEmpty($Win32MobileAppContentVersionRequest.id)) {
-                        Write-Warning -Message "Failed to create contentVersions resource for Win32 app"; break
+                        Write-Warning -Message "Failed to create contentVersions resource for Win32 app"
                     }
                     else {
                         Write-Verbose -Message "Successfully created contentVersions resource with ID: $($Win32MobileAppContentVersionRequest.id)"

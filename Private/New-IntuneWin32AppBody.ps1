@@ -88,13 +88,16 @@ function New-IntuneWin32AppBody {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2021-08-31
+        Updated:     2022-09-02
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-01-27) Added support for RequirementRule parameter input
         1.0.2 - (2020-09-20) Added support for Owner, Notes, InformationURL, PrivacyURL and CompanyPortalFeaturedApp parameter inputs
         1.0.3 - (2021-08-31) Added AppVersion optional parameter
+        1.0.3 - (2022-09-02) minimumSupportedOperatingSystem property is replaced by minimumSupportedWindowsRelease
+                             Fixed a bug where minimumFreeDiskSpaceInMB, minimumMemoryInMB, minimumNumberOfProcessors and minimumCpuSpeedInMHz
+                             would never contain any value since they're not handled by this function (https://github.com/MSEndpointMgr/IntuneWin32App/issues/44)
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -214,14 +217,13 @@ function New-IntuneWin32AppBody {
     )
     # Determine values for requirement rules
     if ($PSBoundParameters["RequirementRule"]) {
+        # Define required requirement rules propertoes
         $ApplicableArchitectures = $RequirementRule["applicableArchitectures"]
-        $MinimumSupportedOperatingSystem = $RequirementRule["minimumSupportedOperatingSystem"]
+        $MinimumSupportedWindowsRelease = $RequirementRule["minimumSupportedWindowsRelease"]
     }
     else {
         $ApplicableArchitectures = "x64,x86"
-        $MinimumSupportedOperatingSystem = @{
-            "v10_1607" = $true
-        }
+        $MinimumSupportedWindowsRelease = "2H20"
     }
 
     switch ($PSCmdlet.ParameterSetName) {
@@ -246,7 +248,11 @@ function New-IntuneWin32AppBody {
                     "runAsAccount" = $InstallExperience
                     "deviceRestartBehavior" = $RestartBehavior
                 }
-                "minimumSupportedOperatingSystem" = $MinimumSupportedOperatingSystem
+                "minimumSupportedWindowsRelease" = $MinimumSupportedWindowsRelease
+                "minimumFreeDiskSpaceInMB" = if ($RequirementRule["minimumFreeDiskSpaceInMB"]) { $RequirementRule["minimumFreeDiskSpaceInMB"] } else { "" }
+                "minimumMemoryInMB" = if ($RequirementRule["minimumMemoryInMB"]) { $RequirementRule["minimumMemoryInMB"] } else { "" }
+                "minimumNumberOfProcessors" = if ($RequirementRule["minimumNumberOfProcessors"]) { $RequirementRule["minimumNumberOfProcessors"] } else { "" }
+                "minimumCpuSpeedInMHz" = if ($RequirementRule["minimumCpuSpeedInMHz"]) { $RequirementRule["minimumCpuSpeedInMHz"] } else { "" }
                 "msiInformation" = @{
                     "packageType" = $MSIInstallPurpose
                     "productCode" = $MSIProductCode
@@ -289,7 +295,7 @@ function New-IntuneWin32AppBody {
                     "runAsAccount" = $InstallExperience
                     "deviceRestartBehavior" = $RestartBehavior
                 }
-                "minimumSupportedOperatingSystem" = $MinimumSupportedOperatingSystem
+                "minimumSupportedWindowsRelease" = $MinimumSupportedWindowsRelease
                 "msiInformation" = $null
                 "publisher" = $Publisher
                 "runAs32bit" = $false

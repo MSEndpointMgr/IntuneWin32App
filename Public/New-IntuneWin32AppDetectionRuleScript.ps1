@@ -19,11 +19,12 @@ function New-IntuneWin32AppDetectionRuleScript {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-09-17
-        Updated:     2021-08-31
+        Updated:     2022-09-02
 
         Version history:
         1.0.0 - (2020-09-17) Function created
         1.0.1 - (2021-08-31) Fixed an issue when using a non-UTF encoded multi-line script file
+        1.0.2 - (2022-09-02) Fixed GitHub reported issue #41 (https://github.com/MSEndpointMgr/IntuneWin32App/issues/41)
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -46,7 +47,7 @@ function New-IntuneWin32AppDetectionRuleScript {
         # Detect if passed script file exists
         if (Test-Path -Path $ScriptFile) {
             # Convert script file contents to base64 string
-            $ScriptContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes([System.IO.File]::ReadAllBytes("$($ScriptFile)") -join [Environment]::NewLine))
+            $ScriptContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-Content -Path "$($ScriptFile)" -Raw -Encoding UTF8)))
 
             # Construct detection rule ordered table
             $DetectionRule = [ordered]@{

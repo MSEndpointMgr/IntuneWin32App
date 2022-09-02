@@ -9,8 +9,8 @@ function New-IntuneWin32AppRequirementRule {
     .PARAMETER Architecture
         Specify the architecture as a requirement for the Win32 app.
 
-    .PARAMETER MinimumSupportedOperatingSystem
-        Specify the minimum supported operating system version as a requirement for the Win32 app.
+    .PARAMETER MinimumSupportedWindowsRelease
+        Specify the minimum supported Windows release version as a requirement for the Win32 app.
 
     .PARAMETER MinimumFreeDiskSpaceInMB
         Specify the minimum free disk space in MB as a requirement for the Win32 app.
@@ -28,12 +28,13 @@ function New-IntuneWin32AppRequirementRule {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-27
-        Updated:     2021-08-31
+        Updated:     2022-09-02
 
         Version history:
         1.0.0 - (2020-01-27) Function created
         1.0.1 - (2021-03-22) Added new minimum supported operating system versions to parameter validation
         1.0.2 - (2021-08-31) Added new minimum supported operating system versions to parameter validation
+        1.0.3 - (2022-09-02) minimumSupportedOperatingSystem property is replaced by minimumSupportedWindowsRelease
     #>    
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -42,10 +43,10 @@ function New-IntuneWin32AppRequirementRule {
         [ValidateSet("x64", "x86", "All")]
         [string]$Architecture,
 
-        [parameter(Mandatory = $true, HelpMessage = "Specify the minimum supported operating system version as a requirement for the Win32 app.")]
+        [parameter(Mandatory = $true, HelpMessage = "Specify the minimum supported Windows release version as a requirement for the Win32 app.")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("1607", "1703", "1709", "1803", "1809", "1903", "1909", "2004", "20H2", "21H1")]
-        [string]$MinimumSupportedOperatingSystem,
+        [string]$MinimumSupportedWindowsRelease,
 
         [parameter(Mandatory = $false, HelpMessage = "Specify the minimum free disk space in MB as a requirement for the Win32 app.")]
         [ValidateNotNullOrEmpty()]
@@ -73,24 +74,22 @@ function New-IntuneWin32AppRequirementRule {
 
         # Construct table for supported operating systems
         $OperatingSystemTable = @{
-            "1607" = "v10_1607"
-            "1703" = "v10_1703"
-            "1709" = "v10_1709"
-            "1803" = "v10_1803"
-            "1809" = "v10_1809"
-            "1903" = "v10_1903"
-            "1909" = "v10_1909"
-            "2004" = "v10_2004"
-            "20H2" = "v10_2H20"
-            "21H1" = "v10_21H1"
+            "1607" = "1607"
+            "1703" = "1703"
+            "1709" = "1709"
+            "1803" = "1803"
+            "1809" = "1809"
+            "1903" = "1903"
+            "1909" = "1909"
+            "2004" = "2004"
+            "20H2" = "2H20"
+            "21H1" = "21H1"
         }
 
         # Construct ordered hash-table with least amount of required properties for default requirement rule
         $RequirementRule = [ordered]@{
             "applicableArchitectures" = $ArchitectureTable[$Architecture]
-            "minimumSupportedOperatingSystem" = @{
-                $OperatingSystemTable[$MinimumSupportedOperatingSystem] = $true
-            }
+            "minimumSupportedWindowsRelease" = $OperatingSystemTable[$MinimumSupportedWindowsRelease]
         }
 
         # Add additional requirement rule details if specified on command line
