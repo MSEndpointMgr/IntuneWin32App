@@ -1,5 +1,11 @@
 # Release notes for IntuneWin32App module
 
+## 1.3.4
+- Add-IntuneWin32App function was updated where a break command that would prevent the Win32 app body JSON output from being display in case an error occured, was removed.
+- Private function New-IntuneWin32AppBody was updated where the minimumSupportedOperatingSystem property is replaced by minimumSupportedWindowsRelease. Also fixed a bug where minimumFreeDiskSpaceInMB, minimumMemoryInMB, minimumNumberOfProcessors and minimumCpuSpeedInMHz properties where not handled at all. This caused the Add-IntuneWin32App function to return Bad Request since the request body was malformed.
+- New-IntuneWin32AppRequirementRuleScript and New-IntuneWin32AppDetectionRuleScript functions was fixed as reported on: https://github.com/MSEndpointMgr/IntuneWin32App/issues/41
+- New-IntuneWin32AppRequirementRuleScript has been updated with correct variables for 'Version'.
+
 ## 1.3.3
 - Added ClientSecret parameter in the Connect-MSIntuneGraph function to support the client secret auth flow
 
