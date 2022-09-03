@@ -1,5 +1,9 @@
 # Release notes for IntuneWin32App module
 
+## 1.3.5
+- Connect-MSIntuneGraph function has been updated to store the TenantID parameter in a global variable named $Global:AccessTokenTenantID.
+- Private function Invoke-AzureStorageBlobUpload used in Add-IntuneWin32App function now refreshes an access token 10 minutes before it's about to expire. This should prevent uploads of large applications from failing due to the access token has expired.
+
 ## 1.3.4
 - Private function New-IntuneWin32AppBody used in Add-IntuneWin32App function, was updated where the minimumSupportedOperatingSystem property is replaced by minimumSupportedWindowsRelease. This caused the Add-IntuneWin32App function to return Bad Request since the request body was malformed. `NOTE:` This change introduces a new parameter for New-IntuneWin32AppRequirementRule function named MinimumSupportedWindowsRelease that replaces the MinimumSupportedOperatingSystem parameter.
 - Also fixed a bug in private function New-IntuneWin32AppBody where minimumFreeDiskSpaceInMB, minimumMemoryInMB, minimumNumberOfProcessors and minimumCpuSpeedInMHz properties where not handled at all. 

@@ -31,11 +31,12 @@ function Connect-MSIntuneGraph {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2022-03-28
+        Updated:     2022-09-03
 
         Version history:
         1.0.0 - (2021-08-31) Script created
         1.0.1 - (2022-03-28) Added ClientSecret parameter input to support client secret auth flow
+        1.0.2 - (2022-09-03) Added new global variable to hold the tenant id passed as parameter input for access token refresh scenario
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -144,6 +145,7 @@ function Connect-MSIntuneGraph {
             try {
                 # Attempt to retrieve or refresh an access token
                 $Global:AccessToken = Get-MsalToken @AccessTokenArguments
+                $Global:AccessTokenTenantID = $TenantID
                 Write-Verbose -Message "Successfully retrieved access token"
                 
                 try {
