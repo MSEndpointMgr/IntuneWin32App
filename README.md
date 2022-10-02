@@ -59,6 +59,12 @@ Connect-MSIntuneGraph -TenantID "domain.onmicrosoft.com"
 
 Delegated authentication (username / password) together with DeviceCode is currently the only authentication methods that are supported.
 
+## Encoding recommendations
+When for instance UTF-8 encoding is required, ensure the file is encoded with UTF-8 with BOM, this should address some problems reported in the past where certain characters was not shown correctly in the MEM portal.
+
+Below is a screenshot from Visual Studio Code where the encoding is set accordingly:
+![image](https://user-images.githubusercontent.com/14348341/193473947-bf7d615e-c4b1-4335-a62c-7b0b899724e4.png)
+
 ## Get existing Win32 apps
 Get-IntuneWin32App function can be used to retrieve existing Win32 apps in Microsoft Intune. Retrieving an existing Win32 app could either be done passing the display name of the app, which performs a wildcard search meaning it's not required to specify the full name of the Win32 app. The ID if a specific Win32 app could also be used for this function. Additionally, by not specifying either a display name or an ID, all Win32 apps available will be retrieved. Below are a few examples of how this function could be used:
 ```PowerShell
