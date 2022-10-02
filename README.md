@@ -59,6 +59,13 @@ Connect-MSIntuneGraph -TenantID "domain.onmicrosoft.com"
 
 Delegated authentication (username / password) together with DeviceCode is currently the only authentication methods that are supported.
 
+## Encoding recommendations
+When for instance UTF-8 encoding is required, ensure the file is encoded with UTF-8 with BOM, this should address some problems reported in the past where certain characters was not shown correctly in the MEM portal.
+
+Below is a screenshot from Visual Studio Code where the encoding is set accordingly:
+
+![image](https://user-images.githubusercontent.com/14348341/193473947-bf7d615e-c4b1-4335-a62c-7b0b899724e4.png)
+
 ## Get existing Win32 apps
 Get-IntuneWin32App function can be used to retrieve existing Win32 apps in Microsoft Intune. Retrieving an existing Win32 app could either be done passing the display name of the app, which performs a wildcard search meaning it's not required to specify the full name of the Win32 app. The ID if a specific Win32 app could also be used for this function. Additionally, by not specifying either a display name or an ID, all Win32 apps available will be retrieved. Below are a few examples of how this function could be used:
 ```PowerShell
@@ -93,11 +100,14 @@ $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 $DisplayName = $IntuneWinMetaData.ApplicationInfo.Name + " " + $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 $Publisher = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiPublisher
 
+# Create requirement rule for all platforms and Windows 10 20H2
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "20H2"
+
 # Create MSI detection rule
 $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 
 # Add new MSI Win32 app
-Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -Verbose
+Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -RequirementRule $RequirementRule -Verbose
 ```
 
 ## Create a new EXE/script based installation as a Win32 app
@@ -114,6 +124,9 @@ $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 # Create custom display name like 'Name' and 'Version'
 $DisplayName = "Enable BitLocker Encryption 1.0"
 
+# Create requirement rule for all platforms and Windows 10 20H2
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "20H2"
+
 # Create PowerShell script detection rule
 $DetectionScriptFile = "C:\Win32Apps\Output\Get-BitLockerEncryptionDetection.ps1"
 $DetectionRule = New-IntuneWin32AppDetectionRuleScript -ScriptFile $DetectionScriptFile -EnforceSignatureCheck $false -RunAs32Bit $false
@@ -121,7 +134,7 @@ $DetectionRule = New-IntuneWin32AppDetectionRuleScript -ScriptFile $DetectionScr
 # Add new EXE Win32 app
 $InstallCommandLine = "powershell.exe -ExecutionPolicy Bypass -File .\Enable-BitLockerEncryption.ps1"
 $UninstallCommandLine = "cmd.exe /c"
-Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Start BitLocker silent encryption" -Publisher "MSEndpointMgr" -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Verbose
+Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Start BitLocker silent encryption" -Publisher "MSEndpointMgr" -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -RequirementRule $RequirementRule -ReturnCode $ReturnCode -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Verbose
 ```
 
 ## Additional parameters for Add-IntuneWin32App function
@@ -196,6 +209,9 @@ $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 $DisplayName = $IntuneWinMetaData.ApplicationInfo.Name + " " + $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 $Publisher = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiPublisher
 
+# Create requirement rule for all platforms and Windows 10 20H2
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "20H2"  
+  
 # Create MSI detection rule
 $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 
@@ -207,7 +223,7 @@ $ImageFile = "C:\Win32Apps\Logos\7-Zip.png"
 $Icon = New-IntuneWin32AppIcon -FilePath $ImageFile
 
 # Add new MSI Win32 app
-$Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -Icon $Icon -Verbose
+$Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Install 7-zip application" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -RequirementRule $RequirementRule -ReturnCode $ReturnCode -Icon $Icon -Verbose
 
 # Add assignment for all users
 Add-IntuneWin32AppAssignmentAllUsers -ID $Win32App.id -Intent "available" -Notification "showAll" -Verbose
