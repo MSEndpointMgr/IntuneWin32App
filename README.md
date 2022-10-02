@@ -124,6 +124,9 @@ $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 # Create custom display name like 'Name' and 'Version'
 $DisplayName = "Enable BitLocker Encryption 1.0"
 
+# Create requirement rule for all platforms and Windows 10 20H2
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "20H2"
+
 # Create PowerShell script detection rule
 $DetectionScriptFile = "C:\Win32Apps\Output\Get-BitLockerEncryptionDetection.ps1"
 $DetectionRule = New-IntuneWin32AppDetectionRuleScript -ScriptFile $DetectionScriptFile -EnforceSignatureCheck $false -RunAs32Bit $false
@@ -131,7 +134,7 @@ $DetectionRule = New-IntuneWin32AppDetectionRuleScript -ScriptFile $DetectionScr
 # Add new EXE Win32 app
 $InstallCommandLine = "powershell.exe -ExecutionPolicy Bypass -File .\Enable-BitLockerEncryption.ps1"
 $UninstallCommandLine = "cmd.exe /c"
-Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Start BitLocker silent encryption" -Publisher "MSEndpointMgr" -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Verbose
+Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Start BitLocker silent encryption" -Publisher "MSEndpointMgr" -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -RequirementRule $RequirementRule -ReturnCode $ReturnCode -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Verbose
 ```
 
 ## Additional parameters for Add-IntuneWin32App function
