@@ -63,6 +63,7 @@ Delegated authentication (username / password) together with DeviceCode is curre
 When for instance UTF-8 encoding is required, ensure the file is encoded with UTF-8 with BOM, this should address some problems reported in the past where certain characters was not shown correctly in the MEM portal.
 
 Below is a screenshot from Visual Studio Code where the encoding is set accordingly:
+
 ![image](https://user-images.githubusercontent.com/14348341/193473947-bf7d615e-c4b1-4335-a62c-7b0b899724e4.png)
 
 ## Get existing Win32 apps
