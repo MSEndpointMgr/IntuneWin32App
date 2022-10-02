@@ -28,13 +28,14 @@ function New-IntuneWin32AppRequirementRule {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-27
-        Updated:     2022-09-02
+        Updated:     2022-10-02
 
         Version history:
         1.0.0 - (2020-01-27) Function created
         1.0.1 - (2021-03-22) Added new minimum supported operating system versions to parameter validation
         1.0.2 - (2021-08-31) Added new minimum supported operating system versions to parameter validation
         1.0.3 - (2022-09-02) minimumSupportedOperatingSystem property is replaced by minimumSupportedWindowsRelease
+        1.0.4 - (2022-10-02) minimumFreeDiskSpaceInMB, MinimumMemoryInMB, MinimumNumberOfProcessors and minimumCpuSpeedInMHz now adds a 'null' string
     #>    
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -96,14 +97,26 @@ function New-IntuneWin32AppRequirementRule {
         if ($PSBoundParameters["MinimumFreeDiskSpaceInMB"]) {
             $RequirementRule.Add("minimumFreeDiskSpaceInMB", $MinimumFreeDiskSpaceInMB)
         }
+        else {
+            $RequirementRule.Add("minimumFreeDiskSpaceInMB", "null")
+        }
         if ($PSBoundParameters["MinimumMemoryInMB"]) {
             $RequirementRule.Add("minimumMemoryInMB", $MinimumMemoryInMB)
+        }
+        else {
+            $RequirementRule.Add("minimumMemoryInMB", "null")
         }
         if ($PSBoundParameters["MinimumNumberOfProcessors"]) {
             $RequirementRule.Add("minimumNumberOfProcessors", $MinimumNumberOfProcessors)
         }
+        else {
+            $RequirementRule.Add("minimumNumberOfProcessors", "null")
+        }
         if ($PSBoundParameters["MinimumCPUSpeedInMHz"]) {
             $RequirementRule.Add("minimumCpuSpeedInMHz", $MinimumCPUSpeedInMHz)
+        }
+        else {
+            $RequirementRule.Add("minimumCpuSpeedInMHz", "null")
         }
 
         return $RequirementRule

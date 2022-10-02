@@ -1,5 +1,10 @@
 # Release notes for IntuneWin32App module
 
+## 1.3.6
+- Add-IntuneWin32App function now has a new parameter switch named UseAzCopy. When this switch is used, AzCopy.exe is used to transfer the files to the storage account instead of the native method.
+- New-IntuneWin32AppRequirementRule has been updated to construct the proper objects. The minimumFreeDiskSpaceInMB, MinimumMemoryInMB, MinimumNumberOfProcessors and minimumCpuSpeedInMHz objets when not specified as parameters now adds a 'null' string instead of $null (not being part of the object returned).
+- Private function Invoke-IntuneGraphRequest has been updated with UTF-8 encoding content type support. From this version and on, when the script file is properly encoded with UTF-8 with BOM, special characters should now work as expected.
+
 ## 1.3.5
 - Connect-MSIntuneGraph function has been updated to store the TenantID parameter in a global variable named $Global:AccessTokenTenantID.
 - Private function Invoke-AzureStorageBlobUpload used in Add-IntuneWin32App function now refreshes an access token 10 minutes before it's about to expire. This should prevent uploads of large applications from failing due to the access token has expired.

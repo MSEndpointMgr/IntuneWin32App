@@ -60,7 +60,7 @@ function New-IntuneWin32AppPackage {
                 if (Test-Path -Path $OutputFolder) {
                     Write-Verbose -Message "Successfully detected specified output folder: $($OutputFolder)"
 
-                    if (-not(Test-Path -Path $IntuneWinAppUtilPath)) {                      
+                    if (-not(Test-Path -Path $IntuneWinAppUtilPath)) {
                         if (-not($PSBoundParameters["IntuneWinAppUtilPath"])) {
                             # Download IntuneWinAppUtil.exe if not present in context temporary folder
                             Write-Verbose -Message "Unable to detect IntuneWinAppUtil.exe in specified location, attempting to download to: $($env:TEMP)"

@@ -16,6 +16,7 @@ function Invoke-IntuneGraphRequest {
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-04-29) Added support for DELETE operations
         1.0.2 - (2021-08-31) Updated to use new authentication header
+        1.0.3 - (2022-10-02) Changed content type for requests to support UTF8
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -38,7 +39,8 @@ function Invoke-IntuneGraphRequest {
 
         [parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [string]$ContentType = "application/json"
+        #[string]$ContentType = "application/json"
+        [string]$ContentType = "application/json; charset=utf-8"
     )
     try {
         # Construct full URI

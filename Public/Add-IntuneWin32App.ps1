@@ -66,11 +66,14 @@ function Add-IntuneWin32App {
     .PARAMETER Icon
         Provide a Base64 encoded string of the PNG/JPG/JPEG file.
 
+    .PARAMETER UseAzCopy
+        Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.
+
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2022-09-02
+        Updated:     2022-10-02
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -81,6 +84,9 @@ function Add-IntuneWin32App {
         1.0.5 - (2021-08-31) Updated to use new authentication header
         1.0.6 - (2021-08-31) Added AppVersion optional parameter
         1.0.7 - (2022-09-02) Removed break command that would prevent the Win32 app body JSON output from being display in case an error occured
+        1.0.8 - (2022-10-02) Added UseAzCopy parameter switch to override the native transfer method. Specify the UseAzCopy parameter switch when uploading large applications.
+                             Added fallback removal code for the cleanup operation at the end of this function, since OneDrive's Files On Demand feature sometimes blocks the 
+                             expanded .intunewin file cleanup process.
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
@@ -193,7 +199,12 @@ function Add-IntuneWin32App {
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide a Base64 encoded string of the PNG/JPG/JPEG file.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
-        [string]$Icon
+        [string]$Icon,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [switch]$UseAzCopy
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -403,9 +414,23 @@ function Add-IntuneWin32App {
                                 Write-Verbose -Message "Waiting for Intune service to process contentVersions/files request"
                                 $FilesUri = "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions/$($Win32MobileAppContentVersionRequest.id)/files/$($Win32MobileAppFileContentRequest.id)"
                                 $ContentVersionsFiles = Wait-IntuneWin32AppFileProcessing -Stage "AzureStorageUriRequest" -Resource $FilesUri
-                                
+
                                 # Upload .intunewin file to Azure Storage blob
-                                Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
+                                if ($PSBoundParameters["UseAzCopy"]) {
+                                    try {
+                                        Write-Verbose -Message "Using AzCopy.exe method for file transfer"
+                                        Invoke-AzureCopyUtility -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri -ErrorAction "Stop"
+                                    }
+                                    catch [System.Exception] {
+                                        Write-Verbose -Message "AzCopy.exe transfer method failed with exception message: $($_.Exception.Message)"
+                                        Write-Verbose -Message "Falling back to native method"
+                                        Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
+                                    }
+                                }
+                                else {
+                                    Write-Verbose -Message "Using native method for file transfer"
+                                    Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
+                                }
 
                                 # Retrieve encryption meta data from .intunewin file
                                 $IntuneWinEncryptionInfo = [ordered]@{
@@ -443,10 +468,21 @@ function Add-IntuneWin32App {
                                 Write-Output -InputObject $Win32MobileAppRequest
                             }
 
-                            # Cleanup extracted .intunewin file in Extract folder
-                            Remove-Item -Path (Split-Path -Path $IntuneWinFilePath -Parent) -Recurse -Force -Confirm:$false | Out-Null
+                            try {
+                                # Cleanup extracted .intunewin file in Extract folder
+                                Remove-Item -Path (Split-Path -Path $IntuneWinFilePath -Parent) -Recurse -Force -Confirm:$false | Out-Null
+                            }
+                            catch [System.Exception] {
+                                # Fallback method if OneDrive's Files On Demand feature is blocking access
+                                $FileItems = Get-ChildItem -LiteralPath $IntuneWinFilePath -Recurse
+                                foreach ($FileItem in $FileItems) {
+                                    $FileItem.Delete()
+                                }
+                                $ParentItem = Get-Item -LiteralPath $IntuneWinFilePath
+                                $ParentItem.Delete($true)
+                            }
                         }
-                    }                     
+                    }
                 }
             }
         }
