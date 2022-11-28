@@ -276,6 +276,7 @@ function New-IntuneWin32AppBody {
 
             if($MSISilentInstall){
                 $Win32AppBody.installCommandLine += " /quiet"
+                $Win32AppBody.uninstallCommandLine += " /quiet"
             }
 
             # Add icon property if passed on command line
