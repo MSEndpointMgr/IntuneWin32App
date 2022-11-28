@@ -83,6 +83,9 @@ function New-IntuneWin32AppBody {
     
     .PARAMETER MSIUpgradeCode
         Specify the MSI upgrade code for the Win32 application body.
+
+    .PARAMETER MSISilentInstall
+        Specify the MSISilentInstall parameter switch if you want the MSI installer to run without a GUI. 
             
     .NOTES
         Author:      Nickolaj Andersen
@@ -98,6 +101,7 @@ function New-IntuneWin32AppBody {
         1.0.3 - (2022-09-02) minimumSupportedOperatingSystem property is replaced by minimumSupportedWindowsRelease
                              Fixed a bug where minimumFreeDiskSpaceInMB, minimumMemoryInMB, minimumNumberOfProcessors and minimumCpuSpeedInMHz
                              would never contain any value since they're not handled by this function (https://github.com/MSEndpointMgr/IntuneWin32App/issues/44)
+        1.0.4 - (2022-11-28) Added MSISilentInstall parameter switch to allow MSIs to be installed with the /quiet switch
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -213,7 +217,11 @@ function New-IntuneWin32AppBody {
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify the MSI upgrade code for the Win32 application body.")]
         [ValidateNotNullOrEmpty()]
-        [string]$MSIUpgradeCode
+        [string]$MSIUpgradeCode,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Define that the MSI installer with run without a GUI.")]
+        [ValidateNotNullOrEmpty()]
+        [switch]$MSISilentInstall
     )
     # Determine values for requirement rules
     if ($PSBoundParameters["RequirementRule"]) {
@@ -264,6 +272,10 @@ function New-IntuneWin32AppBody {
                 }
                 "publisher" = $Publisher
                 "runAs32bit" = $false
+            }
+
+            if($MSISilentInstall){
+                $Win32AppBody.installCommandLine += " /quiet"
             }
 
             # Add icon property if passed on command line

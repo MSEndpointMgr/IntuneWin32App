@@ -69,6 +69,9 @@ function Add-IntuneWin32App {
     .PARAMETER UseAzCopy
         Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.
 
+    .PARAMETER MSISilentInstall
+        Specify the MSISilentInstall parameter switch if you want the MSI installer to run without a GUI. 
+
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
@@ -87,6 +90,7 @@ function Add-IntuneWin32App {
         1.0.8 - (2022-10-02) Added UseAzCopy parameter switch to override the native transfer method. Specify the UseAzCopy parameter switch when uploading large applications.
                              Added fallback removal code for the cleanup operation at the end of this function, since OneDrive's Files On Demand feature sometimes blocks the 
                              expanded .intunewin file cleanup process.
+        1.0.9 - (2022-11-28) Added MSISilentInstall parameter switch to allow MSIs to be installed with the /quiet switch
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
@@ -204,7 +208,11 @@ function Add-IntuneWin32App {
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
-        [switch]$UseAzCopy
+        [switch]$UseAzCopy,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Define that the MSI installer with run without a GUI.")]
+        [ValidateNotNullOrEmpty()]
+        [switch]$MSISilentInstall
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -297,6 +305,7 @@ function Add-IntuneWin32App {
                             "MSIProductVersion" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
                             "MSIRequiresReboot" = $MSIRequiresReboot
                             "MSIUpgradeCode" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiUpgradeCode
+                            "MSISilentInstall" = $MSISilentInstall
                         }
                         if ($PSBoundParameters["Icon"]) {
                             $AppBodySplat.Add("Icon", $Icon)
