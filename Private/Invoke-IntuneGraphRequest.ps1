@@ -66,8 +66,15 @@ function Invoke-IntuneGraphRequest {
         return $GraphResponse
     }
     catch [System.Exception] {
-        # Construct stream reader for reading the response body from API call
-        $ResponseBody = Get-ErrorResponseBody -Exception $_.Exception
+        Switch ($PSEdition) {
+            'Desktop' {
+                # Construct stream reader for reading the response body from API call
+                $ResponseBody = Get-ErrorResponseBody -Exception $_.Exception
+            }
+            'Core' {
+                $ResponseBody = $_.ErrorDetails.Message
+            }
+        }
 
         # Handle response output and error message
         Write-Output -InputObject "Response content:`n$ResponseBody"
