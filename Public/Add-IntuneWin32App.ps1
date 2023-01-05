@@ -29,6 +29,9 @@ function Add-IntuneWin32App {
 
     .PARAMETER Notes
         Specify the notes property for the Win32 application.
+    
+    .PARAMETER RoleScopeTagIDs
+        Specify the role scope tag IDs for the Win32 application.
 
     .PARAMETER InformationURL
         Specify the information URL for the Win32 application.
@@ -141,6 +144,11 @@ function Add-IntuneWin32App {
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the notes property for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [string]$Notes = [string]::Empty,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the role scope tag IDs for the Win32 application.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$RoleScopeTagIDs = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the information URL for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
@@ -370,6 +378,9 @@ function Add-IntuneWin32App {
                 if ($PSBoundParameters["AdditionalRequirementRule"]) {
                     $Win32AppBody.Add("requirementRules", $AdditionalRequirementRule)
                 }
+
+                # Add role scope tag IDs to Win32 app body object if they are specified.
+                If ($RoleScopeTagIDs) { $Win32AppBody.Add("roleScopeTagIds", $RoleScopeTagIDs) }
 
                 # Create the Win32 app
                 Write-Verbose -Message "Attempting to create Win32 app using constructed body converted to JSON content"
