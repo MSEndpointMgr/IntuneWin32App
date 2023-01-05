@@ -502,3 +502,4 @@ function Add-IntuneWin32App {
         }
     }
 }
+

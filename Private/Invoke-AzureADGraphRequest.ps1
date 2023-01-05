@@ -55,3 +55,4 @@ function Invoke-AzureADGraphRequest {
         Write-Warning -Message "Request to $($GraphURI) failed with HTTP Status $($_.Exception.Response.StatusCode) and description: $($_.Exception.Response.StatusDescription)"
     }
 }
+
