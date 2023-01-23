@@ -92,6 +92,7 @@ function Add-IntuneWin32App {
     param(
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a local path to where the win32 app .intunewin file is located.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [ValidatePattern("^[A-Za-z]{1}:\\\w+")]
         [ValidateScript({
@@ -113,96 +114,116 @@ function Add-IntuneWin32App {
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a display name for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [string]$DisplayName,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a description for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [string]$Description,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a publisher name for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [string]$Publisher,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the app version for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [string]$AppVersion = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the developer name for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [string]$Developer = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the owner property for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [string]$Owner = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the notes property for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [string]$Notes = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the information URL for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
         [string]$InformationURL = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the privacy URL for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
         [string]$PrivacyURL = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify whether to have the Win32 application featured in Company Portal or not.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [bool]$CompanyPortalFeaturedApp = $false,
 
         [parameter(Mandatory = $true, ParameterSetName = "EXE", HelpMessage = "Specify the install command line for the Win32 application.")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1", HelpMessage = "Specify the install command line for the Win32 application.")]
         [ValidateNotNullOrEmpty()]
         [string]$InstallCommandLine,
 
         [parameter(Mandatory = $true, ParameterSetName = "EXE", HelpMessage = "Specify the uninstall command line for the Win32 application.")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1", HelpMessage = "Specify the install command line for the Win32 application.")]
         [ValidateNotNullOrEmpty()]
         [string]$UninstallCommandLine,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify the install experience for the Win32 application. Supported values are: system or user.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("system", "user")]
         [string]$InstallExperience,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("allow", "basedOnReturnCode", "suppress", "force")]
         [string]$RestartBehavior,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $true, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [System.Collections.Specialized.OrderedDictionary[]]$DetectionRule,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide an OrderedDictionary object as requirement rule that will be used for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [System.Collections.Specialized.OrderedDictionary]$RequirementRule,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide an array of OrderedDictionary objects as additional requirement rule, e.g. for file, registry or script rules, that will be used for the Win32 application.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [System.Collections.Specialized.OrderedDictionary[]]$AdditionalRequirementRule,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide an array of a single or multiple hash-tables for the Win32 application with return code information.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [System.Collections.Hashtable[]]$ReturnCode,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide a Base64 encoded string of the PNG/JPG/JPEG file.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [string]$Icon,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [parameter(Mandatory = $false, ParameterSetName = "PS1")]
         [ValidateNotNullOrEmpty()]
         [switch]$UseAzCopy
     )
@@ -231,12 +252,12 @@ function Add-IntuneWin32App {
             $IntuneWinXMLMetaData = Get-IntuneWin32AppMetaData -FilePath $FilePath -ErrorAction Stop
 
             if ($IntuneWinXMLMetaData -ne $null) {
-                Write-Verbose -Message "Successfully gathered additional meta data from .intunewin file"
+                Write-Verbose -Message "Successfully gathered additional meta data from .intunewin file $($FilePath)"
 
                 # Generate Win32 application body data table with different parameters based upon parameter set name
                 Write-Verbose -Message "Start constructing basic layout of Win32 app body"
                 switch ($PSCmdlet.ParameterSetName) {
-                    "msi" {
+                    "MSI" {
                         # Determine the execution context of the MSI installer and define the installation purpose
                         $MSIExecutionContext = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiExecutionContext
                         $MSIInstallPurpose = "DualPurpose"
@@ -308,7 +329,7 @@ function Add-IntuneWin32App {
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
                         Write-Verbose -Message "Constructed the basic layout for 'MSI' Win32 app body type"
                     }
-                    "exe" {
+                    "EXE" {
                         # Generate Win32 application body
                         $AppBodySplat = @{
                             "EXE" = $true
@@ -339,10 +360,10 @@ function Add-IntuneWin32App {
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
                         Write-Verbose -Message "Constructed the basic layout for 'EXE' Win32 app body type"
                     }
-                    "ps1" {
+                    "PS1" {
                         # Generate Win32 application body
                         $AppBodySplat = @{
-                            "EXE" = $true
+                            "PS1" = $true
                             "DisplayName" = $DisplayName
                             "Description" = $Description
                             "Publisher" = $Publisher
@@ -368,7 +389,7 @@ function Add-IntuneWin32App {
                         }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
-                        Write-Verbose -Message "Constructed the basic layout for 'ps1' Win32 app body type"
+                        Write-Verbose -Message "Constructed the basic layout for 'PS1' Win32 app body type"
                     }
                 }
 
@@ -425,7 +446,7 @@ function Add-IntuneWin32App {
                         $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName "Expand"
                         if ($IntuneWinFilePath -ne $null) {
                             # Create a new file entry in Intune for the upload of the .intunewin file
-                            Write-Verbose -Message "Constructing Win32 app content file body for uploading of .intunewin file"
+                            Write-Verbose -Message "Constructing Win32 app content file body for uploading of .intunewin file $FilePath"
                             $Win32AppFileBody = [ordered]@{
                                 "@odata.type" = "#microsoft.graph.mobileAppContentFile"
                                 "name" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
