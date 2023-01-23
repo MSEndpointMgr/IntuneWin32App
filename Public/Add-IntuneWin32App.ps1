@@ -236,7 +236,7 @@ function Add-IntuneWin32App {
                 # Generate Win32 application body data table with different parameters based upon parameter set name
                 Write-Verbose -Message "Start constructing basic layout of Win32 app body"
                 switch ($PSCmdlet.ParameterSetName) {
-                    "MSI" {
+                    "msi" {
                         # Determine the execution context of the MSI installer and define the installation purpose
                         $MSIExecutionContext = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiExecutionContext
                         $MSIInstallPurpose = "DualPurpose"
@@ -308,7 +308,7 @@ function Add-IntuneWin32App {
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
                         Write-Verbose -Message "Constructed the basic layout for 'MSI' Win32 app body type"
                     }
-                    "EXE" {
+                    "exe" {
                         # Generate Win32 application body
                         $AppBodySplat = @{
                             "EXE" = $true
@@ -338,6 +338,37 @@ function Add-IntuneWin32App {
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
                         Write-Verbose -Message "Constructed the basic layout for 'EXE' Win32 app body type"
+                    }
+                    "ps1" {
+                        # Generate Win32 application body
+                        $AppBodySplat = @{
+                            "EXE" = $true
+                            "DisplayName" = $DisplayName
+                            "Description" = $Description
+                            "Publisher" = $Publisher
+                            "AppVersion" = $AppVersion
+                            "Developer" = $Developer
+                            "Owner" = $Owner
+                            "Notes" = $Notes
+                            "InformationURL" = $InformationURL
+                            "PrivacyURL" = $PrivacyURL
+                            "CompanyPortalFeaturedApp" = $CompanyPortalFeaturedApp
+                            "FileName" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
+                            "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
+                            "InstallExperience" = $InstallExperience
+                            "RestartBehavior" = $RestartBehavior
+                            "InstallCommandLine" = $InstallCommandLine
+                            "UninstallCommandLine" = $UninstallCommandLine
+                        }
+                        if ($PSBoundParameters["Icon"]) {
+                            $AppBodySplat.Add("Icon", $Icon)
+                        }
+                        if ($PSBoundParameters["RequirementRule"]) {
+                            $AppBodySplat.Add("RequirementRule", $RequirementRule)
+                        }
+
+                        $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
+                        Write-Verbose -Message "Constructed the basic layout for 'ps1' Win32 app body type"
                     }
                 }
 
