@@ -20,10 +20,11 @@ function Invoke-AzureCopyUtility {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2022-10-02
-        Updated:     2022-10-02
+        Updated:     2023-01-20
 
         Version history:
         1.0.0 - (2022-10-02) Function created
+        1.0.1 - (2023-01-20) Added parameter switch to support scenario explained in issue #64
     #>    
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the Storage Account Uri.")]
@@ -36,7 +37,12 @@ function Invoke-AzureCopyUtility {
 
         [parameter(Mandatory = $true, HelpMessage = "Specify the Storage Account files Uri for renewal if process takes a long time.")]
         [ValidateNotNullOrEmpty()]
-        [string]$Resource
+        [string]$Resource,
+
+        [parameter(Mandatory = $true, HelpMessage = "Specify the Storage Account files Uri for renewal if process takes a long time.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("Hidden", "NoNewWindow")]
+        [string]$WindowStyle
     )
     Process {
         # Download URL for AzCopy.exe
@@ -72,7 +78,16 @@ function Invoke-AzureCopyUtility {
         $AzCopyPath = Join-Path -Path (Resolve-Path -Path (Join-Path -Path $env:TEMP -ChildPath "AzCopy\azcopy_windows_amd64*") | Select-Object -ExpandProperty "Path") -ChildPath "AzCopy.exe"
         if ($AzCopyPath -ne $null) {
             try {
-                $TransferOperation = Start-Process -FilePath $AzCopyPath -ArgumentList "cp `"$($FilePath)`" `"$($StorageUri)`" --output-type `"json`"" -PassThru -NoNewWindow -ErrorAction "Stop"
+                # Initiate transfer of content depending on window style parameter
+                switch ($WindowStyle) {
+                    "Hidden" {
+                        $TransferOperation = Start-Process -FilePath $AzCopyPath -ArgumentList "cp `"$($FilePath)`" `"$($StorageUri)`" --output-type `"json`"" -PassThru -WindowStyle "Hidden" -ErrorAction "Stop"
+                    }
+                    "NoNewWindow" {
+                        $TransferOperation = Start-Process -FilePath $AzCopyPath -ArgumentList "cp `"$($FilePath)`" `"$($StorageUri)`" --output-type `"json`"" -PassThru -NoNewWindow -ErrorAction "Stop"
+                    }
+                }
+
                 do {
                     # Wait for 10 seconds until next loop conditional statement check occurs
                     Start-Sleep -Seconds 10

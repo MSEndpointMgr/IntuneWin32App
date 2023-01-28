@@ -10,19 +10,24 @@ function Invoke-IntuneGraphRequest {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-08-31
+        Updated:     2023-01-23
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-04-29) Added support for DELETE operations
         1.0.2 - (2021-08-31) Updated to use new authentication header
         1.0.3 - (2022-10-02) Changed content type for requests to support UTF8
+        1.0.4 - (2023-01-23) Added non-mandatory Route parameter to support different routes of Graph API in addition to better handle error response body depending on PSEdition
     #>    
     param(
         [parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("Beta", "v1.0")]
         [string]$APIVersion,
+
+        [parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Route = "deviceAppManagement",
 
         [parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -39,12 +44,11 @@ function Invoke-IntuneGraphRequest {
 
         [parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        #[string]$ContentType = "application/json"
         [string]$ContentType = "application/json; charset=utf-8"
     )
     try {
         # Construct full URI
-        $GraphURI = "https://graph.microsoft.com/$($APIVersion)/deviceAppManagement/$($Resource)"
+        $GraphURI = "https://graph.microsoft.com/$($APIVersion)/$($Route)/$($Resource)"
         Write-Verbose -Message "$($Method) $($GraphURI)"
 
         # Call Graph API and get JSON response
@@ -66,8 +70,16 @@ function Invoke-IntuneGraphRequest {
         return $GraphResponse
     }
     catch [System.Exception] {
-        # Construct stream reader for reading the response body from API call
-        $ResponseBody = Get-ErrorResponseBody -Exception $_.Exception
+        # Construct stream reader for reading the response body from API call depending on PSEdition value
+        switch ($PSEdition) {
+            "Desktop" {
+                # Construct stream reader for reading the response body from API call
+                $ResponseBody = Get-ErrorResponseBody -Exception $_.Exception
+            }
+            "Core" {
+                $ResponseBody = $_.ErrorDetails.Message
+            }
+        }
 
         # Handle response output and error message
         Write-Output -InputObject "Response content:`n$ResponseBody"

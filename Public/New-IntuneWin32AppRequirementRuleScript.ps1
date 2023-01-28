@@ -76,13 +76,14 @@ function New-IntuneWin32AppRequirementRuleScript {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-04-29
-        Updated:     2022-09-02
+        Updated:     2023-01-20
 
         Version history:
         1.0.0 - (2020-04-29) Function created
         1.0.1 - (2021-08-31) Fixed an issue when using a non-UTF encoded multi-line script file
         1.0.2 - (2022-09-02) Fixed GitHub reported issue #41 (https://github.com/MSEndpointMgr/IntuneWin32App/issues/41)
                              Fixed issue with wrong variables used for the Version based part for #microsoft.graph.win32LobAppPowerShellScriptRequirement
+        1.0.3 - (2023-01-20) Fixed a problem related to the BooleanValue parameter being of bool type, when request body must in fact contain a string. Reported in issue #57.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -161,9 +162,10 @@ function New-IntuneWin32AppRequirementRuleScript {
         [ValidateNotNullOrEmpty()]
         [string]$IntegerValue,
 
-        [parameter(Mandatory = $true, ParameterSetName = "Boolean", HelpMessage = "Specify the detection match value.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Boolean", HelpMessage = "Specify the detection match value as a string, either True or False.")]
         [ValidateNotNullOrEmpty()]
-        [bool]$BooleanValue,
+        [ValidateSet("True", "False")]
+        [string]$BooleanValue,
 
         [parameter(Mandatory = $true, ParameterSetName = "DateTime", HelpMessage = "Specify the detection match value.")]
         [ValidateNotNullOrEmpty()]
@@ -244,7 +246,7 @@ function New-IntuneWin32AppRequirementRuleScript {
                     $RequirementRuleScript = [ordered]@{
                         "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
                         "operator" = $BooleanComparisonOperator
-                        "detectionValue" = $BooleanValue
+                        "detectionValue" = $BooleanValue.ToLower()
                         "displayName" = $ScriptFileName
                         "enforceSignatureCheck" = $EnforceSignatureCheck
                         "runAs32Bit" = $RunAs32BitOn64System

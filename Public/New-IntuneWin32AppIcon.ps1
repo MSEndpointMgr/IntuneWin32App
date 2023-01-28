@@ -13,16 +13,17 @@ function New-IntuneWin32AppIcon {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-01-04
+        Updated:     2023-01-20
 
         Version history:
         1.0.0 - (2020-01-04) Function created
+        1.0.1 - (2023-01-20) Updated regex pattern for parameter FilePath
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify an existing local path to where the PNG/JPG/JPEG image file is located.")]
         [ValidateNotNullOrEmpty()]
-        [ValidatePattern("^[A-Za-z]{1}:\\\w+\\\w+")]
+        [ValidatePattern('^[a-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*$')]
         [ValidateScript({
             # Check if path contains any invalid characters
             if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {

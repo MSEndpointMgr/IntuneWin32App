@@ -13,17 +13,18 @@ function Get-IntuneWin32AppMetaData {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2020-06-10
+        Updated:     2023-01-20
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-06-10) Amended the pattern validation for FilePath parameter to only require a single folder instead of two-level folder structure
+        1.0.2 - (2023-01-20) Updated regex pattern for parameter FilePath
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify an existing local path to where the win32 app .intunewin file is located.")]
         [ValidateNotNullOrEmpty()]
-        [ValidatePattern("^[A-Za-z]{1}:\\\w+")]
+        [ValidatePattern('^[a-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*$')]
         [ValidateScript({
             # Check if path contains any invalid characters
             if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
