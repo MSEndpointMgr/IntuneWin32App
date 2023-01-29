@@ -23,20 +23,25 @@ function New-IntuneWin32AppIcon {
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify an existing local path to where the PNG/JPG/JPEG image file is located.")]
         [ValidateNotNullOrEmpty()]
-        [ValidatePattern('^[a-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*$')]
         [ValidateScript({
-            # Check if path contains any invalid characters
+            # Check if file name contains any invalid characters
             if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains invalid characters"; break
+                throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
             }
             else {
-            # Check if file extension is PNG/JPG/JPEG
-                $FileExtension = [System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf))
-                if (($FileExtension -like ".png") -or ($FileExtension -like ".jpg") -or ($FileExtension -like ".jpeg")) {
-                    return $true
+                # Check if full path exist
+                if (Test-Path -Path $_) {
+                    # Check if file extension is jpg, png or jpeg
+                    $FileExtension = [System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf))
+                    if (($FileExtension -like ".png") -or ($FileExtension -like ".jpg") -or ($FileExtension -like ".jpeg")) {
+                        return $true
+                    }
+                    else {
+                        throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extensions are '.png', '.jpg' and '.jpeg'"
+                    }
                 }
                 else {
-                    Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains unsupported file extension. Supported extensions are '.png', '.jpg' and '.jpeg'"; break
+                    throw "File or folder does not exist"
                 }
             }
         })]

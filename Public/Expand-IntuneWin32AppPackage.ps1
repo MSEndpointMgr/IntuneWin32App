@@ -27,19 +27,24 @@ function Expand-IntuneWin32AppPackage {
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the full path of the locally available packaged Win32 application, e.g. 'C:\Temp\AppName.intunewin'.")]
         [ValidateNotNullOrEmpty()]
-        [ValidatePattern('^[a-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*$')]
         [ValidateScript({
-            # Check if path contains any invalid characters
+            # Check if file name contains any invalid characters
             if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains invalid characters"; break
+                throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
             }
             else {
-                # Check if file extension is intunewin
-                if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
-                    return $true
+                # Check if full path exist
+                if (Test-Path -Path $_) {
+                    # Check if file extension is intunewin
+                    if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
+                        return $true
+                    }
+                    else {
+                        throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.intunewin'"
+                    }
                 }
                 else {
-                    Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains unsupported file extension. Supported extension is '.intunewin'"; break
+                    throw "File or folder does not exist"
                 }
             }
         })]
