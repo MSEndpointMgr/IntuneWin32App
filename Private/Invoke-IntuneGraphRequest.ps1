@@ -10,7 +10,7 @@ function Invoke-IntuneGraphRequest {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-01-23
+        Updated:     2023-02-03
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -18,6 +18,7 @@ function Invoke-IntuneGraphRequest {
         1.0.2 - (2021-08-31) Updated to use new authentication header
         1.0.3 - (2022-10-02) Changed content type for requests to support UTF8
         1.0.4 - (2023-01-23) Added non-mandatory Route parameter to support different routes of Graph API in addition to better handle error response body depending on PSEdition
+        1.0.5 - (2023-02-03) Improved error handling
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -70,19 +71,53 @@ function Invoke-IntuneGraphRequest {
         return $GraphResponse
     }
     catch [System.Exception] {
-        # Construct stream reader for reading the response body from API call depending on PSEdition value
-        switch ($PSEdition) {
-            "Desktop" {
-                # Construct stream reader for reading the response body from API call
-                $ResponseBody = Get-ErrorResponseBody -Exception $_.Exception
+        # Capture current error
+        $ExceptionItem = $PSItem
+
+        # Construct response error custom object for cross platform support
+        $ResponseBody = [PSCustomObject]@{
+            "ErrorMessage" = [string]::Empty
+            "ErrorCode" = [string]::Empty
+        }
+
+        # Read response error details differently depending PSVersion
+        switch ($PSVersionTable.PSVersion.Major) {
+            "5" {
+                # Read the response stream
+                $StreamReader = New-Object -TypeName "System.IO.StreamReader" -ArgumentList @($ExceptionItem.Exception.Response.GetResponseStream())
+                $StreamReader.BaseStream.Position = 0
+                $StreamReader.DiscardBufferedData()
+                $ResponseReader = ($StreamReader.ReadToEnd() | ConvertFrom-Json)
+
+                # Set response error details
+                $ResponseBody.ErrorMessage = $ResponseReader.error.message
+                $ResponseBody.ErrorCode = $ResponseReader.error.code
             }
-            "Core" {
-                $ResponseBody = $_.ErrorDetails.Message
+            default {
+                $ErrorDetails = $ExceptionItem.ErrorDetails.Message | ConvertFrom-Json
+
+                # Set response error details
+                $ResponseBody.ErrorMessage = $ErrorDetails.error.message
+                $ResponseBody.ErrorCode = $ErrorDetails.error.code
             }
         }
 
-        # Handle response output and error message
-        Write-Output -InputObject "Response content:`n$ResponseBody"
-        Write-Warning -Message "Request to $($GraphURI) failed with HTTP Status $($_.Exception.Response.StatusCode) and description: $($_.Exception.Response.StatusDescription)"
+        # Convert status code to integer for output
+        $HttpStatusCodeInteger = ([int][System.Net.HttpStatusCode]$ExceptionItem.Exception.Response.StatusCode)
+
+        switch ($Method) {
+            "GET" {
+                # Output warning message that the request failed with error message description from response stream
+                Write-Warning -Message "Graph request failed with status code '$($HttpStatusCodeInteger) ($($ExceptionItem.Exception.Response.StatusCode))'. Error details: $($ResponseBody.ErrorCode) - $($ResponseBody.ErrorMessage)"
+            }
+            default {
+                # Construct new custom error record
+                $SystemException = New-Object -TypeName "System.Management.Automation.RuntimeException" -ArgumentList ("{0}: {1}" -f $ResponseBody.ErrorCode, $ResponseBody.ErrorMessage)
+                $ErrorRecord = New-Object -TypeName "System.Management.Automation.ErrorRecord" -ArgumentList @($SystemException, $ErrorID, [System.Management.Automation.ErrorCategory]::NotImplemented, [string]::Empty)
+
+                # Throw a terminating custom error record
+                $PSCmdlet.ThrowTerminatingError($ErrorRecord)
+            }
+        }
     }
 }

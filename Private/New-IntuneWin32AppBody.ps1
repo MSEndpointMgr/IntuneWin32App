@@ -42,6 +42,9 @@ function New-IntuneWin32AppBody {
     .PARAMETER CompanyPortalFeaturedApp
         Specify the featured in Company Portal property for the Win32 application body.
 
+    .PARAMETER CategoryList
+        Provide an ArrayList containing the categories for the Win32 application body.
+
     .PARAMETER FileName
         Specify the file name (e.g. name.intunewin) for the Win32 application body.
 
@@ -102,7 +105,7 @@ function New-IntuneWin32AppBody {
                              Fixed a bug where minimumFreeDiskSpaceInMB, minimumMemoryInMB, minimumNumberOfProcessors and minimumCpuSpeedInMHz
                              would never contain any value since they're not handled by this function (https://github.com/MSEndpointMgr/IntuneWin32App/issues/44)
         1.0.4 - (2023-01-20) Added requirement rule to both MSI and EXE switch statements, now handled dynamically based on what's present in the requirement rule object.
-                             Added ScopeTagList parameter.
+                             Added ScopeTagList and CategoryList parameters.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -154,6 +157,11 @@ function New-IntuneWin32AppBody {
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the featured in Company Portal property for the Win32 application body.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [bool]$CompanyPortalFeaturedApp = $false,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Provide an ArrayList containing the categories for the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.ArrayList]$CategoryList,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify the file name (e.g. name.intunewin) for the Win32 application body.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
@@ -318,6 +326,11 @@ function New-IntuneWin32AppBody {
             if ($PSBoundParameters["ScopeTagList"]) {
                 $Win32AppBody.Add("roleScopeTagIds", @($ScopeTagList))
             }
+
+            # Add categories if passed on the command line
+            if ($PSBoundParameters["CategoryList"]) {
+                $Win32AppBody.Add("categories", @($CategoryList))
+            }
         }
         "EXE" {
             $Win32AppBody = [ordered]@{
@@ -371,6 +384,11 @@ function New-IntuneWin32AppBody {
             # Add Scope Tags if passed on command line
             if ($PSBoundParameters["ScopeTagList"]) {
                 $Win32AppBody.Add("roleScopeTagIds", @($ScopeTagList))
+            }
+
+            # Add categories if passed on the command line
+            if ($PSBoundParameters["CategoryList"]) {
+                $Win32AppBody.Add("categories", @($CategoryList))
             }
         }
     }
