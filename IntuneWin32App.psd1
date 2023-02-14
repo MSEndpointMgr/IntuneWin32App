@@ -11,7 +11,7 @@
 RootModule = 'IntuneWin32App.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.4.0'
+ModuleVersion = '1.3.6'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,6 +69,7 @@ RequiredModules = @("MSAL.PS")
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @("Add-IntuneWin32App",
+                      "Add-IntuneWin32AppAssignment",
                       "Add-IntuneWin32AppAssignmentAllDevices",
                       "Add-IntuneWin32AppAssignmentAllUsers",
                       "Add-IntuneWin32AppAssignmentGroup",
@@ -78,12 +79,12 @@ FunctionsToExport = @("Add-IntuneWin32App",
                       "Expand-IntuneWin32AppPackage",
                       "Get-IntuneWin32App",
                       "Get-IntuneWin32AppAssignment",
-                      "Get-IntuneWin32AppCategory",
                       "Get-IntuneWin32AppDependency",
                       "Get-IntuneWin32AppMetaData",
                       "Get-IntuneWin32AppSupersedence",
                       "Get-MSIMetaData",
                       "New-IntuneWin32AppDependency",
+                      "New-IntuneWin32AppDetectionRule",
                       "New-IntuneWin32AppDetectionRuleFile",
                       "New-IntuneWin32AppDetectionRuleMSI",
                       "New-IntuneWin32AppDetectionRuleRegistry",
@@ -100,7 +101,6 @@ FunctionsToExport = @("Add-IntuneWin32App",
                       "Remove-IntuneWin32AppAssignment",
                       "Remove-IntuneWin32AppDependency",
                       "Remove-IntuneWin32AppSupersedence",
-                      "Set-IntuneWin32App",
                       "Update-IntuneWin32AppPackageFile"
 )
 

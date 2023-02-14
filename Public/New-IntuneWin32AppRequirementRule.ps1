@@ -97,14 +97,26 @@ function New-IntuneWin32AppRequirementRule {
         if ($PSBoundParameters["MinimumFreeDiskSpaceInMB"]) {
             $RequirementRule.Add("minimumFreeDiskSpaceInMB", $MinimumFreeDiskSpaceInMB)
         }
+        else {
+            $RequirementRule.Add("minimumFreeDiskSpaceInMB", "null")
+        }
         if ($PSBoundParameters["MinimumMemoryInMB"]) {
             $RequirementRule.Add("minimumMemoryInMB", $MinimumMemoryInMB)
+        }
+        else {
+            $RequirementRule.Add("minimumMemoryInMB", "null")
         }
         if ($PSBoundParameters["MinimumNumberOfProcessors"]) {
             $RequirementRule.Add("minimumNumberOfProcessors", $MinimumNumberOfProcessors)
         }
+        else {
+            $RequirementRule.Add("minimumNumberOfProcessors", "null")
+        }
         if ($PSBoundParameters["MinimumCPUSpeedInMHz"]) {
             $RequirementRule.Add("minimumCpuSpeedInMHz", $MinimumCPUSpeedInMHz)
+        }
+        else {
+            $RequirementRule.Add("minimumCpuSpeedInMHz", "null")
         }
 
         return $RequirementRule

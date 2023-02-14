@@ -39,9 +39,6 @@ function Add-IntuneWin32App {
     .PARAMETER CompanyPortalFeaturedApp
         Specify whether to have the Win32 application featured in Company Portal or not.
 
-    .PARAMETER CategoryName
-        Specify the name of either a single or an array of category names for the Win32 application.
-
     .PARAMETER InstallCommandLine
         Specify the install command line for the Win32 application.
     
@@ -69,26 +66,14 @@ function Add-IntuneWin32App {
     .PARAMETER Icon
         Provide a Base64 encoded string of the PNG/JPG/JPEG file.
 
-    .PARAMETER ScopeTagName
-        Specify the name of either a single or an array of Scope Tag names to be set instead of the Default tag.
-
     .PARAMETER UseAzCopy
         Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.
-
-    .PARAMETER AzCopyWindowStyle
-        Specify whether the AzCopy content transfer progress should use -WindowStyle Hidden or -NoNewWindow parameters for Start-Process. NoNewWindow will show transfer output, Hidden will not show progress but will support multi-threaded jobs.
-
-    .PARAMETER UnattendedInstall
-        Specify to enforce the MSI installer to run silently, with /quiet added to the install command line of the Win32 application.
-
-    .PARAMETER UnattendedUninstall
-        Specify to enforce the MSI installer to run silently, with /quiet added to the uninstall command line of the Win32 application.
 
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-01-20
+        Updated:     2022-10-02
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -102,34 +87,25 @@ function Add-IntuneWin32App {
         1.0.8 - (2022-10-02) Added UseAzCopy parameter switch to override the native transfer method. Specify the UseAzCopy parameter switch when uploading large applications.
                              Added fallback removal code for the cleanup operation at the end of this function, since OneDrive's Files On Demand feature sometimes blocks the 
                              expanded .intunewin file cleanup process.
-        1.0.9 - (2023-01-20) Added parameter AzCopyWindowStyle and ScopeTagName. Updated regex pattern for .intunewin file and parameter FilePath.
-                             Added support for specifying Scope Tags when creating the Win 32 app, using the ScopeTagName parameter. Added UnattendedInstall and
-                             UnattendedUninstall parameters for MSI parameter set, to automatically add /quiet to the respectively generated command line.
-                             Added CategoryName parameter. UseAzCopy parameter will now only be allowed if content size is 100MB or more. 
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a local path to where the win32 app .intunewin file is located.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
+        [ValidatePattern("^[A-Za-z]{1}:\\\w+")]
         [ValidateScript({
-            # Check if file name contains any invalid characters
+            # Check if path contains any invalid characters
             if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
+                Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains invalid characters"; break
             }
             else {
-                # Check if full path exist
-                if (Test-Path -Path $_) {
-                    # Check if file extension is intunewin
-                    if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
-                        return $true
-                    }
-                    else {
-                        throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.intunewin'"
-                    }
+            # Check if file extension is intunewin
+                if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
+                    return $true
                 }
                 else {
-                    throw "File or folder does not exist"
+                    Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains unsupported file extension. Supported extension is '.intunewin'"; break
                 }
             }
         })]
@@ -180,11 +156,6 @@ function Add-IntuneWin32App {
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [bool]$CompanyPortalFeaturedApp = $false,
 
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the name of either a single or an array of category names for the Win32 application.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [string[]]$CategoryName,
-
         [parameter(Mandatory = $true, ParameterSetName = "EXE", HelpMessage = "Specify the install command line for the Win32 application.")]
         [ValidateNotNullOrEmpty()]
         [string]$InstallCommandLine,
@@ -230,29 +201,10 @@ function Add-IntuneWin32App {
         [ValidateNotNullOrEmpty()]
         [string]$Icon,
 
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the name of either a single or an array of Scope Tag names to be set instead of the Default tag.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [string[]]$ScopeTagName,
-
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
-        [switch]$UseAzCopy,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify whether the AzCopy content transfer progress should use -WindowStyle Hidden or -NoNewWindow parameters for Start-Process. NoNewWindow will show transfer output, Hidden will not show progress but will support multi-threaded jobs.")]
-        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet("Hidden", "NoNewWindow")]
-        [string]$AzCopyWindowStyle = "NoNewWindow",
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify to enforce the MSI installer to run silently, with /quiet added to the install command line of the Win32 application.")]
-        [ValidateNotNullOrEmpty()]
-        [switch]$UnattendedInstall,
-
-        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify to enforce the MSI installer to run silently, with /quiet added to the uninstall command line of the Win32 application.")]
-        [ValidateNotNullOrEmpty()]
-        [switch]$UnattendedUninstall
+        [switch]$UseAzCopy
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -281,43 +233,6 @@ function Add-IntuneWin32App {
             if ($IntuneWinXMLMetaData -ne $null) {
                 Write-Verbose -Message "Successfully gathered additional meta data from .intunewin file"
 
-                # Get scope tag identifier if parameter is passed on command line
-                if ($PSBoundParameters["ScopeTagName"]) {
-                    $ScopeTagList = New-Object -TypeName "System.Collections.ArrayList"
-                    foreach ($ScopeTagItem in $ScopeTagName) {
-                        # Ensure a Scope Tag exist by given name from parameter input
-                        Write-Verbose -Message "Querying for specified Scope Tag: $($ScopeTagItem)"
-                        $ScopeTag = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Route "deviceManagement" -Resource "roleScopeTags?`$filter=displayName eq '$($ScopeTagItem)'" -Method "GET" -ErrorAction "Stop").value
-                        if ($ScopeTag -ne $null) {
-                            Write-Verbose -Message "Found Scope Tag with display name '$($ScopeTag.displayName)' and id: $($ScopeTag.id)"
-                            $ScopeTagList.Add($ScopeTag.id) | Out-Null
-                        }
-                        else {
-                            Write-Warning -Message "Could not find Scope Tag with display name: '$($ScopeTagItem)'"
-                        }
-                    }
-                }
-
-                # Get category identifier if parameter is passed on the command line
-                if ($PSBoundParameters["CategoryName"]) {
-                    $CategoryList = New-Object -TypeName "System.Collections.ArrayList"
-                    foreach ($CategoryNameItem in $CategoryName) {
-                        # Ensure category exist by given name from parameter input
-                        Write-Verbose -Message "Querying for specified Category: $($CategoryNameItem)"
-                        $Category = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileAppCategories?`$filter=displayName eq '$([System.Web.HttpUtility]::UrlEncode($CategoryNameItem))'" -Method "GET" -ErrorAction "Stop").value
-                        if ($Category -ne $null) {
-                            $PSObject = [PSCustomObject]@{
-                                id = $Category.id
-                                displayName = $Category.displayName
-                            }
-                            $CategoryList.Add($PSObject) | Out-Null
-                        }
-                        else {
-                            Write-Warning -Message "Could not find category with name '$($CategoryNameItem)' or provided name resulted in multiple matches which is not supported"
-                        }
-                    }
-                }
-                
                 # Generate Win32 application body data table with different parameters based upon parameter set name
                 Write-Verbose -Message "Start constructing basic layout of Win32 app body"
                 switch ($PSCmdlet.ParameterSetName) {
@@ -389,22 +304,6 @@ function Add-IntuneWin32App {
                         if ($PSBoundParameters["RequirementRule"]) {
                             $AppBodySplat.Add("RequirementRule", $RequirementRule)
                         }
-                        if ($PSBoundParameters["ScopeTagName"]) {
-                            if ($ScopeTagList.Count -ge 1) {
-                                $AppBodySplat.Add("ScopeTagList", $ScopeTagList)
-                            }
-                        }
-                        if ($PSBoundParameters["CategoryName"]) {
-                            if ($CategoryList.Count -ge 1) {
-                                $AppBodySplat.Add("CategoryList", $CategoryList)
-                            }
-                        }
-                        if ($UnattendedInstall) {
-                            $AppBodySplat.Add("UnattendedInstall", $true)
-                        }
-                        if ($UnattendedUninstall) {
-                            $AppBodySplat.Add("UnattendedUninstall", $true)
-                        }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
                         Write-Verbose -Message "Constructed the basic layout for 'MSI' Win32 app body type"
@@ -435,16 +334,6 @@ function Add-IntuneWin32App {
                         }
                         if ($PSBoundParameters["RequirementRule"]) {
                             $AppBodySplat.Add("RequirementRule", $RequirementRule)
-                        }
-                        if ($PSBoundParameters["ScopeTagName"]) {
-                            if ($ScopeTagList.Count -ge 1) {
-                                $AppBodySplat.Add("ScopeTagList", $ScopeTagList)
-                            }
-                        }
-                        if ($PSBoundParameters["CategoryName"]) {
-                            if ($CategoryList.Count -ge 1) {
-                                $AppBodySplat.Add("CategoryList", $CategoryList)
-                            }
                         }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
@@ -492,19 +381,6 @@ function Add-IntuneWin32App {
                 else {
                     Write-Verbose -Message "Successfully created Win32 app with ID: $($Win32MobileAppRequest.id)"
 
-                    # Invoke request to setup the reference pointers of each category added to the Win32 app
-                    if ($PSBoundParameters["CategoryName"]) {
-                        if ($CategoryList.Count -ge 1) {
-                            foreach ($CategoryItem in $CategoryList) {
-                                $CategoryBodyTable = @{
-                                    "@odata.id" = "https://graph.microsoft.com/beta/deviceAppManagement/mobileAppCategories/$($CategoryItem.id)"
-                                }
-                                Write-Verbose -Message "Adding '$($CategoryItem.DisplayName)' reference to Win32 app with category ID: $($CategoryItem.id)"
-                                $Win32AppCategoryReference = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/categories/`$ref" -Method "POST" -Body ($CategoryBodyTable | ConvertTo-Json)
-                            }
-                        }
-                    }
-
                     # Create Content Version for the Win32 app
                     Write-Verbose -Message "Attempting to create contentVersions resource for the Win32 app"
                     $Win32MobileAppContentVersionRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions" -Method "POST" -Body "{}"
@@ -541,28 +417,14 @@ function Add-IntuneWin32App {
 
                                 # Upload .intunewin file to Azure Storage blob
                                 if ($PSBoundParameters["UseAzCopy"]) {
-                                    $ContentSize = [System.Math]::Round($Win32AppFileBody.size / 1MB, 2)
-                                    if ($ContentSize -lt 100) {
-                                        Write-Verbose -Message "Content size is less than 100MB, falling back to using native method for file transfer"
-                                        Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
+                                    try {
+                                        Write-Verbose -Message "Using AzCopy.exe method for file transfer"
+                                        Invoke-AzureCopyUtility -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri -ErrorAction "Stop"
                                     }
-                                    else {
-                                        try {
-                                            Write-Verbose -Message "Using AzCopy.exe method for file transfer"
-                                            $SplatArgs = @{
-                                                StorageUri = $ContentVersionsFiles.azureStorageUri
-                                                FilePath = $IntuneWinFilePath
-                                                Resource = $FilesUri
-                                                WindowStyle = $AzCopyWindowStyle
-                                                ErrorAction = "Stop"
-                                            }
-                                            Invoke-AzureCopyUtility @SplatArgs
-                                        }
-                                        catch [System.Exception] {
-                                            Write-Verbose -Message "AzCopy.exe transfer method failed with exception message: $($_.Exception.Message)"
-                                            Write-Verbose -Message "Falling back to native method"
-                                            Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
-                                        }
+                                    catch [System.Exception] {
+                                        Write-Verbose -Message "AzCopy.exe transfer method failed with exception message: $($_.Exception.Message)"
+                                        Write-Verbose -Message "Falling back to native method"
+                                        Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
                                     }
                                 }
                                 else {
@@ -591,29 +453,19 @@ function Add-IntuneWin32App {
                                 # Wait for Intune service to process the commit file request
                                 Write-Verbose -Message "Waiting for Intune service to process the commit file request"
                                 $CommitFileRequest = Wait-IntuneWin32AppFileProcessing -Stage "CommitFile" -Resource $FilesUri
+                                
+                                # Update committedContentVersion property for Win32 app
+                                Write-Verbose -Message "Updating committedContentVersion property with ID '$($Win32MobileAppContentVersionRequest.id)' for Win32 app with ID: $($Win32MobileAppRequest.id)"
+                                $Win32AppFileCommitBody = [ordered]@{
+                                    "@odata.type" = "#microsoft.graph.win32LobApp"
+                                    "committedContentVersion" = $Win32MobileAppContentVersionRequest.id
+                                }
+                                $Win32AppFileCommitBodyRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)" -Method "PATCH" -Body ($Win32AppFileCommitBody | ConvertTo-Json)
 
-                                switch ($CommitFileRequest.uploadState) {
-                                    "commitFileFailed" {
-                                        Write-Warning -Message "Failed to create Win32 app, commit file request operation failed"
-                                    }
-                                    "commitFileTimedOut" {
-                                        Write-Warning -Message "Failed to create Win32 app, commit file request operation timed out"
-                                    }
-                                    default {
-                                        # Update committedContentVersion property for Win32 app
-                                        Write-Verbose -Message "Updating committedContentVersion property with ID '$($Win32MobileAppContentVersionRequest.id)' for Win32 app with ID: $($Win32MobileAppRequest.id)"
-                                        $Win32AppFileCommitBody = [ordered]@{
-                                            "@odata.type" = "#microsoft.graph.win32LobApp"
-                                            "committedContentVersion" = $Win32MobileAppContentVersionRequest.id
-                                        }
-                                        $Win32AppFileCommitBodyRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)" -Method "PATCH" -Body ($Win32AppFileCommitBody | ConvertTo-Json)
-
-                                        # Handle return output
-                                        Write-Verbose -Message "Successfully created Win32 app and committed file content to Azure Storage blob"
-                                        $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)" -Method "GET"
-                                        Write-Output -InputObject $Win32MobileAppRequest
-                                    }
-                                }                                
+                                # Handle return output
+                                Write-Verbose -Message "Successfully created Win32 app and committed file content to Azure Storage blob"
+                                $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)" -Method "GET"
+                                Write-Output -InputObject $Win32MobileAppRequest
                             }
 
                             try {

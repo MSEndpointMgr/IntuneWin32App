@@ -10,11 +10,10 @@ function Invoke-AzureADGraphRequest {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-05-26
-        Updated:     2023-01-23
+        Updated:     2020-05-26
 
         Version history:
         1.0.0 - (2020-05-26) Function created
-        1.0.1 - (2023-01-23) Improved the handling of error response body depending on PSEdition
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -41,16 +40,8 @@ function Invoke-AzureADGraphRequest {
         return $GraphResponse
     }
     catch [System.Exception] {
-        # Construct stream reader for reading the response body from API call depending on PSEdition value
-        switch ($PSEdition) {
-            "Desktop" {
-                # Construct stream reader for reading the response body from API call
-                $ResponseBody = Get-ErrorResponseBody -Exception $_.Exception
-            }
-            "Core" {
-                $ResponseBody = $_.ErrorDetails.Message
-            }
-        }
+        # Construct stream reader for reading the response body from API call
+        $ResponseBody = Get-ErrorResponseBody -Exception $_.Exception
 
         # Handle response output and error message
         Write-Output -InputObject "Response content:`n$ResponseBody"

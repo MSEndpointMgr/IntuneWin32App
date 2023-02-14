@@ -30,27 +30,6 @@ function New-IntuneWin32AppDetectionRuleScript {
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the full path to the PowerShell detection script, e.g. 'C:\Scripts\Detection.ps1'.")]
         [ValidateNotNullOrEmpty()]
-        [ValidateScript({
-            # Check if file name contains any invalid characters
-            if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
-            }
-            else {
-                # Check if full path exist
-                if (Test-Path -Path $_) {
-                    # Check if file extension is intunewin
-                    if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".ps1") {
-                        return $true
-                    }
-                    else {
-                        throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.ps1'"
-                    }
-                }
-                else {
-                    throw "File or folder does not exist"
-                }
-            }
-        })]
         [string]$ScriptFile,
        
         [parameter(Mandatory = $false, HelpMessage = "Specify if PowerShell script signature check should be enforced.")]

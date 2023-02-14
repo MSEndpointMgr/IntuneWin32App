@@ -76,14 +76,13 @@ function New-IntuneWin32AppRequirementRuleScript {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-04-29
-        Updated:     2023-01-20
+        Updated:     2022-09-02
 
         Version history:
         1.0.0 - (2020-04-29) Function created
         1.0.1 - (2021-08-31) Fixed an issue when using a non-UTF encoded multi-line script file
         1.0.2 - (2022-09-02) Fixed GitHub reported issue #41 (https://github.com/MSEndpointMgr/IntuneWin32App/issues/41)
                              Fixed issue with wrong variables used for the Version based part for #microsoft.graph.win32LobAppPowerShellScriptRequirement
-        1.0.3 - (2023-01-20) Fixed a problem related to the BooleanValue parameter being of bool type, when request body must in fact contain a string. Reported in issue #57.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -112,27 +111,6 @@ function New-IntuneWin32AppRequirementRuleScript {
         [parameter(Mandatory = $true, ParameterSetName = "Float")]
         [parameter(Mandatory = $true, ParameterSetName = "Version")]
         [ValidateNotNullOrEmpty()]
-        [ValidateScript({
-            # Check if file name contains any invalid characters
-            if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
-            }
-            else {
-                # Check if full path exist
-                if (Test-Path -Path $_) {
-                    # Check if file extension is intunewin
-                    if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".ps1") {
-                        return $true
-                    }
-                    else {
-                        throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.ps1'"
-                    }
-                }
-                else {
-                    throw "File or folder does not exist"
-                }
-            }
-        })]
         [string]$ScriptFile,
 
         [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Specify to either run the script in the local system context or with signed in user context.")]
@@ -183,10 +161,9 @@ function New-IntuneWin32AppRequirementRuleScript {
         [ValidateNotNullOrEmpty()]
         [string]$IntegerValue,
 
-        [parameter(Mandatory = $true, ParameterSetName = "Boolean", HelpMessage = "Specify the detection match value as a string, either True or False.")]
+        [parameter(Mandatory = $true, ParameterSetName = "Boolean", HelpMessage = "Specify the detection match value.")]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet("True", "False")]
-        [string]$BooleanValue,
+        [bool]$BooleanValue,
 
         [parameter(Mandatory = $true, ParameterSetName = "DateTime", HelpMessage = "Specify the detection match value.")]
         [ValidateNotNullOrEmpty()]
@@ -267,7 +244,7 @@ function New-IntuneWin32AppRequirementRuleScript {
                     $RequirementRuleScript = [ordered]@{
                         "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
                         "operator" = $BooleanComparisonOperator
-                        "detectionValue" = $BooleanValue.ToLower()
+                        "detectionValue" = $BooleanValue
                         "displayName" = $ScriptFileName
                         "enforceSignatureCheck" = $EnforceSignatureCheck
                         "runAs32Bit" = $RunAs32BitOn64System
