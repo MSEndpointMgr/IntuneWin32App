@@ -37,6 +37,7 @@ Currently the following functions are supported in the module:
 - Remove-IntuneWin32AppAssignment
 - Remove-IntuneWin32AppDependency
 - Remove-IntuneWin32AppSupersedence
+- Set-IntuneWin32App
 - Update-IntuneWin32AppPackageFile
 
 ## Installing the module from PSGallery

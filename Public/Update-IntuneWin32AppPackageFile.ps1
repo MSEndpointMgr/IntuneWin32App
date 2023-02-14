@@ -16,13 +16,14 @@ function Update-IntuneWin32AppPackageFile {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-10-01
-        Updated:     2021-08-31
+        Updated:     2023-01-20
 
         Version history:
         1.0.0 - (2020-10-01) Function created
         1.0.1 - (2021-04-01) Updated token expired message to a warning instead of verbose output
         1.0.2 - (2021-08-31) Updated to use new authentication header
         1.0.3 - (2021-08-31) Fixed an issue where the PATCH operation would remove the largeIcon property value of the Win32 app
+        1.0.4 - (2023-01-20) Updated regex pattern for parameter FilePath
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -32,19 +33,24 @@ function Update-IntuneWin32AppPackageFile {
 
         [parameter(Mandatory = $true, HelpMessage = "Specify a local path to where the win32 app .intunewin file is located.")]
         [ValidateNotNullOrEmpty()]
-        [ValidatePattern("^[A-Za-z]{1}:\\\w+")]
         [ValidateScript({
-            # Check if path contains any invalid characters
+            # Check if file name contains any invalid characters
             if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains invalid characters"; break
+                throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
             }
             else {
-            # Check if file extension is intunewin
-                if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
-                    return $true
+                # Check if full path exist
+                if (Test-Path -Path $_) {
+                    # Check if file extension is intunewin
+                    if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
+                        return $true
+                    }
+                    else {
+                        throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.intunewin'"
+                    }
                 }
                 else {
-                    Write-Warning -Message "$(Split-Path -Path $_ -Leaf) contains unsupported file extension. Supported extension is '.intunewin'"; break
+                    throw "File or folder does not exist"
                 }
             }
         })]
