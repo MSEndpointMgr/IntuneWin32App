@@ -63,30 +63,34 @@ function Add-IntuneWin32AppSupersedence {
             $Win32AppID = $Win32App.id
 
             # Check for existing relations for Win32 app, supersedence and dependency configurations cannot co-exist currently
-            $Win32AppDependencyExistence = Get-IntuneWin32AppRelationExistence -ID $Win32AppID -Type "Dependency"
-            if ($Win32AppDependencyExistence -eq $false) {
-                # Validate that Win32 app where supersedence is configured, is not passed in $Supersedence variable to prevent an app superseding itself
-                if ($Win32AppID -notin $Supersedence.targetId) {
-                    $Win32AppRelationships = [ordered]@{
-                        "relationships" = @($Supersedence)
-                    }
+            #$Win32AppRelations = Get-IntuneWin32AppRelation -ID $Win32AppID
 
-                    try {
-                        # Attempt to call Graph and configure supersedence for Win32 app
-                        Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body ($Win32AppRelationships | ConvertTo-Json) -ErrorAction Stop
-                    }
-                    catch [System.Exception] {
-                        Write-Warning -Message "An error occurred while configuring supersedence for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
-                    }
+            #
+            # Handle existing relation items, get all relations and combine into array with new relation(s)
+            #
+
+            if ($Win32AppRelations -ne $null) {
+                
+            }
+
+            # Validate that the target Win32 app where supersedence is to be configured, is not passed in $Supersedence variable to prevent target app superseding itself
+            if ($Win32AppID -notin $Supersedence.targetId) {
+                $Win32AppRelationsTable = [ordered]@{
+                    "relationships" = @($Supersedence)
                 }
-                else {
-                    $SupersedenceItems = -join@($Supersedence.targetId, ", ")
-                    Write-Warning -Message "A Win32 app cannot be used to supersede itself, please specify a valid array or single object for supersedence"
-                    Write-Warning -Message "Win32 app with ID '$($Win32AppID)' is set as parent for supersedence configuration, and was also found in child items: $($SupersedenceItems)"
+
+                try {
+                    # Attempt to call Graph and configure supersedence for Win32 app
+                    Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body ($Win32AppRelationsTable | ConvertTo-Json) -ErrorAction Stop
+                }
+                catch [System.Exception] {
+                    Write-Warning -Message "An error occurred while configuring supersedence for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
                 }
             }
             else {
-                Write-Warning -Message "Existing dependency relation configuration exists for Win32 app, supersedence is not allowed to be configured at this point"
+                $SupersedenceItems = -join@($Supersedence.targetId, ", ")
+                Write-Warning -Message "A Win32 app cannot be used to supersede itself, please specify a valid array or single object for supersedence"
+                Write-Warning -Message "Win32 app with ID '$($Win32AppID)' is set as parent for supersedence configuration, and was also found in child items: $($SupersedenceItems)"
             }
         }
         else {

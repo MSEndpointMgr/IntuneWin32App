@@ -11,7 +11,7 @@
 RootModule = 'IntuneWin32App.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.4.0'
+ModuleVersion = '1.4.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -101,6 +101,7 @@ FunctionsToExport = @("Add-IntuneWin32App",
                       "Remove-IntuneWin32AppDependency",
                       "Remove-IntuneWin32AppSupersedence",
                       "Set-IntuneWin32App",
+                      "Test-AccessToken",
                       "Update-IntuneWin32AppPackageFile"
 )
 

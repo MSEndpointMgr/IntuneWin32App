@@ -43,10 +43,11 @@ function Set-IntuneWin32App {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2023-01-25
-        Updated:     2023-01-25
+        Updated:     2023-03-17
 
         Version history:
         1.0.0 - (2023-01-25) Function created
+        1.0.1 - (2023-03-17) Added AllowAvailableUninstall parameter switch.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -91,7 +92,10 @@ function Set-IntuneWin32App {
         [string]$PrivacyURL,
 
         [parameter(Mandatory = $false, HelpMessage = "Specify whether to have the Win32 application featured in Company Portal or not.")]
-        [bool]$CompanyPortalFeaturedApp
+        [bool]$CompanyPortalFeaturedApp,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.")]
+        [bool]$AllowAvailableUninstall
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -153,6 +157,9 @@ function Set-IntuneWin32App {
             }
             if ($PSBoundParameters["CompanyPortalFeaturedApp"]) {
                 $Win32AppBody.Add("isFeatured", $CompanyPortalFeaturedApp)
+            }
+            if ($PSBoundParameters["AllowAvailableUninstall"]) {
+                $Win32AppBody.Add("allowAvailableUninstall", $AllowAvailableUninstall)
             }
 
             try {

@@ -1,16 +1,13 @@
-function Get-IntuneWin32AppRelationExistence {
+function Get-IntuneWin32AppRelation {
     <#
     .SYNOPSIS
-        Retrieve any existing given supersedence or dependency (relations) configuration from an existing Win32 application.
+        Retrieve any existing supersedence and dependency (relations) configuration from an existing Win32 application.
 
     .DESCRIPTION
-        Retrieve any existing given supersedence or dependency (relations) configuration from an existing Win32 application.
+        Retrieve any existing supersedence and dependency (relations) configuration from an existing Win32 application.
 
     .PARAMETER ID
         Specify the ID for an existing Win32 application to retrieve relation configuration from.
-
-    .PARAMETER Type
-        Specify the relation type, either Dependency or Supersedence.
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -26,12 +23,7 @@ function Get-IntuneWin32AppRelationExistence {
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the ID for an existing Win32 application to retrieve relation configuration from.")]
         [ValidateNotNullOrEmpty()]
-        [string]$ID,
-
-        [parameter(Mandatory = $true, HelpMessage = "Specify the relation type, either Dependency or Supersedence.")]
-        [ValidateNotNullOrEmpty()]
-        [ValidateSet("Dependency", "Supersedence")]
-        [string]$Type
+        [string]$ID
     )
     Begin {
         # Ensure required authentication header variable exists

@@ -53,6 +53,9 @@ function Add-IntuneWin32App {
     
     .PARAMETER RestartBehavior
         Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.
+
+    .PARAMETER AllowAvailableUninstall
+        Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.
     
     .PARAMETER DetectionRule
         Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.
@@ -88,7 +91,7 @@ function Add-IntuneWin32App {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-01-20
+        Updated:     2023-03-17
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -105,7 +108,8 @@ function Add-IntuneWin32App {
         1.0.9 - (2023-01-20) Added parameter AzCopyWindowStyle and ScopeTagName. Updated regex pattern for .intunewin file and parameter FilePath.
                              Added support for specifying Scope Tags when creating the Win 32 app, using the ScopeTagName parameter. Added UnattendedInstall and
                              UnattendedUninstall parameters for MSI parameter set, to automatically add /quiet to the respectively generated command line.
-                             Added CategoryName parameter. UseAzCopy parameter will now only be allowed if content size is 100MB or more. 
+                             Added CategoryName parameter. UseAzCopy parameter will now only be allowed if content size is 100MB or more.
+        1.1.0 - (2023-03-17) Added parameter switch AllowAvailableUninstall. Fixed issue #77 related to scope tags and custom roles.
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
@@ -205,6 +209,11 @@ function Add-IntuneWin32App {
         [ValidateSet("allow", "basedOnReturnCode", "suppress", "force")]
         [string]$RestartBehavior,
 
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [switch]$AllowAvailableUninstall,
+
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
@@ -287,7 +296,7 @@ function Add-IntuneWin32App {
                     foreach ($ScopeTagItem in $ScopeTagName) {
                         # Ensure a Scope Tag exist by given name from parameter input
                         Write-Verbose -Message "Querying for specified Scope Tag: $($ScopeTagItem)"
-                        $ScopeTag = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Route "deviceManagement" -Resource "roleScopeTags?`$filter=displayName eq '$($ScopeTagItem)'" -Method "GET" -ErrorAction "Stop").value
+                        $ScopeTag = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Route "deviceManagement" -Resource "getRoleScopeTagsByResource(resource='MobileApps')?`$filter=displayName eq '$($ScopeTagItem)'" -Method "GET" -ErrorAction "Stop").value
                         if ($ScopeTag -ne $null) {
                             Write-Verbose -Message "Found Scope Tag with display name '$($ScopeTag.displayName)' and id: $($ScopeTag.id)"
                             $ScopeTagList.Add($ScopeTag.id) | Out-Null
@@ -405,6 +414,9 @@ function Add-IntuneWin32App {
                         if ($UnattendedUninstall) {
                             $AppBodySplat.Add("UnattendedUninstall", $true)
                         }
+                        if ($AllowAvailableUninstall) {
+                            $AppBodySplat.Add("AllowAvailableUninstall", $true)
+                        }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat
                         Write-Verbose -Message "Constructed the basic layout for 'MSI' Win32 app body type"
@@ -445,6 +457,9 @@ function Add-IntuneWin32App {
                             if ($CategoryList.Count -ge 1) {
                                 $AppBodySplat.Add("CategoryList", $CategoryList)
                             }
+                        }
+                        if ($AllowAvailableUninstall) {
+                            $AppBodySplat.Add("AllowAvailableUninstall", $true)
                         }
 
                         $Win32AppBody = New-IntuneWin32AppBody @AppBodySplat

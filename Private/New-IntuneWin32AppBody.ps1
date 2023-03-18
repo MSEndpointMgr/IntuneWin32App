@@ -57,6 +57,9 @@ function New-IntuneWin32AppBody {
     .PARAMETER RestartBehavior
         Specify the installation experience for the Win32 application body.
 
+    .PARAMETER AllowAvailableUninstall
+        Specify to allow the uninstall option when assigned as available of the Win32 application body.
+
     .PARAMETER RequirementRule
         Specify the requirement rules for the Win32 application body.
 
@@ -94,7 +97,7 @@ function New-IntuneWin32AppBody {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-01-20
+        Updated:     2023-03-17
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -106,6 +109,7 @@ function New-IntuneWin32AppBody {
                              would never contain any value since they're not handled by this function (https://github.com/MSEndpointMgr/IntuneWin32App/issues/44)
         1.0.4 - (2023-01-20) Added requirement rule to both MSI and EXE switch statements, now handled dynamically based on what's present in the requirement rule object.
                              Added ScopeTagList and CategoryList parameters.
+        1.0.4 - (2023-03-17) Added AllowAvailableUninstall parameter switch. Improved handling of RequirementRule when not passed on the command line.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -184,6 +188,11 @@ function New-IntuneWin32AppBody {
         [ValidateNotNullOrEmpty()]
         [ValidateSet("allow", "basedOnReturnCode", "suppress", "force")]
         [string]$RestartBehavior,
+
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify to allow the uninstall option when assigned as available of the Win32 application body.")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [switch]$AllowAvailableUninstall,
 
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the requirement rules for the Win32 application body.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
@@ -301,17 +310,19 @@ function New-IntuneWin32AppBody {
             }
 
             # Add requirement rule items dynamically
-            if ($RequirementRule["minimumFreeDiskSpaceInMB"]) {
-                $Win32AppBody.Add("minimumFreeDiskSpaceInMB", $RequirementRule["minimumFreeDiskSpaceInMB"])
-            }
-            if ($RequirementRule["minimumMemoryInMB"]) {
-                $Win32AppBody.Add("minimumMemoryInMB", $RequirementRule["minimumMemoryInMB"])
-            }
-            if ($RequirementRule["minimumNumberOfProcessors"]) {
-                $Win32AppBody.Add("minimumNumberOfProcessors", $RequirementRule["minimumNumberOfProcessors"])
-            }
-            if ($RequirementRule["minimumCpuSpeedInMHz"]) {
-                $Win32AppBody.Add("minimumCpuSpeedInMHz", $RequirementRule["minimumCpuSpeedInMHz"])
+            if ($PSBoundParameters["RequirementRule"]) {
+                if ($RequirementRule["minimumFreeDiskSpaceInMB"]) {
+                    $Win32AppBody.Add("minimumFreeDiskSpaceInMB", $RequirementRule["minimumFreeDiskSpaceInMB"])
+                }
+                if ($RequirementRule["minimumMemoryInMB"]) {
+                    $Win32AppBody.Add("minimumMemoryInMB", $RequirementRule["minimumMemoryInMB"])
+                }
+                if ($RequirementRule["minimumNumberOfProcessors"]) {
+                    $Win32AppBody.Add("minimumNumberOfProcessors", $RequirementRule["minimumNumberOfProcessors"])
+                }
+                if ($RequirementRule["minimumCpuSpeedInMHz"]) {
+                    $Win32AppBody.Add("minimumCpuSpeedInMHz", $RequirementRule["minimumCpuSpeedInMHz"])
+                }
             }
 
             # Add icon property if passed on command line
@@ -330,6 +341,11 @@ function New-IntuneWin32AppBody {
             # Add categories if passed on the command line
             if ($PSBoundParameters["CategoryList"]) {
                 $Win32AppBody.Add("categories", @($CategoryList))
+            }
+
+            # Add allow available uninstall option if passed on the command line
+            if ($PSBoundParameters["AllowAvailableUninstall"]) {
+                $Win32AppBody.Add("allowAvailableUninstall", $true)
             }
         }
         "EXE" {
@@ -360,17 +376,19 @@ function New-IntuneWin32AppBody {
             }
 
             # Add requirement rule items dynamically
-            if ($RequirementRule["minimumFreeDiskSpaceInMB"]) {
-                $Win32AppBody.Add("minimumFreeDiskSpaceInMB", $RequirementRule["minimumFreeDiskSpaceInMB"])
-            }
-            if ($RequirementRule["minimumMemoryInMB"]) {
-                $Win32AppBody.Add("minimumMemoryInMB", $RequirementRule["minimumMemoryInMB"])
-            }
-            if ($RequirementRule["minimumNumberOfProcessors"]) {
-                $Win32AppBody.Add("minimumNumberOfProcessors", $RequirementRule["minimumNumberOfProcessors"])
-            }
-            if ($RequirementRule["minimumCpuSpeedInMHz"]) {
-                $Win32AppBody.Add("minimumCpuSpeedInMHz", $RequirementRule["minimumCpuSpeedInMHz"])
+            if ($PSBoundParameters["RequirementRule"]) {
+                if ($RequirementRule["minimumFreeDiskSpaceInMB"]) {
+                    $Win32AppBody.Add("minimumFreeDiskSpaceInMB", $RequirementRule["minimumFreeDiskSpaceInMB"])
+                }
+                if ($RequirementRule["minimumMemoryInMB"]) {
+                    $Win32AppBody.Add("minimumMemoryInMB", $RequirementRule["minimumMemoryInMB"])
+                }
+                if ($RequirementRule["minimumNumberOfProcessors"]) {
+                    $Win32AppBody.Add("minimumNumberOfProcessors", $RequirementRule["minimumNumberOfProcessors"])
+                }
+                if ($RequirementRule["minimumCpuSpeedInMHz"]) {
+                    $Win32AppBody.Add("minimumCpuSpeedInMHz", $RequirementRule["minimumCpuSpeedInMHz"])
+                }
             }
 
             # Add icon property if passed on command line
@@ -389,6 +407,11 @@ function New-IntuneWin32AppBody {
             # Add categories if passed on the command line
             if ($PSBoundParameters["CategoryList"]) {
                 $Win32AppBody.Add("categories", @($CategoryList))
+            }
+
+            # Add allow available uninstall option if passed on the command line
+            if ($PSBoundParameters["AllowAvailableUninstall"]) {
+                $Win32AppBody.Add("allowAvailableUninstall", $true)
             }
         }
     }
