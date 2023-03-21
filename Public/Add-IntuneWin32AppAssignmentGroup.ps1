@@ -123,7 +123,15 @@ function Add-IntuneWin32AppAssignmentGroup {
         [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify a count in minutes for snoozing the restart notification, if not specified the snooze functionality is now allowed.")]
         [ValidateNotNullOrEmpty()]
         [ValidateRange("1", "712")]
-        [int]$RestartNotificationSnooze = 240
+        [int]$RestartNotificationSnooze = 240,
+
+        [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify to download content in the background using default value of 'notConfigured', or set to download in foreground using 'foreground'.")]
+        $FilterID = $null,
+
+        [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify to download content in the background using default value of 'notConfigured', or set to download in foreground using 'foreground'.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("none", "include", "exclude")]
+        [string]$FilterType = "none"
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -196,8 +204,8 @@ function Add-IntuneWin32AppAssignmentGroup {
             }
             $TargetAssignment = @{
                 "@odata.type" = $DataType
-                "deviceAndAppManagementAssignmentFilterId" = $null
-                "deviceAndAppManagementAssignmentFilterType" = "none"
+                "deviceAndAppManagementAssignmentFilterId" = $FilterID
+                "deviceAndAppManagementAssignmentFilterType" = $FilterType
                 "groupId" = $GroupID
             }
 
