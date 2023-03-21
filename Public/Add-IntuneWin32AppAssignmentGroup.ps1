@@ -125,10 +125,10 @@ function Add-IntuneWin32AppAssignmentGroup {
         [ValidateRange("1", "712")]
         [int]$RestartNotificationSnooze = 240,
 
-        [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify to download content in the background using default value of 'notConfigured', or set to download in foreground using 'foreground'.")]
+        [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify the ID of the filter which you wish to add to the assignment group")]
         $FilterID = $null,
 
-        [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify to download content in the background using default value of 'notConfigured', or set to download in foreground using 'foreground'.")]
+        [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify the filter type of Include or Exclude")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("none", "include", "exclude")]
         [string]$FilterType = "none"
