@@ -10,7 +10,7 @@ function Invoke-IntuneGraphRequest {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-02-03
+        Updated:     2023-04-04
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -19,7 +19,8 @@ function Invoke-IntuneGraphRequest {
         1.0.3 - (2022-10-02) Changed content type for requests to support UTF8
         1.0.4 - (2023-01-23) Added non-mandatory Route parameter to support different routes of Graph API in addition to better handle error response body depending on PSEdition
         1.0.5 - (2023-02-03) Improved error handling
-    #>    
+        1.0.6 - (2023-04-04) Added ability to handly paginated results
+    #>
     param(
         [parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -55,19 +56,56 @@ function Invoke-IntuneGraphRequest {
         # Call Graph API and get JSON response
         switch ($Method) {
             "GET" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction Stop -Verbose:$false
+                $invokeRestMethodSplat = @{
+                    Uri = $GraphURI
+                    Headers = $Global:AuthenticationHeader
+                    Method = $Method
+                    ErrorAction = 'Stop'
+                }
             }
             "POST" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
+                $invokeRestMethodSplat = @{
+                    Uri = $GraphURI
+                    Headers = $Global:AuthenticationHeader
+                    Method = $Method
+                    Body = $Body
+                    ContentType = $ContentType
+                    ErrorAction = 'Stop'
+                }
             }
             "PATCH" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
+                $invokeRestMethodSplat = @{
+                    Uri = $GraphURI
+                    Headers = $Global:AuthenticationHeader
+                    Method = $Method
+                    Body = $Body
+                    ContentType = $ContentType
+                    ErrorAction = 'Stop'
+                }
             }
             "DELETE" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction Stop -Verbose:$false
+                $invokeRestMethodSplat = @{
+                    Uri = $GraphURI
+                    Headers = $Global:AuthenticationHeader
+                    Method = $Method
+                    ErrorAction = 'Stop'
+                }
             }
         }
+        $GraphResponse = Invoke-RestMethod @invokeRestMethodSplat
+        # Call Graph API as long as more results are available due to pagination
+        if ($GraphResponse.'@odata.nextLink') {
+            $allPages += $GraphResponse.value
+            do {
+                $invokeRestMethodSplat['Uri'] = $GraphResponse.'@odata.nextLink'
+                $GraphResponse = Invoke-RestMethod @invokeRestMethodSplat
+                $allPages += $GraphResponse.value
 
+            } until (
+                !$GraphResponse.'@odata.nextLink'
+            )
+            $GraphResponse.value = $allPages
+    }
         return $GraphResponse
     }
     catch [System.Exception] {
