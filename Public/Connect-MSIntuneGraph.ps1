@@ -40,7 +40,7 @@ function Connect-MSIntuneGraph {
         1.0.0 - (2021-08-31) Script created
         1.0.1 - (2022-03-28) Added ClientSecret parameter input to support client secret auth flow
         1.0.2 - (2022-09-03) Added new global variable to hold the tenant id passed as parameter input for access token refresh scenario
-        1.0.3 - (2023-04-27) Added support for client certificate auth flow
+        1.0.3 - (2023-04-07) Added support for client certificate auth flow (apcsb)
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
