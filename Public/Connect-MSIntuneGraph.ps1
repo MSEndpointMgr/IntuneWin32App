@@ -15,6 +15,9 @@ function Connect-MSIntuneGraph {
     .PARAMETER ClientSecret
         Application secret (Client Secret) for an Azure AD service principal.
 
+    .PARAMETER ClientCert
+        A Certificate object (not just thumbprint) representing the client certificate for an Azure AD service principal.
+
     .PARAMETER RedirectUri
         Specify the Redirect URI (also known as Reply URL) of the custom Azure AD service principal.
 
@@ -37,18 +40,21 @@ function Connect-MSIntuneGraph {
         1.0.0 - (2021-08-31) Script created
         1.0.1 - (2022-03-28) Added ClientSecret parameter input to support client secret auth flow
         1.0.2 - (2022-09-03) Added new global variable to hold the tenant id passed as parameter input for access token refresh scenario
+        1.0.3 - (2023-04-27) Added support for client certificate auth flow
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
         [parameter(Mandatory = $true, ParameterSetName = "Interactive", HelpMessage = "Specify the tenant name or ID, e.g. tenant.onmicrosoft.com or <GUID>.")]
         [parameter(Mandatory = $true, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
+        [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
         [ValidateNotNullOrEmpty()]
         [string]$TenantID,
         
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Application ID (Client ID) for an Azure AD service principal. Uses by default the 'Microsoft Intune PowerShell' service principal Application ID.")]
         [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
+        [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
         [ValidateNotNullOrEmpty()]
         [string]$ClientID,
 
@@ -56,6 +62,12 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
         [ValidateNotNullOrEmpty()]
         [string]$ClientSecret,
+
+        [parameter(Mandatory = $false, HelpMessage = "A Certificate object (not just thumbprint) representing the client certificate for an Azure AD service principal.")]
+        [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
+        [ValidateNotNullOrEmpty()]
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$ClientCert,
+
 
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify the Redirect URI (also known as Reply URL) of the custom Azure AD service principal.")]
         [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
@@ -130,6 +142,11 @@ function Connect-MSIntuneGraph {
                     Write-Verbose "Using clientSecret"
                     $AccessTokenArguments.Add("ClientSecret", $(ConvertTo-SecureString $clientSecret -AsPlainText -Force))
                 }
+                "ClientCert" {
+                    Write-Verbose "Using clientCert"
+                    $AccessTokenArguments.Add("ClientCertificate", $ClientCert)
+                }
+
             }
 
             # Dynamically add parameter input for Get-MsalToken based on command line input
