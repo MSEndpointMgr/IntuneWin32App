@@ -84,7 +84,7 @@ function New-IntuneWin32AppRequirementRule {
             "W10_1903" = "1903"
             "W10_1909" = "1909"
             "W10_2004" = "2004"
-            "W10_20H2" = "2H20"
+            "W10_20H2" = "20H2"
             "W10_21H1" = "21H1"
             "W10_21H2" = "Windows10_21H2"
             "W10_22H2" = "Windows10_22H2"
