@@ -52,7 +52,7 @@ function Invoke-AzureStorageBlobUpload {
 
         # Refresh access token if about to expire
         $UTCDateTime = (Get-Date).ToUniversalTime()
-        $TokenExpiresMinutes = ($Global:AccessToken.ExpiresOn.DateTime - $UTCDateTime).Minutes
+        $TokenExpiresMinutes = ($Global:AccessToken.ExpiresOn.DateTime - $UTCDateTime).TotalMinutes
         if ($TokenExpiresMinutes -le 10) {
             Write-Verbose -Message "Existing token found but is soon about to expire, refreshing token"
             Connect-MSIntuneGraph -TenantID $Global:AccessTokenTenantID -Refresh
