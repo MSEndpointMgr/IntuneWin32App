@@ -51,9 +51,7 @@ function Invoke-AzureStorageBlobUpload {
         Write-Verbose -Message "SAS Uri renewal timer has elapsed for: $($SASRenewalTimer.Elapsed.Minutes) minute $($SASRenewalTimer.Elapsed.Seconds) seconds"
 
         # Refresh access token if about to expire
-        $UTCDateTime = (Get-Date).ToUniversalTime()
-        $TokenExpiresMinutes = ($Global:AccessToken.ExpiresOn.DateTime - $UTCDateTime).TotalMinutes
-        if ($TokenExpiresMinutes -le 10) {
+        if (!(Test-AccessToken)) {
             Write-Verbose -Message "Existing token found but is soon about to expire, refreshing token"
             Connect-MSIntuneGraph -TenantID $Global:AccessTokenTenantID -Refresh
         }

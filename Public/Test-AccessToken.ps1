@@ -28,7 +28,7 @@ function Test-AccessToken {
         $UTCDateTime = (Get-Date).ToUniversalTime()
                     
         # Determine the token expiration count as minutes
-        $TokenExpireMinutes = ([datetime]$Global:AccessToken.ExpiresOn.ToUniversalTime().UtcDateTime - $UTCDateTime).Minutes
+        $TokenExpireMinutes = ([datetime]$Global:AccessToken.ExpiresOn.ToUniversalTime().UtcDateTime - $UTCDateTime).TotalMinutes
 
         # Determine if refresh of access token is required when expiration count is less than or equal to minimum age
         if ($TokenExpireMinutes -le $RenewalThresholdMinutes) {

@@ -111,32 +111,32 @@ function Add-IntuneWin32App {
                              Added CategoryName parameter. UseAzCopy parameter will now only be allowed if content size is 100MB or more.
         1.1.0 - (2023-03-17) Added parameter switch AllowAvailableUninstall. Fixed issue #77 related to scope tags and custom roles.
     #>
-    [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
+    [CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = "MSI")]
     param(
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a local path to where the win32 app .intunewin file is located.")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({
-            # Check if file name contains any invalid characters
-            if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
-            }
-            else {
-                # Check if full path exist
-                if (Test-Path -Path $_) {
-                    # Check if file extension is intunewin
-                    if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
-                        return $true
-                    }
-                    else {
-                        throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.intunewin'"
-                    }
+                # Check if file name contains any invalid characters
+                if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
+                    throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
                 }
                 else {
-                    throw "File or folder does not exist"
+                    # Check if full path exist
+                    if (Test-Path -Path $_) {
+                        # Check if file extension is intunewin
+                        if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
+                            return $true
+                        }
+                        else {
+                            throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.intunewin'"
+                        }
+                    }
+                    else {
+                        throw "File or folder does not exist"
+                    }
                 }
-            }
-        })]
+            })]
         [string]$FilePath,
 
         [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify a display name for the Win32 application.")]
@@ -269,12 +269,8 @@ function Add-IntuneWin32App {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
         }
         else {
-            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
-            if ($TokenLifeTime -le 0) {
+            if (!(Test-AccessToken)) {
                 Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
-            }
-            else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
             }
         }
 
@@ -316,7 +312,7 @@ function Add-IntuneWin32App {
                         $Category = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileAppCategories?`$filter=displayName eq '$([System.Web.HttpUtility]::UrlEncode($CategoryNameItem))'" -Method "GET" -ErrorAction "Stop").value
                         if ($Category -ne $null) {
                             $PSObject = [PSCustomObject]@{
-                                id = $Category.id
+                                id          = $Category.id
                                 displayName = $Category.displayName
                             }
                             $CategoryList.Add($PSObject) | Out-Null
@@ -370,27 +366,27 @@ function Add-IntuneWin32App {
                         
                         # Generate Win32 application body
                         $AppBodySplat = @{
-                            "MSI" = $true
-                            "DisplayName" = $DisplayName
-                            "Description" = $Description
-                            "Publisher" = $Publisher
-                            "AppVersion" = $AppVersion
-                            "Developer" = $Developer
-                            "Owner" = $Owner
-                            "Notes" = $Notes
-                            "InformationURL" = $InformationURL
-                            "PrivacyURL" = $PrivacyURL
+                            "MSI"                      = $true
+                            "DisplayName"              = $DisplayName
+                            "Description"              = $Description
+                            "Publisher"                = $Publisher
+                            "AppVersion"               = $AppVersion
+                            "Developer"                = $Developer
+                            "Owner"                    = $Owner
+                            "Notes"                    = $Notes
+                            "InformationURL"           = $InformationURL
+                            "PrivacyURL"               = $PrivacyURL
                             "CompanyPortalFeaturedApp" = $CompanyPortalFeaturedApp
-                            "FileName" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
-                            "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
-                            "InstallExperience" = $InstallExperience
-                            "RestartBehavior" = $RestartBehavior
-                            "MSIInstallPurpose" = $MSIInstallPurpose
-                            "MSIProductCode" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiProductCode
-                            "MSIProductName" = $DisplayName
-                            "MSIProductVersion" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
-                            "MSIRequiresReboot" = $MSIRequiresReboot
-                            "MSIUpgradeCode" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiUpgradeCode
+                            "FileName"                 = $IntuneWinXMLMetaData.ApplicationInfo.FileName
+                            "SetupFileName"            = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
+                            "InstallExperience"        = $InstallExperience
+                            "RestartBehavior"          = $RestartBehavior
+                            "MSIInstallPurpose"        = $MSIInstallPurpose
+                            "MSIProductCode"           = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiProductCode
+                            "MSIProductName"           = $DisplayName
+                            "MSIProductVersion"        = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
+                            "MSIRequiresReboot"        = $MSIRequiresReboot
+                            "MSIUpgradeCode"           = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiUpgradeCode
                         }
                         if ($PSBoundParameters["Icon"]) {
                             $AppBodySplat.Add("Icon", $Icon)
@@ -424,23 +420,23 @@ function Add-IntuneWin32App {
                     "EXE" {
                         # Generate Win32 application body
                         $AppBodySplat = @{
-                            "EXE" = $true
-                            "DisplayName" = $DisplayName
-                            "Description" = $Description
-                            "Publisher" = $Publisher
-                            "AppVersion" = $AppVersion
-                            "Developer" = $Developer
-                            "Owner" = $Owner
-                            "Notes" = $Notes
-                            "InformationURL" = $InformationURL
-                            "PrivacyURL" = $PrivacyURL
+                            "EXE"                      = $true
+                            "DisplayName"              = $DisplayName
+                            "Description"              = $Description
+                            "Publisher"                = $Publisher
+                            "AppVersion"               = $AppVersion
+                            "Developer"                = $Developer
+                            "Owner"                    = $Owner
+                            "Notes"                    = $Notes
+                            "InformationURL"           = $InformationURL
+                            "PrivacyURL"               = $PrivacyURL
                             "CompanyPortalFeaturedApp" = $CompanyPortalFeaturedApp
-                            "FileName" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
-                            "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
-                            "InstallExperience" = $InstallExperience
-                            "RestartBehavior" = $RestartBehavior
-                            "InstallCommandLine" = $InstallCommandLine
-                            "UninstallCommandLine" = $UninstallCommandLine
+                            "FileName"                 = $IntuneWinXMLMetaData.ApplicationInfo.FileName
+                            "SetupFileName"            = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
+                            "InstallExperience"        = $InstallExperience
+                            "RestartBehavior"          = $RestartBehavior
+                            "InstallCommandLine"       = $InstallCommandLine
+                            "UninstallCommandLine"     = $UninstallCommandLine
                         }
                         if ($PSBoundParameters["Icon"]) {
                             $AppBodySplat.Add("Icon", $Icon)
@@ -535,12 +531,12 @@ function Add-IntuneWin32App {
                             # Create a new file entry in Intune for the upload of the .intunewin file
                             Write-Verbose -Message "Constructing Win32 app content file body for uploading of .intunewin file"
                             $Win32AppFileBody = [ordered]@{
-                                "@odata.type" = "#microsoft.graph.mobileAppContentFile"
-                                "name" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
-                                "size" = [int64]$IntuneWinXMLMetaData.ApplicationInfo.UnencryptedContentSize
+                                "@odata.type"   = "#microsoft.graph.mobileAppContentFile"
+                                "name"          = $IntuneWinXMLMetaData.ApplicationInfo.FileName
+                                "size"          = [int64]$IntuneWinXMLMetaData.ApplicationInfo.UnencryptedContentSize
                                 "sizeEncrypted" = (Get-Item -Path $IntuneWinFilePath).Length
-                                "manifest" = $null
-                                "isDependency" = $false
+                                "manifest"      = $null
+                                "isDependency"  = $false
                             }
 
                             # Create the contentVersions files resource
@@ -565,9 +561,9 @@ function Add-IntuneWin32App {
                                         try {
                                             Write-Verbose -Message "Using AzCopy.exe method for file transfer"
                                             $SplatArgs = @{
-                                                StorageUri = $ContentVersionsFiles.azureStorageUri
-                                                FilePath = $IntuneWinFilePath
-                                                Resource = $FilesUri
+                                                StorageUri  = $ContentVersionsFiles.azureStorageUri
+                                                FilePath    = $IntuneWinFilePath
+                                                Resource    = $FilesUri
                                                 WindowStyle = $AzCopyWindowStyle
                                                 ErrorAction = "Stop"
                                             }
@@ -587,13 +583,13 @@ function Add-IntuneWin32App {
 
                                 # Retrieve encryption meta data from .intunewin file
                                 $IntuneWinEncryptionInfo = [ordered]@{
-                                    "encryptionKey" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.EncryptionKey
-                                    "macKey" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.macKey
+                                    "encryptionKey"        = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.EncryptionKey
+                                    "macKey"               = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.macKey
                                     "initializationVector" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.initializationVector
-                                    "mac" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.mac
-                                    "profileIdentifier" = "ProfileVersion1"
-                                    "fileDigest" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.fileDigest
-                                    "fileDigestAlgorithm" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.fileDigestAlgorithm
+                                    "mac"                  = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.mac
+                                    "profileIdentifier"    = "ProfileVersion1"
+                                    "fileDigest"           = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.fileDigest
+                                    "fileDigestAlgorithm"  = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.fileDigestAlgorithm
                                 }
                                 $IntuneWinFileEncryptionInfo = @{
                                     "fileEncryptionInfo" = $IntuneWinEncryptionInfo
@@ -618,7 +614,7 @@ function Add-IntuneWin32App {
                                         # Update committedContentVersion property for Win32 app
                                         Write-Verbose -Message "Updating committedContentVersion property with ID '$($Win32MobileAppContentVersionRequest.id)' for Win32 app with ID: $($Win32MobileAppRequest.id)"
                                         $Win32AppFileCommitBody = [ordered]@{
-                                            "@odata.type" = "#microsoft.graph.win32LobApp"
+                                            "@odata.type"             = "#microsoft.graph.win32LobApp"
                                             "committedContentVersion" = $Win32MobileAppContentVersionRequest.id
                                         }
                                         $Win32AppFileCommitBodyRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)" -Method "PATCH" -Body ($Win32AppFileCommitBody | ConvertTo-Json)
