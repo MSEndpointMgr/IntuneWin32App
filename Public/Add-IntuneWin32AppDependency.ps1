@@ -61,7 +61,7 @@ function Add-IntuneWin32AppDependency {
         if ($Win32App -ne $null) {
             $Win32AppID = $Win32App.id
 
-            # Check for existing supersedence relations for Win32 app, as this relationships need to be included in the update
+            # Check for existing supersedence relations for Win32 app, as these relationships need to be included in the update
             $Supersedence = Get-IntuneWin32AppSupersedence -ID $Win32AppID
 
             # Validate that Win32 app where dependency is configured, is not passed in $Dependency variable to prevent an app depending on itself
