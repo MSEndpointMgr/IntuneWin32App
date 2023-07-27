@@ -62,21 +62,13 @@ function Add-IntuneWin32AppSupersedence {
         if ($Win32App -ne $null) {
             $Win32AppID = $Win32App.id
 
-            # Check for existing relations for Win32 app, supersedence and dependency configurations cannot co-exist currently
-            #$Win32AppRelations = Get-IntuneWin32AppRelation -ID $Win32AppID
-
-            #
-            # Handle existing relation items, get all relations and combine into array with new relation(s)
-            #
-
-            if ($Win32AppRelations -ne $null) {
-                
-            }
+            # Check for existing dependency relations for Win32 app, as these relationships need to be included in the update
+            $Dependencies = Get-IntuneWin32AppDependency -ID $Win32AppID
 
             # Validate that the target Win32 app where supersedence is to be configured, is not passed in $Supersedence variable to prevent target app superseding itself
             if ($Win32AppID -notin $Supersedence.targetId) {
                 $Win32AppRelationsTable = [ordered]@{
-                    "relationships" = @($Supersedence)
+                    "relationships" = @($Supersedence; $Dependencies)
                 }
 
                 try {

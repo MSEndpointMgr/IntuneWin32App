@@ -55,11 +55,7 @@ function Get-IntuneWin32AppSupersedence {
                 $Win32AppRelationsResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/relationships" -Method "GET" -ErrorAction Stop
 
                 # Handle return value
-                if ($Win32AppRelationsResponse.value -ne $null) {
-                    if ($Win32AppRelationsResponse.value.'@odata.type' -like "#microsoft.graph.mobileAppSupersedence") {
-                        return $Win32AppRelationsResponse.value
-                    }
-                }
+                $Win32AppRelationsResponse.value | Where-Object { $_.'@odata.type' -like "#microsoft.graph.mobileAppSupersedence" }
             }
             catch [System.Exception] {
                 Write-Warning -Message "An error occurred while retrieving supersedence configuration for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
