@@ -125,7 +125,7 @@ function New-IntuneWin32AppPackage {
                                 }
                             }
                             else {
-                                Write-Warning -Message "Unexpect error occurred while packaging Win32 app. Return code from invocation: $($PackageInvocation.ExitCode)"
+                                Write-Warning -Message "Unexpected error occurred while packaging Win32 app. Return code from invocation: $($PackageInvocation.ExitCode)"
                             }
                         }
                     }
