@@ -67,8 +67,9 @@ function Add-IntuneWin32AppDependency {
             # Validate that Win32 app where dependency is configured, is not passed in $Dependency variable to prevent an app depending on itself
             if ($Win32AppID -notin $Dependency.targetId) {
                 $Win32AppRelationships = [ordered]@{
-                    "relationships" = @($Dependency; $Supersedence)
+                    "relationships" = $Supersedence ? @($Dependency; $Supersedence) : @($Dependency)
                 }
+
 
                 try {
                     # Attempt to call Graph and configure dependency for Win32 app

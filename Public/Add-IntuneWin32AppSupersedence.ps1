@@ -68,7 +68,7 @@ function Add-IntuneWin32AppSupersedence {
             # Validate that the target Win32 app where supersedence is to be configured, is not passed in $Supersedence variable to prevent target app superseding itself
             if ($Win32AppID -notin $Supersedence.targetId) {
                 $Win32AppRelationsTable = [ordered]@{
-                    "relationships" = @($Supersedence; $Dependencies)
+                    "relationships" = $Dependencies ? @($Supersedence; $Dependencies) : @($Supersedence)
                 }
 
                 try {
