@@ -1,5 +1,13 @@
 # Release notes for IntuneWin32App module
 
+## 1.4.1
+- Added a new function named `Test-AccessToken`, to assist when the current token is about to expire. This function will return `False` when the existing token is about to expire, within the give time frame defined in RenewalThresholdMinutes function parameter. Default is 10 minutes.
+- `Add-IntuneWin32App` and `Set-IntuneWin32App` functions have been updated to support the new feature to allow of uninstallations of applications with an available assignment. At release of this version of the IntuneWin32App module, this feature has not publicly been announced by Microsoft, other than mentioned briefly in the 'In Development' documentation. However it has been available to be configured through Graph API for a couple of months at this point, hence this new functionality within the module is just for preparation of what's to come. The code of this module might have to be changed once the feature is publicly available and documented. Use this at your own risk.
+- Fixed an issue with the Scope Tag functionality in the `Add-IntuneWin32App` function, where it would not return any Scope Tag id when authenticated as a user that is a member of a role in Intune (previously it only worked if the authenticated user was e.g. an Intune Administrator).
+- Fixed issue #68 related to the `Add-IntuneWin32App` function when a RequirementRule object was not passed as parameter input, and the function would use default values.
+- Added a new sample file called `9-Token refresh.ps1` to demonstrate how to handle token refresh scenarios in long running scripts.
+- `New-IntuneWin32AppRequirementRule` function has been updated to support the newly added minimum operating system version of Windows 10 and 11. This change introduces a breaking change of existing scripts, since the new values that can be provided for the MinimumSupportedWindowsRelease parameter have been altered with a prefix of W10_ and W11_ to easier separate between the different operating system versions.
+
 ## 1.4.0
 - Properly fixed the issue with the public `New-IntuneWin32AppRequirementRule` and the private `New-IntuneWin32AppBody` functions to ensure the minimumFreeDiskSpaceInMB, MinimumMemoryInMB, MinimumNumberOfProcessors and minimumCpuSpeedInMHz objets are dynamically added to the request body, only if specificed on the command line with the `New-IntuneWin32AppRequirementRule` function.
 - Added parameter AzCopyWindowStyle to `Add-IntuneWin32App` function, to support what's discussed in issue #64.
