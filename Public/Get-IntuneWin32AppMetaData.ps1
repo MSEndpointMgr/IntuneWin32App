@@ -58,7 +58,7 @@ function Get-IntuneWin32AppMetaData {
     }
     Process {
         try {
-            # Attemp to open compressed .intunewin archive file from parameter input
+            # Attempt to open compressed .intunewin archive file from parameter input
             $IntuneWin32AppFile = [System.IO.Compression.ZipFile]::OpenRead($FilePath)
     
             # Attempt to extract meta data from .intunewin file

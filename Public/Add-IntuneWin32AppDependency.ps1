@@ -80,12 +80,12 @@ function Add-IntuneWin32AppDependency {
                 }
                 else {
                     $DependencyItems = -join@($Dependency.targetId, ", ")
-                    Write-Warning -Message "A Win32 app cannot be used to dependend on itself, please specify a valid array or single object for dependency"
+                    Write-Warning -Message "A Win32 app cannot be used to dependant on itself, please specify a valid array or single object for dependency"
                     Write-Warning -Message "Win32 app with ID '$($Win32AppID)' is set as parent for dependency configuration, and was also found in child items: $($DependencyItems)"
                 }
             }
             else {
-                Write-Warning -Message "Existing supersedence relation configuration exists for Win32 app, dependency is not allowed to be configured at this point"
+                Write-Warning -Message "Existing supersedence relationship exists for Win32 app, dependency is not allowed to be configured at this point"
             }
         }
         else {

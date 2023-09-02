@@ -130,7 +130,7 @@ function Expand-IntuneWin32AppPackage {
 
                                     try {
                                         # Open source filestream for read-only
-                                        Write-Verbose -Message "Attepmting to open extracted .intunewin file: $($ExtractedIntuneWinFile)"
+                                        Write-Verbose -Message "Attempting to open extracted .intunewin file: $($ExtractedIntuneWinFile)"
                                         [System.IO.FileStream]$FileStreamSource = [System.IO.File]::Open($ExtractedIntuneWinFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::None)
                                         $FileStreamSourceSeek = $FileStreamSource.Seek(48l, [System.IO.SeekOrigin]::Begin)
 
@@ -171,7 +171,7 @@ function Expand-IntuneWin32AppPackage {
                         }
                     }
                     catch [System.Exception] {
-                        Write-Warning -Message "An error occurred while extracing encoded .intunewin file from inside Contents folder of the Win32 application package. Error message: $($_.Exception.Message)"
+                        Write-Warning -Message "An error occurred while extracting encoded .intunewin file from inside Contents folder of the Win32 application package. Error message: $($_.Exception.Message)"
                     }
                 }
             }

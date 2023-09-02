@@ -93,7 +93,7 @@ function Expand-IntuneWin32AppCompressedFile {
                 }
             }
             catch [System.Exception] {
-                Write-Warning -Message "An error occurred while extracing '$($FileName)' from '$($FilePath)' file. Error message: $($_.Exception.Message)"
+                Write-Warning -Message "An error occurred while extracting '$($FileName)' from '$($FilePath)' file. Error message: $($_.Exception.Message)"
             }
         }
         catch [System.Exception] {
