@@ -54,6 +54,9 @@ function Add-IntuneWin32App {
     .PARAMETER RestartBehavior
         Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.
 
+    .PARAMETER MaximumInstallationTimeInMinutes
+        Specify the maximum installation time in minutes for the Win32 application (default is 60 minutes).
+
     .PARAMETER AllowAvailableUninstall
         Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.
     
@@ -91,7 +94,7 @@ function Add-IntuneWin32App {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-03-17
+        Updated:     2023-09-02
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -110,6 +113,7 @@ function Add-IntuneWin32App {
                              UnattendedUninstall parameters for MSI parameter set, to automatically add /quiet to the respectively generated command line.
                              Added CategoryName parameter. UseAzCopy parameter will now only be allowed if content size is 100MB or more.
         1.1.0 - (2023-03-17) Added parameter switch AllowAvailableUninstall. Fixed issue #77 related to scope tags and custom roles.
+        1.1.1 - (2023-09-02) Added parameter MaximumInstallationTimeInMinutes. Updated with Test-AccessToken function.
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
@@ -209,6 +213,12 @@ function Add-IntuneWin32App {
         [ValidateSet("allow", "basedOnReturnCode", "suppress", "force")]
         [string]$RestartBehavior,
 
+        [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify the maximum installation time in minutes for the Win32 application (default is 60 minutes).")]
+        [parameter(Mandatory = $false, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateRange(1, 1440)]
+        [int]$MaximumInstallationTimeInMinutes = 60,
+
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
@@ -269,12 +279,8 @@ function Add-IntuneWin32App {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
         }
         else {
-            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
-            if ($TokenLifeTime -le 0) {
+            if ((Test-AccessToken) -eq $false) {
                 Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
-            }
-            else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
             }
         }
 
@@ -385,6 +391,7 @@ function Add-IntuneWin32App {
                             "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
                             "InstallExperience" = $InstallExperience
                             "RestartBehavior" = $RestartBehavior
+                            "MaximumInstallationTimeInMinutes" = $MaximumInstallationTimeInMinutes
                             "MSIInstallPurpose" = $MSIInstallPurpose
                             "MSIProductCode" = $IntuneWinXMLMetaData.ApplicationInfo.MsiInfo.MsiProductCode
                             "MSIProductName" = $DisplayName
@@ -439,6 +446,7 @@ function Add-IntuneWin32App {
                             "SetupFileName" = $IntuneWinXMLMetaData.ApplicationInfo.SetupFile
                             "InstallExperience" = $InstallExperience
                             "RestartBehavior" = $RestartBehavior
+                            "MaximumInstallationTimeInMinutes" = $MaximumInstallationTimeInMinutes
                             "InstallCommandLine" = $InstallCommandLine
                             "UninstallCommandLine" = $UninstallCommandLine
                         }
@@ -536,7 +544,8 @@ function Add-IntuneWin32App {
                             Write-Verbose -Message "Constructing Win32 app content file body for uploading of .intunewin file"
                             $Win32AppFileBody = [ordered]@{
                                 "@odata.type" = "#microsoft.graph.mobileAppContentFile"
-                                "name" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
+                                #"name" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
+                                "name" = [System.IO.Path]::GetFileName($FilePath)
                                 "size" = [int64]$IntuneWinXMLMetaData.ApplicationInfo.UnencryptedContentSize
                                 "sizeEncrypted" = (Get-Item -Path $IntuneWinFilePath).Length
                                 "manifest" = $null

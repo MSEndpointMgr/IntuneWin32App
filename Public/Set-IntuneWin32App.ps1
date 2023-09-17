@@ -43,11 +43,12 @@ function Set-IntuneWin32App {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2023-01-25
-        Updated:     2023-03-17
+        Updated:     2023-09-04
 
         Version history:
         1.0.0 - (2023-01-25) Function created
         1.0.1 - (2023-03-17) Added AllowAvailableUninstall parameter switch.
+        1.0.2 - (2023-09-04) Updated with Test-AccessToken function
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -103,12 +104,8 @@ function Set-IntuneWin32App {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
         }
         else {
-            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
-            if ($TokenLifeTime -le 0) {
+            if ((Test-AccessToken) -eq $false) {
                 Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
-            }
-            else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
             }
         }
 

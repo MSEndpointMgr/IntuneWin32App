@@ -28,7 +28,7 @@ function New-IntuneWin32AppRequirementRule {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-27
-        Updated:     2023-04-26
+        Updated:     2023-09-04
 
         Version history:
         1.0.0 - (2020-01-27) Function created
@@ -37,6 +37,7 @@ function New-IntuneWin32AppRequirementRule {
         1.0.3 - (2022-09-02) minimumSupportedOperatingSystem property is replaced by minimumSupportedWindowsRelease
         1.0.4 - (2022-10-02) minimumFreeDiskSpaceInMB, MinimumMemoryInMB, MinimumNumberOfProcessors and minimumCpuSpeedInMHz now adds a 'null' string
         1.0.5 - (2023-04-26) Added support for new Windows 10 and Windows 11 minimum operating system versions
+        1.0.6 - (2023-09-04) Added alias of MinimumSupportedOperatingSystem to MinimumSupportedWindowsRelease
     #>    
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -48,6 +49,7 @@ function New-IntuneWin32AppRequirementRule {
         [parameter(Mandatory = $true, HelpMessage = "Specify the minimum supported Windows release version as a requirement for the Win32 app.")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("W10_1607", "W10_1703", "W10_1709", "W10_1803", "W10_1809", "W10_1903", "W10_1909", "W10_2004", "W10_20H2", "W10_21H1", "W10_21H2", "W10_22H2", "W11_21H2", "W11_22H2")]
+        [Alias('MinimumSupportedOperatingSystem')]
         [string]$MinimumSupportedWindowsRelease,
 
         [parameter(Mandatory = $false, HelpMessage = "Specify the minimum free disk space in MB as a requirement for the Win32 app.")]

@@ -57,6 +57,9 @@ function New-IntuneWin32AppBody {
     .PARAMETER RestartBehavior
         Specify the installation experience for the Win32 application body.
 
+    .PARAMETER MaximumInstallationTimeInMinutes
+        Specify the maximum installation time in minutes for the Win32 application body.        
+
     .PARAMETER AllowAvailableUninstall
         Specify to allow the uninstall option when assigned as available of the Win32 application body.
 
@@ -189,6 +192,11 @@ function New-IntuneWin32AppBody {
         [ValidateSet("allow", "basedOnReturnCode", "suppress", "force")]
         [string]$RestartBehavior,
 
+        [parameter(Mandatory = $true, ParameterSetName = "MSI", HelpMessage = "Specify the maximum installation time in minutes for the Win32 application body.")]
+        [parameter(Mandatory = $true, ParameterSetName = "EXE")]
+        [ValidateNotNullOrEmpty()]
+        [int]$MaximumInstallationTimeInMinutes,
+
         [parameter(Mandatory = $false, ParameterSetName = "MSI", HelpMessage = "Specify to allow the uninstall option when assigned as available of the Win32 application body.")]
         [parameter(Mandatory = $false, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
@@ -280,6 +288,7 @@ function New-IntuneWin32AppBody {
                 "installExperience" = @{
                     "runAsAccount" = $InstallExperience
                     "deviceRestartBehavior" = $RestartBehavior
+                    "maxRunTimeInMinutes" = $MaximumInstallationTimeInMinutes
                 }
                 "minimumSupportedWindowsRelease" = $MinimumSupportedWindowsRelease
                 "msiInformation" = @{
@@ -368,6 +377,7 @@ function New-IntuneWin32AppBody {
                 "installExperience" = @{
                     "runAsAccount" = $InstallExperience
                     "deviceRestartBehavior" = $RestartBehavior
+                    "maxRunTimeInMinutes" = $MaximumInstallationTimeInMinutes
                 }
                 "minimumSupportedWindowsRelease" = $MinimumSupportedWindowsRelease
                 "msiInformation" = $null

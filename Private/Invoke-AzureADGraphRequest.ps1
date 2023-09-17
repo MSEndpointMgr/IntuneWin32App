@@ -10,11 +10,12 @@ function Invoke-AzureADGraphRequest {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-05-26
-        Updated:     2023-01-23
+        Updated:     2023-09-04
 
         Version history:
         1.0.0 - (2020-05-26) Function created
         1.0.1 - (2023-01-23) Improved the handling of error response body depending on PSEdition
+        1.0.2 - (2023-09-04) Updated with correct variable referencing the stored access token, which fixes issue #108
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -34,7 +35,7 @@ function Invoke-AzureADGraphRequest {
         # Call Graph API and get JSON response
         switch ($Method) {
             "GET" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthToken -Method $Method -ErrorAction Stop -Verbose:$false
+                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction "Stop" -Verbose:$false
             }
         }
 

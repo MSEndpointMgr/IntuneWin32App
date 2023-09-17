@@ -25,12 +25,13 @@ function New-IntuneWin32AppPackage {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-01-23
+        Updated:     2023-09-04
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-05-03) Added trimming of trailing backslashes passed to input paths to prevent unwanted errors
         1.0.2 - (2023-01-23) Added Force parameter, function now also checks if an existing .intunewin file is present in the output folder and prompts accordingly
+        1.0.3 - (2023-09-04) Added Test-Path -LiteralPath conditional statements to all Test-Path instances
     #>    
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -59,16 +60,17 @@ function New-IntuneWin32AppPackage {
         $SourceFolder = $SourceFolder.TrimEnd("\")
         $OutputFolder = $OutputFolder.TrimEnd("\")
 
-        if (Test-Path -Path $SourceFolder) {
+        if ((Test-Path -Path $SourceFolder) -or (Test-Path -LiteralPath $SourceFolder)) {
             Write-Verbose -Message "Successfully detected specified source folder: $($SourceFolder)"
 
-            if (Test-Path -Path (Join-Path -Path $SourceFolder -ChildPath $SetupFile)) {
+            $SetupFilePath = (Join-Path -Path $SourceFolder -ChildPath $SetupFile)
+            if ((Test-Path -Path $SetupFilePath) -or (Test-Path -LiteralPath $SetupFilePath)) {
                 Write-Verbose -Message "Successfully detected specified setup file '$($SetupFile)' in source folder"
 
-                if (Test-Path -Path $OutputFolder) {
+                if ((Test-Path -Path $OutputFolder) -or (Test-Path -LiteralPath $OutputFolder)) {
                     Write-Verbose -Message "Successfully detected specified output folder: $($OutputFolder)"
 
-                    if (-not(Test-Path -Path $IntuneWinAppUtilPath)) {
+                    if ((-not(Test-Path -Path $IntuneWinAppUtilPath)) -or (-not(Test-Path -LiteralPath $IntuneWinAppUtilPath))) {
                         if (-not($PSBoundParameters["IntuneWinAppUtilPath"])) {
                             # Download IntuneWinAppUtil.exe if not present in context temporary folder
                             Write-Verbose -Message "Unable to detect IntuneWinAppUtil.exe in specified location, attempting to download to: $($env:TEMP)"
@@ -79,13 +81,13 @@ function New-IntuneWin32AppPackage {
                         }
                     }
 
-                    if (Test-Path -Path $IntuneWinAppUtilPath) {
+                    if ((Test-Path -Path $IntuneWinAppUtilPath) -or (Test-Path -LiteralPath $IntuneWinAppUtilPath)) {
                         Write-Verbose -Message "Successfully detected IntuneWinAppUtil.exe in: $($IntuneWinAppUtilPath)"
 
                         # If .intunewin already exists, only continue if Force parameter is passed on command line
                         $ProcessPackage = $true
                         $IntuneWinAppPackage = Join-Path -Path $OutputFolder -ChildPath "$([System.IO.Path]::GetFileNameWithoutExtension($SetupFile)).intunewin"
-                        if (Test-Path -Path $IntuneWinAppPackage) {
+                        if ((Test-Path -Path $IntuneWinAppPackage) -or (Test-Path -LiteralPath $IntuneWinAppPackage)) {
                             if ($Force) {
                                 Write-Verbose -Message "Package file already exist, but Force parameter was specified to overwrite existing file"
                             }
@@ -104,7 +106,7 @@ function New-IntuneWin32AppPackage {
                                 Write-Verbose -Message "IntuneWinAppUtil.exe packaging process completed with exit code $($PackageInvocation.ExitCode)"
 
                                 # Test if .intunewin file exists after packaging process completed
-                                if (Test-Path -Path $IntuneWinAppPackage) {
+                                if ((Test-Path -Path $IntuneWinAppPackage) -or (Test-Path -LiteralPath $IntuneWinAppPackage)) {
                                     Write-Verbose -Message "Successfully created Win32 app package object"
 
                                     # Retrieve Win32 app package meta data

@@ -13,13 +13,14 @@ function Invoke-AzureStorageBlobUpload {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2022-09-03
+        Updated:     2023-09-04
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-09-20) Fixed an issue where the System.IO.BinaryReader wouldn't open a file path containing whitespaces
         1.0.2 - (2021-03-15) Fixed an issue where SAS Uri renewal wasn't working correctly
         1.0.3 - (2022-09-03) Added access token refresh functionality when a token is about to expire, to prevent uploads from failing due to an expire access token
+        1.0.4 - (2023-09-04) Updated with Test-AccessToken function
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -52,8 +53,12 @@ function Invoke-AzureStorageBlobUpload {
 
         # Refresh access token if about to expire
         $UTCDateTime = (Get-Date).ToUniversalTime()
-        $TokenExpiresMinutes = ($Global:AccessToken.ExpiresOn.DateTime - $UTCDateTime).Minutes
-        if ($TokenExpiresMinutes -le 10) {
+
+        # Determine the token expiration count as minutes
+        $TokenExpireMinutes = [System.Math]::Round(([datetime]$Global:AccessToken.ExpiresOn.ToUniversalTime().UtcDateTime - $UTCDateTime).TotalMinutes)
+
+        # Determine if refresh of access token is required when expiration count is less than or equal to minimum age
+        if ($TokenExpireMinutes -le 10) {
             Write-Verbose -Message "Existing token found but is soon about to expire, refreshing token"
             Connect-MSIntuneGraph -TenantID $Global:AccessTokenTenantID -Refresh
         }
