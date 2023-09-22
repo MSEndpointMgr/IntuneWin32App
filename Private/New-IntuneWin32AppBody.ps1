@@ -72,6 +72,12 @@ function New-IntuneWin32AppBody {
     .PARAMETER ScopeTagList
         Provide an ArrayList containing the Scope Tag ids for the Win32 application body.
 
+    .PARAMETER AssignmentFilterID
+        Specify the assignment filter id for the Win32 application body.
+
+    .PARAMETER AssignmentFilterType
+        Specify the assignment filter type for the Win32 application body.
+
     .PARAMETER InstallCommandLine
         Specify the install command line for the Win32 application body.
 
