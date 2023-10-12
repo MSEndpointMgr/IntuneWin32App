@@ -14,6 +14,9 @@ function New-IntuneWin32AppPackage {
 
     .PARAMETER OutputFolder
         Specify the full path of the output folder where the packaged .intunewin file will be exported to.
+    
+    .PARAMETER CatalogFolder
+        Specify the full path of catalog folder for all catalog files. All files in this folder will be treated as catalog file for Win10 S mode.
 
     .PARAMETER Force
         Specify to overwrite existing packaged .intunewin file if already present in output folder.
@@ -25,13 +28,14 @@ function New-IntuneWin32AppPackage {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-09-04
+        Updated:     2023-10-12
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-05-03) Added trimming of trailing backslashes passed to input paths to prevent unwanted errors
         1.0.2 - (2023-01-23) Added Force parameter, function now also checks if an existing .intunewin file is present in the output folder and prompts accordingly
         1.0.3 - (2023-09-04) Added Test-Path -LiteralPath conditional statements to all Test-Path instances
+        1.0.4 - (2023-10-12) Add support Catalog Folder.
     #>    
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -47,6 +51,10 @@ function New-IntuneWin32AppPackage {
         [ValidateNotNullOrEmpty()]
         [string]$OutputFolder,
 
+        [parameter(Mandatory = $false, HelpMessage = "Specify the full path of catalog folder for all catalog files. All files in this folder will be treated as catalog file for Win10 S mode.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$CatalogFolder = "",
+
         [parameter(Mandatory = $false, HelpMessage = "Specify to overwrite existing packaged .intunewin file if already present in output folder.")]
         [ValidateNotNullOrEmpty()]
         [switch]$Force,
@@ -57,8 +65,11 @@ function New-IntuneWin32AppPackage {
     )
     Process {
         # Trim trailing backslashes from input paths
-        $SourceFolder = $SourceFolder.TrimEnd("\")
-        $OutputFolder = $OutputFolder.TrimEnd("\")
+        $SourceFolder  = $SourceFolder.TrimEnd("\")
+        $OutputFolder  = $OutputFolder.TrimEnd("\")
+        if (-not [string]::IsNullOrEmpty($CatalogFolder)) {
+            $CatalogFolder = $CatalogFolder.TrimEnd("\")
+        }        
 
         if ((Test-Path -Path $SourceFolder) -or (Test-Path -LiteralPath $SourceFolder)) {
             Write-Verbose -Message "Successfully detected specified source folder: $($SourceFolder)"
@@ -81,58 +92,74 @@ function New-IntuneWin32AppPackage {
                         }
                     }
 
-                    if ((Test-Path -Path $IntuneWinAppUtilPath) -or (Test-Path -LiteralPath $IntuneWinAppUtilPath)) {
-                        Write-Verbose -Message "Successfully detected IntuneWinAppUtil.exe in: $($IntuneWinAppUtilPath)"
-
-                        # If .intunewin already exists, only continue if Force parameter is passed on command line
-                        $ProcessPackage = $true
-                        $IntuneWinAppPackage = Join-Path -Path $OutputFolder -ChildPath "$([System.IO.Path]::GetFileNameWithoutExtension($SetupFile)).intunewin"
-                        if ((Test-Path -Path $IntuneWinAppPackage) -or (Test-Path -LiteralPath $IntuneWinAppPackage)) {
-                            if ($Force) {
-                                Write-Verbose -Message "Package file already exist, but Force parameter was specified to overwrite existing file"
-                            }
-                            else {
-                                Write-Warning -Message "Package file already exist, specify the Force parameter to overwrite existing file"
-                                $ProcessPackage = $false
-                            }
+                    if ([string]::IsNullOrEmpty($CatalogFolder) -or ((Test-Path -Path $CatalogFolder) -or (Test-Path -LiteralPath $CatalogFolder))) {
+                        if (-not [string]::IsNullOrEmpty($CatalogFolder)) {
+                            Write-Verbose -Message "Successfully detected specified catalog folder: $($CatalogFolder)"
+                        }
+                        else {
+                            Write-Verbose -Message "Skip catalog folder, not defined."
                         }
 
-                        # Continue processing if allowed
-                        if ($ProcessPackage -eq $true) {
-                            # Invoke IntuneWinAppUtil.exe with parameter inputs
-                            Write-Verbose -Message "Invoking IntuneWinAppUtil.exe to initialize packaging process"
-                            $PackageInvocation = Invoke-Executable -FilePath $IntuneWinAppUtilPath -Arguments "-c ""$($SourceFolder)"" -s ""$($SetupFile)"" -o ""$($OutPutFolder)"" -q"
-                            if ($PackageInvocation.ExitCode -eq 0) {
-                                Write-Verbose -Message "IntuneWinAppUtil.exe packaging process completed with exit code $($PackageInvocation.ExitCode)"
+                        if ((Test-Path -Path $IntuneWinAppUtilPath) -or (Test-Path -LiteralPath $IntuneWinAppUtilPath)) {
+                            Write-Verbose -Message "Successfully detected IntuneWinAppUtil.exe in: $($IntuneWinAppUtilPath)"
 
-                                # Test if .intunewin file exists after packaging process completed
-                                if ((Test-Path -Path $IntuneWinAppPackage) -or (Test-Path -LiteralPath $IntuneWinAppPackage)) {
-                                    Write-Verbose -Message "Successfully created Win32 app package object"
-
-                                    # Retrieve Win32 app package meta data
-                                    $IntuneWinAppMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinAppPackage
-
-                                    # Construct output object with package details
-                                    $PSObject = [PSCustomObject]@{
-                                        "Name" = $IntuneWinAppMetaData.ApplicationInfo.Name
-                                        "FileName" = $IntuneWinAppMetaData.ApplicationInfo.FileName
-                                        "SetupFile" = $IntuneWinAppMetaData.ApplicationInfo.SetupFile
-                                        "UnencryptedContentSize" = $IntuneWinAppMetaData.ApplicationInfo.UnencryptedContentSize
-                                        "Path" = $IntuneWinAppPackage
-                                    }
-                                    Write-Output -InputObject $PSObject
+                            # If .intunewin already exists, only continue if Force parameter is passed on command line
+                            $ProcessPackage = $true
+                            $IntuneWinAppPackage = Join-Path -Path $OutputFolder -ChildPath "$([System.IO.Path]::GetFileNameWithoutExtension($SetupFile)).intunewin"
+                            if ((Test-Path -Path $IntuneWinAppPackage) -or (Test-Path -LiteralPath $IntuneWinAppPackage)) {
+                                if ($Force) {
+                                    Write-Verbose -Message "Package file already exist, but Force parameter was specified to overwrite existing file"
                                 }
                                 else {
-                                    Write-Warning -Message "Unable to detect expected '$($SetupFile).intunewin' file after IntuneWinAppUtil.exe invocation"
+                                    Write-Warning -Message "Package file already exist, specify the Force parameter to overwrite existing file"
+                                    $ProcessPackage = $false
                                 }
                             }
-                            else {
-                                Write-Warning -Message "Unexpected error occurred while packaging Win32 app. Return code from invocation: $($PackageInvocation.ExitCode)"
+
+                            # Continue processing if allowed
+                            if ($ProcessPackage -eq $true) {
+                                # Invoke IntuneWinAppUtil.exe with parameter inputs
+                                Write-Verbose -Message "Invoking IntuneWinAppUtil.exe to initialize packaging process"
+                                $PackageInvocationArgs = '-c "{0}" -s "{1}" -o "{2}" -q' -f $($SourceFolder), $($SetupFile), $($OutPutFolder)
+                                if (-not [string]::IsNullOrEmpty($CatalogFolder)) {
+                                    $PackageInvocationArgs += ' -a "{0}"' -f $($CatalogFolder)
+                                }
+                                $PackageInvocation = Invoke-Executable -FilePath $IntuneWinAppUtilPath -Arguments $PackageInvocationArgs
+                                if ($PackageInvocation.ExitCode -eq 0) {
+                                    Write-Verbose -Message "IntuneWinAppUtil.exe packaging process completed with exit code $($PackageInvocation.ExitCode)"
+
+                                    # Test if .intunewin file exists after packaging process completed
+                                    if ((Test-Path -Path $IntuneWinAppPackage) -or (Test-Path -LiteralPath $IntuneWinAppPackage)) {
+                                        Write-Verbose -Message "Successfully created Win32 app package object"
+
+                                        # Retrieve Win32 app package meta data
+                                        $IntuneWinAppMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinAppPackage
+
+                                        # Construct output object with package details
+                                        $PSObject = [PSCustomObject]@{
+                                            "Name" = $IntuneWinAppMetaData.ApplicationInfo.Name
+                                            "FileName" = $IntuneWinAppMetaData.ApplicationInfo.FileName
+                                            "SetupFile" = $IntuneWinAppMetaData.ApplicationInfo.SetupFile
+                                            "UnencryptedContentSize" = $IntuneWinAppMetaData.ApplicationInfo.UnencryptedContentSize
+                                            "Path" = $IntuneWinAppPackage
+                                        }
+                                        Write-Output -InputObject $PSObject
+                                    }
+                                    else {
+                                        Write-Warning -Message "Unable to detect expected '$($SetupFile).intunewin' file after IntuneWinAppUtil.exe invocation"
+                                    }
+                                }
+                                else {
+                                    Write-Warning -Message "Unexpected error occurred while packaging Win32 app. Return code from invocation: $($PackageInvocation.ExitCode)"
+                                }
                             }
+                        }
+                        else {
+                            Write-Warning -Message "Unable to detect IntuneWinAppUtil.exe in: $($IntuneWinAppUtilPath)"
                         }
                     }
                     else {
-                        Write-Warning -Message "Unable to detect IntuneWinAppUtil.exe in: $($IntuneWinAppUtilPath)"
+                        Write-Warning -Message "Unable to detect specified catalog folder: $($CatalogFolder)"
                     }
                 }
                 else {
