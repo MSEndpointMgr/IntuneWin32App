@@ -81,11 +81,9 @@ function Remove-IntuneWin32AppAssignmentGroup {
             try {
                 # Attempt to call Graph and retrieve all assignments for Win32 app
                 $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments" -ErrorAction "Stop"
-                if ($Win32AppAssignmentResponse.value -ne $null) {
-                    Write-Verbose -Message "Count of assignments for Win32 app before attempted removal process: $(($Win32AppAssignmentResponse.value | Measure-Object).Count)"
-
+                if ($Win32AppAssignmentResponse -ne $null) {
                     # Process each assignment for removal
-                    foreach ($Win32AppAssignment in $Win32AppAssignmentResponse.value) {
+                    foreach ($Win32AppAssignment in $Win32AppAssignmentResponse) {
                         if ($Win32AppAssignment.target.groupId -eq $GroupID) {
                             try {
                                 # Remove current assignment
@@ -97,10 +95,6 @@ function Remove-IntuneWin32AppAssignmentGroup {
                             }
                         }
                     }
-
-                    # Calculate amount of remaining assignments after attempted removal process
-                    $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments" -ErrorAction "Stop"
-                    Write-Verbose -Message "Count of assignments for Win32 app after attempted removal process: $(($Win32AppAssignmentResponse.value | Measure-Object).Count)"
                 }
                 else {
                     Write-Verbose -Message "Unable to locate any instances for removal, Win32 app does not have any existing assignments"

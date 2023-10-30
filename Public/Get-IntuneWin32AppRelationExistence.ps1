@@ -1,4 +1,4 @@
-function Get-IntuneWin32AppRelationshipExistence {
+function Get-IntuneWin32AppRelationship {
     <#
     .SYNOPSIS
         Retrieve any existing supersedence and dependency (relations) configuration from an existing Win32 application.
@@ -16,12 +16,13 @@ function Get-IntuneWin32AppRelationshipExistence {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-04-02
-        Updated:     2023-09-04
+        Updated:     2023-10-30
 
         Version history:
         1.0.0 - (2021-04-02) Function created
         1.0.1 - (2021-08-31) Updated to use new authentication header
         1.0.2 - (2023-09-04) Renamed function, was not named correctly. Added Type parameter and updated with Test-AccessToken.
+        1.0.3 - (2023-10-30) Convert from private to public function and rename to Get-IntuneWin32AppRelationship
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(

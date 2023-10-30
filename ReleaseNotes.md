@@ -1,5 +1,17 @@
 # Release notes for IntuneWin32App module
 
+## 1.4.2
+- Improved the output from the `Get-IntuneWin32AppAssignment` function with new properties such as FilterID, FilterType, DeliveryOptimizationPriority, Notifications, RestartSettings and InstallTimeSettings. Also improved function to generate same type of output instead of different per parameter set. Fixed issue #108 related to the same function.
+- All function of this module that requires the usage of an access token, has been updated to make use of the `Test-AccessToken` function, to ensure an eligible token is present.
+- Fixed issue #78 where `Get-IntuneWin32App` could not return more than the first 1000 objects, if more existed. This function now supports pagination.
+- Added support for the new 'Installation time required' configuration option for Win32 applications, to the `Add-IntuneWin32App` function as a new parameter named `MaximumInstallationTimeInMinutes`.
+- Added client certification authentication flow support in the `Connect-MSIntuneGraph` function.
+- Added a new function named `Remove-IntuneWin32AppAssignmentGroup` function to support the removal of a group from assignment configuration of a specific Win32 app.
+- Added Filter support for the `Add-IntuneWin32AppAssignmentAllDevices`, `Add-IntuneWin32AppAssignmentAllUsers` and `Add-IntuneWin32AppAssignmentGroup` functions.
+- Improved `New-IntuneWin32AppPackage` function to better handle paths passed into the function, to use both -Path and -LiteralPath parameters to support wildcard characters. This fixes issue #113.
+- Both functions `Remove-IntuneWin32AppDependency` and `Remove-IntuneWin32AppSupersedence` have been improved to only remove the actual relationships objects they originally were intended to remove, not all types as it would previously. This fixed what has been reported in #105.
+- Private function `Get-IntuneWin32AppRelationshipsExistence` converted to public function and renamed to `Get-IntuneWin32AppRelationship`.
+
 ## 1.4.1
 - Added a new function named `Test-AccessToken`, to assist when the current token is about to expire. This function will return `False` when the existing token is about to expire, within the give time frame defined in RenewalThresholdMinutes function parameter. Default is 10 minutes.
 - `Add-IntuneWin32App` and `Set-IntuneWin32App` functions have been updated to support the new feature to allow of uninstallations of applications with an available assignment. At release of this version of the IntuneWin32App module, this feature has not publicly been announced by Microsoft, other than mentioned briefly in the 'In Development' documentation. However it has been available to be configured through Graph API for a couple of months at this point, hence this new functionality within the module is just for preparation of what's to come. The code of this module might have to be changed once the feature is publicly available and documented. Use this at your own risk.

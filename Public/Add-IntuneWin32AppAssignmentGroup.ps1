@@ -84,7 +84,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         [parameter(Mandatory = $true, ParameterSetName = "GroupInclude", HelpMessage = "Specify the ID for an Azure AD group.")]
         [parameter(Mandatory = $true, ParameterSetName = "GroupExclude")]
         [ValidateNotNullOrEmpty()]
-        [string]$GroupID,        
+        [string]$GroupID,
 
         [parameter(Mandatory = $true, ParameterSetName = "GroupInclude", HelpMessage = "Specify the intent of the assignment, either required, available or uninstall.")]
         [parameter(Mandatory = $true, ParameterSetName = "GroupExclude")]
@@ -213,12 +213,15 @@ function Add-IntuneWin32AppAssignmentGroup {
 
             # Ensure a Filter exist by given name from parameter input
             Write-Verbose -Message "Querying for specified Filter: $($FilterName)"
-            $AssignmentFilter = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Route "deviceManagement" -Resource "assignmentFilters?`$filter=displayName eq '$($FilterName)'" -Method "GET" -ErrorAction "Stop").value
-            if ($AssignmentFilter -ne $null) {
-                Write-Verbose -Message "Found Filter with display name '$($AssignmentFilter.displayName)' and id: $($AssignmentFilter.id)"
-            }
-            else {
-                Write-Warning -Message "Could not find Filter with display name: '$($FilterName)'"
+            $AssignmentFilters = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceManagement/assignmentFilters" -Verbose
+            if ($AssignmentFilters -ne $null) {
+                $AssignmentFilter = $AssignmentFilters | Where-Object { $PSItem.displayName -eq $FilterName }
+                if ($AssignmentFilter -ne $null) {
+                    Write-Verbose -Message "Found Filter with display name '$($AssignmentFilter.displayName)' and id: $($AssignmentFilter.id)"
+                }
+                else {
+                    Write-Warning -Message "Could not find Filter with display name: '$($FilterName)'"
+                }
             }
         }
 
