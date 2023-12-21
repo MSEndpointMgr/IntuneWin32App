@@ -1,5 +1,8 @@
 # Release notes for IntuneWin32App module
 
+## 1.4.3
+- Updated the New-IntuneWin32AppPackage function to work properly after the latest version of the IntuneWinAppUtil.exe was recently updated.
+
 ## 1.4.2
 - Improved the output from the `Get-IntuneWin32AppAssignment` function with new properties such as FilterID, FilterType, DeliveryOptimizationPriority, Notifications, RestartSettings and InstallTimeSettings. Also improved function to generate same type of output instead of different per parameter set. Fixed issue #108 related to the same function.
 - All function of this module that requires the usage of an access token, has been updated to make use of the `Test-AccessToken` function, to ensure an eligible token is present.

@@ -25,13 +25,14 @@ function New-IntuneWin32AppPackage {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-09-04
+        Updated:     2023-12-13
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-05-03) Added trimming of trailing backslashes passed to input paths to prevent unwanted errors
         1.0.2 - (2023-01-23) Added Force parameter, function now also checks if an existing .intunewin file is present in the output folder and prompts accordingly
         1.0.3 - (2023-09-04) Added Test-Path -LiteralPath conditional statements to all Test-Path instances
+        1.0.4 - (2023-12-13) Added RedirectStandardOutput parameter to allow for fix where IntuneWinAppUtil.exe wouldn't work when called from Invoke-Executable function
     #>    
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -101,7 +102,7 @@ function New-IntuneWin32AppPackage {
                         if ($ProcessPackage -eq $true) {
                             # Invoke IntuneWinAppUtil.exe with parameter inputs
                             Write-Verbose -Message "Invoking IntuneWinAppUtil.exe to initialize packaging process"
-                            $PackageInvocation = Invoke-Executable -FilePath $IntuneWinAppUtilPath -Arguments "-c ""$($SourceFolder)"" -s ""$($SetupFile)"" -o ""$($OutPutFolder)"" -q"
+                            $PackageInvocation = Invoke-Executable -FilePath $IntuneWinAppUtilPath -Arguments "-c ""$($SourceFolder)"" -s ""$($SetupFile)"" -o ""$($OutPutFolder)"" -q" -RedirectStandardOutput $false
                             if ($PackageInvocation.ExitCode -eq 0) {
                                 Write-Verbose -Message "IntuneWinAppUtil.exe packaging process completed with exit code $($PackageInvocation.ExitCode)"
 

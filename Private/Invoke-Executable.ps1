@@ -6,7 +6,11 @@ function Invoke-Executable {
 
         [parameter(Mandatory = $false, HelpMessage = "Specify arguments that will be passed to the executable.")]
         [ValidateNotNull()]
-        [string]$Arguments
+        [string]$Arguments,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify whether standard output should be redirected.")]
+        [ValidateNotNull()]
+        [bool]$RedirectStandardOutput = $true
     )
     try {
         # Create the Process Info object which contains details about the process
@@ -14,7 +18,7 @@ function Invoke-Executable {
         $ProcessStartInfoObject.FileName = $FilePath
         $ProcessStartInfoObject.CreateNoWindow = $true 
         $ProcessStartInfoObject.UseShellExecute = $false 
-        $ProcessStartInfoObject.RedirectStandardOutput = $true 
+        $ProcessStartInfoObject.RedirectStandardOutput = $RedirectStandardOutput
         $ProcessStartInfoObject.RedirectStandardError = $true 
         
         # Add the arguments to the process info object
