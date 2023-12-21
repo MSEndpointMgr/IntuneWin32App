@@ -124,7 +124,7 @@ function New-IntuneWin32AppPackage {
                                     Write-Output -InputObject $PSObject
                                 }
                                 else {
-                                    Write-Warning -Message "Unable to detect expected '$($SetupFile).intunewin' file after IntuneWinAppUtil.exe invocation"
+                                    Write-Warning -Message "Unable to detect expected '$([System.IO.Path]::GetFileNameWithoutExtension($IntuneWinAppPackage)).intunewin' file after IntuneWinAppUtil.exe invocation"
                                 }
                             }
                             else {
