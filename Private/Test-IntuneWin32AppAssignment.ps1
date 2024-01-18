@@ -12,6 +12,9 @@ function Test-IntuneWin32AppAssignment {
     .PARAMETER Target
         Specify the target type of the assignment, AllDevices, AllUsers or Group.
 
+    .PARAMETER Intent
+        Specify the intent of the assignment, either required, available or uninstall.
+    
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
@@ -30,7 +33,12 @@ function Test-IntuneWin32AppAssignment {
         [parameter(Mandatory = $false, HelpMessage = "Specify the target type of the assignment, AllDevices, AllUsers or Group.")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("AllDevices", "AllUsers", "Group")]
-        [string]$Target
+        [string]$Target,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify the intent of the assignment, either required, available or uninstall.")]
+        [ValidateSet("required", "available", "uninstall")]
+        [string]$Intent = $null
+
     )
     Process {
         # Handle initial value for duplicate assignment
@@ -57,9 +65,9 @@ function Test-IntuneWin32AppAssignment {
                 switch ($Target) {
                     "Group" {
                         foreach ($Win32AppAssignment in $Win32AppAssignments.value) {
-                            if ($Win32AppAssignment.target.'@odata.type' -match "groupAssignmentTarget") {
+                            if ($Win32AppAssignment.target.'@odata.type' -match "groupAssignmentTarget" -and (($null -eq $Intent) -or ($intent -eq $Win32AppAssignment.Intent))) {
                                 if ($Win32AppAssignment.target.groupId -like $GroupID) {
-                                    Write-Warning -Message "Win32 app assignment with id '$($Win32AppAssignment.id)' of target type '$($Target)' and GroupID '$($Win32AppAssignment.target.groupId)' already exists, duplicate assignments of this type is not permitted"
+                                    Write-Warning -Message "Win32 app assignment with id '$($Win32AppAssignment.id)' of target type '$($Target)' and GroupID '$($Win32AppAssignment.target.groupId)' with Intent '$($Intent)' already exists, duplicate assignments of this type is not permitted"
                                     $DuplicateAssignmentDetected = $true
                                 }
                             }

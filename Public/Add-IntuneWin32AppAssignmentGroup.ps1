@@ -313,7 +313,7 @@ function Add-IntuneWin32AppAssignmentGroup {
                 }
             }
 
-            $DuplicateAssignment = Test-IntuneWin32AppAssignment -ID $Win32AppID -Target "Group"
+            $DuplicateAssignment = Test-IntuneWin32AppAssignment -ID $Win32AppID -Target "Group" -Intent $Intent
             if ($DuplicateAssignment -eq $false) {
                 try {
                     # Attempt to call Graph and create new assignment for Win32 app
