@@ -10,16 +10,28 @@ function Invoke-Executable {
 
         [parameter(Mandatory = $false, HelpMessage = "Specify whether standard output should be redirected.")]
         [ValidateNotNull()]
-        [bool]$RedirectStandardOutput = $true
+        [bool]$RedirectStandardOutput = $true,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify whether standard error output should be redirected.")]
+        [ValidateNotNull()]
+        [bool]$RedirectStandardError = $true,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify whether to create a new window for the executable.")]
+        [ValidateNotNull()]
+        [bool]$CreateNoWindow = $true,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify whether to create a new window for the executable.")]
+        [ValidateNotNull()]
+        [bool]$UseShellExecute = $false
     )
     try {
         # Create the Process Info object which contains details about the process
-        $ProcessStartInfoObject = New-object System.Diagnostics.ProcessStartInfo 
+        $ProcessStartInfoObject = New-object -TypeName "System.Diagnostics.ProcessStartInfo"
         $ProcessStartInfoObject.FileName = $FilePath
-        $ProcessStartInfoObject.CreateNoWindow = $true 
-        $ProcessStartInfoObject.UseShellExecute = $false 
+        $ProcessStartInfoObject.CreateNoWindow = $CreateNoWindow
+        $ProcessStartInfoObject.UseShellExecute = $UseShellExecute
         $ProcessStartInfoObject.RedirectStandardOutput = $RedirectStandardOutput
-        $ProcessStartInfoObject.RedirectStandardError = $true 
+        $ProcessStartInfoObject.RedirectStandardError = $RedirectStandardError 
         
         # Add the arguments to the process info object
         if ($Arguments.Count -gt 0) {

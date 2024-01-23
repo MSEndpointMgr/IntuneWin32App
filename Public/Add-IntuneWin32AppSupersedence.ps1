@@ -65,13 +65,15 @@ function Add-IntuneWin32AppSupersedence {
             # Validate that the target Win32 app where supersedence is to be configured, is not passed in $Supersedence variable to prevent target app superseding itself
             if ($Win32AppID -notin $Supersedence.targetId) {
                 @($Supersedence; $Dependencies)
-                $Win32AppRelationshipsTable = [ordered]@{
-                    "relationships" = if ($Dependencies) { @($Supersedence; $Dependencies) } else { @($Supersedence) }
-                }
+                $Win32AppRelationshipsTable = [ordered]@{"relationships" = if ($Dependencies) { @($Supersedence; $Dependencies) } else { @($Supersedence) } }
+                $Win32AppRelationshipsTable_test = if ($Dependencies) { @($Supersedence; $Dependencies) } else { @($Supersedence) }
+                $Win32AppRelationshipsTable_JSON = ConvertTo-Json -InputObject @($Win32AppRelationshipsTable_test)
+                $Win32AppRelationshipsTable_JSON =  "{ ""relationships"": $($Win32AppRelationshipsTable_JSON) }" 
+                
 
                 try {
                     # Attempt to call Graph and configure supersedence for Win32 app
-                    Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body ($Win32AppRelationshipsTable | ConvertTo-Json) -ErrorAction Stop
+                    Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body ($Win32AppRelationshipsTable_JSON) -ErrorAction Stop
                 }
                 catch [System.Exception] {
                     Write-Warning -Message "An error occurred while configuring supersedence for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
