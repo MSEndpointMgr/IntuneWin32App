@@ -11,11 +11,11 @@ Get-Command -Module "IntuneWin32App"
 
 # Retrieve access token required for accessing Microsoft Graph
 # Delegated authentication (client authorization and device code flows) are currently supported
-Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com"
-Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com" -Verbose
-Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com" -DeviceCode
-Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com" -Refresh
-Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com" -Interactive
+Connect-MSIntuneGraph -TenantID "0bb413d7-160d-4839-868a-f3d46537f6af"
+Connect-MSIntuneGraph -TenantID "0bb413d7-160d-4839-868a-f3d46537f6af" -Verbose
+Connect-MSIntuneGraph -TenantID "0bb413d7-160d-4839-868a-f3d46537f6af" -DeviceCode
+Connect-MSIntuneGraph -TenantID "0bb413d7-160d-4839-868a-f3d46537f6af" -Refresh
+Connect-MSIntuneGraph -TenantID "0bb413d7-160d-4839-868a-f3d46537f6af" -Interactive
 
 
 # Access token available in global variable
