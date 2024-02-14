@@ -30,7 +30,8 @@ function Add-IntuneWin32AppSupersedence {
         [string]$ID,
         
         [parameter(Mandatory = $true, HelpMessage = "Provide an array of a single or multiple OrderedDictionary objects created with New-IntuneWin32AppSupersedence function.")]
-        [ValidateNotNullOrEmpty()]
+        [AllowEmptyCollection()]
+        [AllowNull()]
         [System.Collections.Specialized.OrderedDictionary[]]$Supersedence
     )
     Begin {
@@ -61,15 +62,11 @@ function Add-IntuneWin32AppSupersedence {
 
             # Check for existing dependency relations for Win32 app, as these relationships need to be included in the update
             $Dependencies = Get-IntuneWin32AppDependency -ID $Win32AppID
-
+            
             # Validate that the target Win32 app where supersedence is to be configured, is not passed in $Supersedence variable to prevent target app superseding itself
             if ($Win32AppID -notin $Supersedence.targetId) {
-                @($Supersedence; $Dependencies)
-                $Win32AppRelationshipsTable = [ordered]@{"relationships" = if ($Dependencies) { @($Supersedence; $Dependencies) } else { @($Supersedence) } }
-                $Win32AppRelationshipsTable_test = if ($Dependencies) { @($Supersedence; $Dependencies) } else { @($Supersedence) }
-                $Win32AppRelationshipsTable_JSON = ConvertTo-Json -InputObject @($Win32AppRelationshipsTable_test)
-                $Win32AppRelationshipsTable_JSON =  "{ ""relationships"": $($Win32AppRelationshipsTable_JSON) }" 
-                
+ 
+                $Win32AppRelationshipsTable_JSON = ConvertTo-IntuneWin32RelationshipJSON -Supersedence @($Supersedence) -Dependency @($Dependencies)
 
                 try {
                     # Attempt to call Graph and configure supersedence for Win32 app
