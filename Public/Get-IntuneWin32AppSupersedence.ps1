@@ -9,6 +9,9 @@ function Get-IntuneWin32AppSupersedence {
     .PARAMETER ID
         Specify the ID for an existing Win32 application to retrieve supersedence configuration.
 
+    .PARAMETER CHILDONLY
+        Return only supersedence children ignoring parent relationships
+
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
@@ -24,7 +27,11 @@ function Get-IntuneWin32AppSupersedence {
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the ID for an existing Win32 application to retrieve supersedence configuration.")]
         [ValidateNotNullOrEmpty()]
-        [string]$ID
+        [string]$ID,
+
+        [parameter(Mandatory = $false, HelpMessage = "Return on child supersedences")]
+        [ValidateNotNullOrEmpty()]
+        [switch] $ChildOnly
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -44,19 +51,22 @@ function Get-IntuneWin32AppSupersedence {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
         $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
-        if ($Win32App -ne $null) {
+        if ($null -ne $Win32App) {
             $Win32AppID = $Win32App.id
 
             try {
                 # Attempt to call Graph and retrieve supersedence configuration for Win32 app
                 $Win32AppRelationsResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/relationships" -Method "GET" -ErrorAction Stop
-
+                $Win32AppRelationsResponse_Return = @()
                 # Handle return value
-                if ($Win32AppRelationsResponse.value -ne $null) {
-                    if ($Win32AppRelationsResponse.value.'@odata.type' -like "#microsoft.graph.mobileAppSupersedence") {
-                        return $Win32AppRelationsResponse.value
-                    }
+                if ($null -ne $Win32AppRelationsResponse.value) {
+                    $Win32AppRelationsResponse_Return = $Win32AppRelationsResponse.value | WHere-Object { $_."@odata.type" -like "#microsoft.graph.mobileAppSupersedence" }
                 }
+                if($ChildOnly) {
+                    $Win32AppRelationsResponse_Return = $Win32AppRelationsResponse_Return | Where-Object { $_.targetType -eq "child"}
+                }
+                #Return as an array of hash tables rather than a PSCustomObject
+                return @(ConvertTo-Hashtable $Win32AppRelationsResponse_Return)
             }
             catch [System.Exception] {
                 Write-Warning -Message "An error occurred while retrieving supersedence configuration for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
