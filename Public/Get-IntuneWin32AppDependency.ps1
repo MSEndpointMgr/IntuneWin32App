@@ -43,19 +43,20 @@ function Get-IntuneWin32AppDependency {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
         $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
-        if ($Win32App -ne $null) {
+        if ($null -ne $Win32App) {
             $Win32AppID = $Win32App.id
 
             try {
                 # Attempt to call Graph and retrieve dependency configuration for Win32 app
                 $Win32AppRelationsResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/relationships" -Method "GET" -ErrorAction Stop
 
-                # Handle return value
-                if ($Win32AppRelationsResponse.value -ne $null) {
-                    if ($Win32AppRelationsResponse.value.'@odata.type' -like "#microsoft.graph.mobileAppDependency") {
-                        return $Win32AppRelationsResponse.value
-                    }
+                # Handle return value based on multiple relationships
+                $Win32AppRelationsResponse_Return = @()
+                if ($null -ne $Win32AppRelationsResponse.value) {
+                    $Win32AppRelationsResponse_Return =  $Win32AppRelationsResponse.value | Where-Object{$_.'@odata.type' -like "#microsoft.graph.mobileAppDependency" } 
                 }
+                 #Return as an array of hash tables rather than a PSCustomObject
+                return @(ConvertTo-Hashtable $Win32AppRelationsResponse_Return)
             }
             catch [System.Exception] {
                 Write-Warning -Message "An error occurred while retrieving supersedence configuration for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
