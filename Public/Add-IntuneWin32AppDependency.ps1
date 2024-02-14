@@ -29,7 +29,7 @@ function Add-IntuneWin32AppDependency {
         [string]$ID,
         
         [parameter(Mandatory = $true, HelpMessage = "Provide an array of a single or multiple OrderedDictionary objects created with New-IntuneWin32AppDependency function.")]
-        [ValidateNotNullOrEmpty()]
+        [AllowEmptyCollection()]
         [System.Collections.Specialized.OrderedDictionary[]]$Dependency
     )
     Begin {
@@ -59,17 +59,16 @@ function Add-IntuneWin32AppDependency {
             $Win32AppID = $Win32App.id
 
             # Check for existing supersedence relations for Win32 app, as these relationships need to be included in the update
-            $Supersedence = Get-IntuneWin32AppSupersedence -ID $Win32AppID
+            $Supersedence = Get-IntuneWin32AppSupersedence -ID $Win32AppID -ChildOnly
 
             # Validate that Win32 app where dependency is configured, is not passed in $Dependency variable to prevent an app depending on itself
             if ($Win32AppID -notin $Dependency.targetId) {
-                $Win32AppRelationshipsTable = [ordered]@{
-                    "relationships" = if ($Supersedence) { @($Dependency; $Supersedence) } else { @($Dependency) }
-                }
+
+                $Win32AppRelationshipsTable_JSON = ConvertTo-IntuneWin32RelationshipJSON -Supersedence @($supersedence) -Dependency @($Dependency)
 
                 try {
                     # Attempt to call Graph and configure dependency for Win32 app
-                    Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body ($Win32AppRelationshipsTable | ConvertTo-Json) -ErrorAction Stop
+                    Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body ($Win32AppRelationshipsTable_JSON) -ErrorAction Stop
                 }
                 catch [System.Exception] {
                     Write-Warning -Message "An error occurred while configuring dependency for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
