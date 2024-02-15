@@ -1,10 +1,10 @@
 function Remove-IntuneWin32AppSupersedence {
     <#
     .SYNOPSIS
-        Remove all supersedence configuration from an existing Win32 application.
+        Remove all supersedence both parent and child linking to an existing Win32 application.
 
     .DESCRIPTION
-        Remove all supersedence configuration from an existing Win32 application.
+        Remove all supersedence both parent and child linking to an existing Win32 application.
 
     .PARAMETER ID
         Specify the ID for an existing Win32 application where supersedence configuration will be removed.
@@ -19,6 +19,7 @@ function Remove-IntuneWin32AppSupersedence {
         1.0.0 - (2021-04-02) Function created
         1.0.1 - (2021-08-31) Updated to use new authentication header
         1.0.2 - (2023-09-04) Updated with Test-AccessToken function. Updated to remove supersedence configuration and not include dependency configuration
+                (2024-01-24) Updated due to what appear to be changes in the API
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -50,15 +51,11 @@ function Remove-IntuneWin32AppSupersedence {
             # Check for existing dependency relations for Win32 app, as these relationships should not be removed
             $Dependencies = Get-IntuneWin32AppDependency -ID $Win32AppID
 
-            # Create relationships table using ternary conditional expression to handle potential empty dependencies relations
-            $Win32AppRelationshipsTable = [ordered]@{
-                "relationships" = if ($Dependencies) { @($Dependencies) } else { $() }
-            }
+            $Win32AppRelationshipsTable_JSON = ConvertTo-IntuneWin32RelationshipJSON -Supersedence @() -Dependency @($Dependencies)
 
             try {
-                # Attempt to call Graph and remove supersedence configuration for Win32 app
-                Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body ($Win32AppRelationshipsTable | ConvertTo-Json) -ErrorAction Stop
-            }
+                        Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body $Win32AppRelationshipsTable_JSON -ErrorAction Stop
+                }
             catch [System.Exception] {
                 Write-Warning -Message "An error occurred while removing supersedence configuration for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
             }
