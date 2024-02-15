@@ -52,7 +52,7 @@ function Remove-IntuneWin32AppSupersedence {
 
             # Create relationships table using ternary conditional expression to handle potential empty dependencies relations
             $Win32AppRelationshipsTable = [ordered]@{
-                "relationships" = if ($Dependencies) { @($Dependencies) } else { $() }
+                "relationships" = @($Dependencies)
             }
 
             try {
