@@ -1,5 +1,12 @@
 # Release notes for IntuneWin32App module
 
+## 1.4.4
+- Improved handling of empty object references in functions `Remove-IntuneWin32AppSupersedence` and `Remove-IntuneWin32AppDependency` functions that would render a null value to be added in the JSON construct instead of `[]`.
+- Function `New-IntuneWin32AppPackage` function should now work better as for it's enforced output that it doesn't like when attempted to be hidden.
+- Improved (hopefully) all aspects as to add and remove supersedence and dependencies.
+- Improved return object property handling in `Get-IntuneWin32AppAssignment` function to include the same properties independent if using ID or Group parameter set. GroupID and GroupName properties are now also visible in the return object from the function when the ID parameter set is used and an assignment target type matches a group.
+- Fixed a typo in the Test-AccessToken inner function of the `New-IntuneWin32AppDependency` function implementation where it was not encapsulating the function execution inside parentheses.
+
 ## 1.4.3
 - Updated the New-IntuneWin32AppPackage function to work properly after the latest version of the IntuneWinAppUtil.exe was recently updated.
 

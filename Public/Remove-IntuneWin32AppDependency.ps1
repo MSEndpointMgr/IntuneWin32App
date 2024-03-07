@@ -13,12 +13,13 @@ function Remove-IntuneWin32AppDependency {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2023-09-04
+        Updated:     2024-03-07
 
         Version history:
         1.0.0 - (2021-08-31) Function created
         1.0.1 - (2023-09-04) Updated with Test-AccessToken function. Updated to remove dependency configuration and not include supersedence configuration
         1.0.2 - (2024-01-05) Fixed issue reported in #123, where the relationships table was not created correctly due a typo when creating an empty array
+        1.0.3 - (2024-03-07) Fixed a bug where the function would not handle empty supersedence object correctly
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -50,9 +51,9 @@ function Remove-IntuneWin32AppDependency {
             # Check for existing supersedence relations for Win32 app, as these relationships should not be removed
             $Supersedence = Get-IntuneWin32AppSupersedence -ID $Win32AppID
 
-            # Create relationships table using ternary conditional expression to handle empty supersedence relations
+            # Create relationships table to handle empty supersedence relations
             $Win32AppRelationshipsTable = [ordered]@{
-                "relationships" = if ($Supersedence) { @($Supersedence) } else { @() }
+                "relationships" = if ($Supersedence) { @($Supersedence) } else { , @() }
             }
 
             try {
