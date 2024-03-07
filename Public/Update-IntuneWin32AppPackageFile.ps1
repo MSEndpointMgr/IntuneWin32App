@@ -35,27 +35,36 @@ function Update-IntuneWin32AppPackageFile {
         [parameter(Mandatory = $true, HelpMessage = "Specify a local path to where the win32 app .intunewin file is located.")]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({
-            # Check if file name contains any invalid characters
-            if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
-            }
-            else {
-                # Check if full path exist
-                if (Test-Path -Path $_) {
-                    # Check if file extension is intunewin
-                    if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
-                        return $true
-                    }
-                    else {
-                        throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.intunewin'"
-                    }
+                # Check if file name contains any invalid characters
+                if ((Split-Path -Path $_ -Leaf).IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
+                    throw "File name '$(Split-Path -Path $_ -Leaf)' contains invalid characters"
                 }
                 else {
-                    throw "File or folder does not exist"
+                    # Check if full path exist
+                    if (Test-Path -Path $_) {
+                        # Check if file extension is intunewin
+                        if ([System.IO.Path]::GetExtension((Split-Path -Path $_ -Leaf)) -like ".intunewin") {
+                            return $true
+                        }
+                        else {
+                            throw "Given file name '$(Split-Path -Path $_ -Leaf)' contains an unsupported file extension. Supported extension is '.intunewin'"
+                        }
+                    }
+                    else {
+                        throw "File or folder does not exist"
+                    }
                 }
-            }
-        })]
-        [string]$FilePath
+            })]
+        [string]$FilePath,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.")]
+        [ValidateNotNullOrEmpty()]
+        [switch]$UseAzCopy,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify whether the AzCopy content transfer progress should use -WindowStyle Hidden or -NoNewWindow parameters for Start-Process. NoNewWindow will show transfer output, Hidden will not show progress but will support multi-threaded jobs.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("Hidden", "NoNewWindow")]
+        [string]$AzCopyWindowStyle = "NoNewWindow"
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -97,12 +106,12 @@ function Update-IntuneWin32AppPackageFile {
                         # Create a new file entry in Intune for the upload of the .intunewin file
                         Write-Verbose -Message "Constructing Win32 app content file body for uploading of .intunewin file"
                         $Win32AppFileBody = [ordered]@{
-                            "@odata.type" = "#microsoft.graph.mobileAppContentFile"
-                            "name" = $IntuneWinXMLMetaData.ApplicationInfo.FileName
-                            "size" = [int64]$IntuneWinXMLMetaData.ApplicationInfo.UnencryptedContentSize
+                            "@odata.type"   = "#microsoft.graph.mobileAppContentFile"
+                            "name"          = $IntuneWinXMLMetaData.ApplicationInfo.FileName
+                            "size"          = [int64]$IntuneWinXMLMetaData.ApplicationInfo.UnencryptedContentSize
                             "sizeEncrypted" = (Get-Item -Path $IntuneWinFilePath).Length
-                            "manifest" = $null
-                            "isDependency" = $false
+                            "manifest"      = $null
+                            "isDependency"  = $false
                         }
 
                         # Create the contentVersions files resource
@@ -115,19 +124,47 @@ function Update-IntuneWin32AppPackageFile {
                             Write-Verbose -Message "Waiting for Intune service to process contentVersions/files request"
                             $FilesUri = "mobileApps/$($Win32App.id)/microsoft.graph.win32LobApp/contentVersions/$($Win32AppContentVersionRequest.id)/files/$($Win32AppFileContentRequest.id)"
                             $ContentVersionsFiles = Wait-IntuneWin32AppFileProcessing -Stage "AzureStorageUriRequest" -Resource $FilesUri
-                            
+
                             # Upload .intunewin file to Azure Storage blob
-                            Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
+                            if ($PSBoundParameters["UseAzCopy"]) {
+                                $ContentSize = [System.Math]::Round($Win32AppFileBody.size / 1MB, 2)
+                                if ($ContentSize -lt 100) {
+                                    Write-Verbose -Message "Content size is less than 100MB, falling back to using native method for file transfer"
+                                    Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
+                                }
+                                else {
+                                    try {
+                                        Write-Verbose -Message "Using AzCopy.exe method for file transfer"
+                                        $SplatArgs = @{
+                                            StorageUri  = $ContentVersionsFiles.azureStorageUri
+                                            FilePath    = $IntuneWinFilePath
+                                            Resource    = $FilesUri
+                                            WindowStyle = $AzCopyWindowStyle
+                                            ErrorAction = "Stop"
+                                        }
+                                        Invoke-AzureCopyUtility @SplatArgs
+                                    }
+                                    catch [System.Exception] {
+                                        Write-Verbose -Message "AzCopy.exe transfer method failed with exception message: $($_.Exception.Message)"
+                                        Write-Verbose -Message "Falling back to native method"
+                                        Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
+                                    }
+                                }
+                            }
+                            else {
+                                Write-Verbose -Message "Using native method for file transfer"
+                                Invoke-AzureStorageBlobUpload -StorageUri $ContentVersionsFiles.azureStorageUri -FilePath $IntuneWinFilePath -Resource $FilesUri
+                            }
 
                             # Retrieve encryption meta data from .intunewin file
                             $IntuneWinEncryptionInfo = [ordered]@{
-                                "encryptionKey" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.EncryptionKey
-                                "macKey" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.macKey
+                                "encryptionKey"        = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.EncryptionKey
+                                "macKey"               = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.macKey
                                 "initializationVector" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.initializationVector
-                                "mac" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.mac
-                                "profileIdentifier" = "ProfileVersion1"
-                                "fileDigest" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.fileDigest
-                                "fileDigestAlgorithm" = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.fileDigestAlgorithm
+                                "mac"                  = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.mac
+                                "profileIdentifier"    = "ProfileVersion1"
+                                "fileDigest"           = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.fileDigest
+                                "fileDigestAlgorithm"  = $IntuneWinXMLMetaData.ApplicationInfo.EncryptionInfo.fileDigestAlgorithm
                             }
                             $IntuneWinFileEncryptionInfo = @{
                                 "fileEncryptionInfo" = $IntuneWinEncryptionInfo
@@ -140,13 +177,13 @@ function Update-IntuneWin32AppPackageFile {
                             # Wait for Intune service to process the commit file request
                             Write-Verbose -Message "Waiting for Intune service to process the commit file request"
                             $CommitFileRequest = Wait-IntuneWin32AppFileProcessing -Stage "CommitFile" -Resource $FilesUri
-                            
+
                             # Update committedContentVersion property for Win32 app
                             Write-Verbose -Message "Updating committedContentVersion property with ID '$($Win32AppContentVersionRequest.id)' for Win32 app with ID: $($Win32App.id)"
                             $Win32AppFileCommitBody = [ordered]@{
-                                "@odata.type" = "#microsoft.graph.win32LobApp"
+                                "@odata.type"             = "#microsoft.graph.win32LobApp"
                                 "committedContentVersion" = $Win32AppContentVersionRequest.id
-                                "largeIcon" = $Win32App.largeIcon
+                                "largeIcon"               = $Win32App.largeIcon
                             }
                             $Win32AppFileCommitBodyRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32App.id)" -Method "PATCH" -Body ($Win32AppFileCommitBody | ConvertTo-Json)
 
