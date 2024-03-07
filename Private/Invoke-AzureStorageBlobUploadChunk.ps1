@@ -13,11 +13,12 @@ function Invoke-AzureStorageBlobUploadChunk {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2021-04-02
+        Updated:     2024-01-10
 
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2021-04-02) Added UseBasicParsing to support conditions where IE first run experience have not been completed
+        1.0.2 - (2024-01-10) Fixed issue described in #128 - thanks to @jaspain for finding the solution
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -35,7 +36,8 @@ function Invoke-AzureStorageBlobUploadChunk {
 	$Uri = "$($StorageUri)&comp=block&blockid=$($ChunkID)"
 	$ISOEncoding = [System.Text.Encoding]::GetEncoding("iso-8859-1")
 	$EncodedBytes = $ISOEncoding.GetString($Bytes)
-	$Headers = @{
+    $Headers = @{
+		"content-type" = "text/plain; charset=iso-8859-1"
 		"x-ms-blob-type" = "BlockBlob"
 	}
 

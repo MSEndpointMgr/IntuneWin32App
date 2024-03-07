@@ -16,12 +16,13 @@ function Add-IntuneWin32AppSupersedence {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-04-01
-        Updated:     2023-09-04
+        Updated:     2024-01-05
 
         Version history:
         1.0.0 - (2021-04-01) Function created
         1.0.1 - (2021-08-31) Updated to use new authentication header
         1.0.1 - (2023-09-04) Fixed adding a dependency to not overwrite existing supersedence rules, reported in PR #105 (thank you pvorselaars). Updated with Test-AccessToken function
+        1.0.2 - (2024-01-05) Fixed a object property construction issue when creating the relationships table #122
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -64,9 +65,8 @@ function Add-IntuneWin32AppSupersedence {
 
             # Validate that the target Win32 app where supersedence is to be configured, is not passed in $Supersedence variable to prevent target app superseding itself
             if ($Win32AppID -notin $Supersedence.targetId) {
-                @($Supersedence; $Dependencies)
                 $Win32AppRelationshipsTable = [ordered]@{
-                    "relationships" = if ($Dependencies) { @($Supersedence; $Dependencies) } else { @($Supersedence) }
+                    "relationships" = @(if ($Dependencies) { @($Supersedence; $Dependencies) } else { @($Supersedence) })
                 }
 
                 try {

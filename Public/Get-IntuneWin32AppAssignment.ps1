@@ -22,7 +22,7 @@ function Get-IntuneWin32AppAssignment {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-04-29
-        Updated:     2023-09-04
+        Updated:     2024-01-05
 
         Version history:
         1.0.0 - (2020-04-29) Function created
@@ -32,6 +32,7 @@ function Get-IntuneWin32AppAssignment {
         1.0.4 - (2021-04-01) Updated token expired message to a warning instead of verbose output
         1.0.5 - (2021-08-31) Updated to use new authentication header
         1.0.6 - (2023-09-04) Updated with Test-AccessToken function. Added new properties in the output of assignments, such as FilterID, FilterType, DeliveryOptimizationPriority, Notifications, RestartSettings and InstallTimeSettings.
+        1.0.7 - (2024-01-05) Improved the property output from function to include the same properties independent of the parameter set name used
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -142,6 +143,7 @@ function Get-IntuneWin32AppAssignment {
                                     if ($AzureADGroupResponse.displayName -like "*$($GroupName)*") {
                                         Write-Verbose -Message "Win32 app assignment '$($Win32AppAssignment.id)' for app '$($Win32MobileApp.displayName)' matched group name: $($GroupName)"
     
+                                        # Determine if assignment is either Include or Exclude for GroupMode property output
                                         switch ($Win32AppAssignment.target.'@odata.type') {
                                             "#microsoft.graph.groupAssignmentTarget" {
                                                 $GroupMode = "Include"
@@ -176,11 +178,32 @@ function Get-IntuneWin32AppAssignment {
                         }
                         else {
                             foreach ($Win32AppAssignment in $Win32AppAssignmentResponse.value) {
+                                # Determine if assignment is either Include or Exclude for GroupMode property output
+                                switch ($Win32AppAssignment.target.'@odata.type') {
+                                    "#microsoft.graph.groupAssignmentTarget" {
+                                        $GroupMode = "Include"
+                                    }
+                                    "#microsoft.graph.exclusionGroupAssignmentTarget" {
+                                        $GroupMode = "Exclude"
+                                    }
+                                }
+
+                                # If data type is of type 'groupAssignmentTarget' then retrieve group name from given group id
+                                if ($Win32AppAssignment.target.'@odata.type' -like '*groupAssignmentTarget') {
+                                    $AzureADGroupResponse = Invoke-AzureADGraphRequest -Resource "groups/$($Win32AppAssignment.target.groupId)" -Method "GET"
+                                }
+                                else {
+                                    $AzureADGroupResponse = $null
+                                }
+
+                                # Create a custom object for return value
                                 $PSObject = [PSCustomObject]@{
                                     Type = $Win32AppAssignment.target.'@odata.type'
                                     AppName = $Win32MobileApp.displayName
                                     FilterID = $Win32AppAssignment.target.deviceAndAppManagementAssignmentFilterId
                                     FilterType = $Win32AppAssignment.target.deviceAndAppManagementAssignmentFilterType
+                                    GroupID = $Win32AppAssignment.target.groupId
+                                    GroupName = if ($AzureADGroupResponse -ne $null) { $AzureADGroupResponse.displayName } else { $null }
                                     Intent = $Win32AppAssignment.intent
                                     GroupMode = $GroupMode
                                     DeliveryOptimizationPriority = $Win32AppAssignment.settings.deliveryOptimizationPriority
