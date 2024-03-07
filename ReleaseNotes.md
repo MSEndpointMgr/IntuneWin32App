@@ -6,6 +6,8 @@
 - Improved (hopefully) all aspects as to add and remove supersedence and dependencies.
 - Improved return object property handling in `Get-IntuneWin32AppAssignment` function to include the same properties independent if using ID or Group parameter set. GroupID and GroupName properties are now also visible in the return object from the function when the ID parameter set is used and an assignment target type matches a group.
 - Fixed a typo in the Test-AccessToken inner function of the `New-IntuneWin32AppDependency` function implementation where it was not encapsulating the function execution inside parentheses.
+- Merged PR: ValidateRange works not as intended because the values are strings #142
+- Fixed mentioned issue with `Test-AccessToken` function mentioned in #138
 
 ## 1.4.3
 - Updated the New-IntuneWin32AppPackage function to work properly after the latest version of the IntuneWinAppUtil.exe was recently updated.
