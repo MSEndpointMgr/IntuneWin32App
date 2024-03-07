@@ -96,17 +96,17 @@ function Add-IntuneWin32AppAssignmentAllUsers {
 
         [parameter(Mandatory = $false, HelpMessage = "Specify the device restart grace period in minutes.")]
         [ValidateNotNullOrEmpty()]
-        [ValidateRange("1", "20160")]
+        [ValidateRange(1, 20160)]
         [int]$RestartGracePeriod = 1440,
 
         [parameter(Mandatory = $false, HelpMessage = "Specify a count in minutes when the restart count down display box is shown.")]
         [ValidateNotNullOrEmpty()]
-        [ValidateRange("1", "240")]
+        [ValidateRange(1, 240)]
         [int]$RestartCountDownDisplay = 15,
         
         [parameter(Mandatory = $false, HelpMessage = "Specify a count in minutes for snoozing the restart notification, if not specified the snooze functionality is now allowed.")]
         [ValidateNotNullOrEmpty()]
-        [ValidateRange("1", "712")]
+        [ValidateRange(1, 712)]
         [int]$RestartNotificationSnooze = 240,
 
         [parameter(Mandatory = $false, HelpMessage = "Specify the name of an existing Filter.")]
