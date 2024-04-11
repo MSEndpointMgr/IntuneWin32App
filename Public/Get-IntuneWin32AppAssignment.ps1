@@ -178,22 +178,42 @@ function Get-IntuneWin32AppAssignment {
                         }
                         else {
                             foreach ($Win32AppAssignment in $Win32AppAssignmentResponse.value) {
-                                # Determine if assignment is either Include or Exclude for GroupMode property output
-                                switch ($Win32AppAssignment.target.'@odata.type') {
+								# Determine if assignment is either Include or Exclude for GroupMode property output
+								switch ($Win32AppAssignment.target.'@odata.type') {
                                     "#microsoft.graph.groupAssignmentTarget" {
                                         $GroupMode = "Include"
                                     }
                                     "#microsoft.graph.exclusionGroupAssignmentTarget" {
                                         $GroupMode = "Exclude"
                                     }
+									"#microsoft.graph.allDevicesAssignmentTarget" {
+                                        $GroupMode = "Include"
+                                    }
+									"#microsoft.graph.allLicensedUsersAssignmentTarget" {
+                                        $GroupMode = "Include"
+                                    }
                                 }
-
-                                # If data type is of type 'groupAssignmentTarget' then retrieve group name from given group id
+								
+								# If data type is of type 'groupAssignmentTarget' then retrieve group name from given group id
                                 if ($Win32AppAssignment.target.'@odata.type' -like '*groupAssignmentTarget') {
                                     $AzureADGroupResponse = Invoke-AzureADGraphRequest -Resource "groups/$($Win32AppAssignment.target.groupId)" -Method "GET"
-                                }
-                                else {
-                                    $AzureADGroupResponse = $null
+									
+									if ($AzureADGroupResponse -ne $null)
+									{
+										$GroupNameObject = $AzureADGroupResponse.displayName
+									}
+								}
+								elseif ($Win32AppAssignment.target.'@odata.type' -like '*allDevicesAssignmentTarget')
+								{
+									$GroupNameObject = "All Devices"
+								}
+								elseif ($Win32AppAssignment.target.'@odata.type' -like '*allLicensedUsersAssignmentTarget')
+								{
+									$GroupNameObject = "All Users"
+								}
+                                else 
+								{
+                                    $GroupNameObject = $null
                                 }
 
                                 # Create a custom object for return value
@@ -203,7 +223,7 @@ function Get-IntuneWin32AppAssignment {
                                     FilterID = $Win32AppAssignment.target.deviceAndAppManagementAssignmentFilterId
                                     FilterType = $Win32AppAssignment.target.deviceAndAppManagementAssignmentFilterType
                                     GroupID = $Win32AppAssignment.target.groupId
-                                    GroupName = if ($AzureADGroupResponse -ne $null) { $AzureADGroupResponse.displayName } else { $null }
+                                    GroupName = $GroupNameObject
                                     Intent = $Win32AppAssignment.intent
                                     GroupMode = $GroupMode
                                     DeliveryOptimizationPriority = $Win32AppAssignment.settings.deliveryOptimizationPriority
