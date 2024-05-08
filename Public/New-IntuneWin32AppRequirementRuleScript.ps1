@@ -232,6 +232,9 @@ function New-IntuneWin32AppRequirementRuleScript {
 
             # Convert script file contents to base64 string
             $ScriptContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-Content -Path "$($ScriptFile)" -Raw -Encoding UTF8)))
+            # Get-Content -Raw will remove BOM UTF8 char, adding the Base64 version of that
+            # Scripts in powershell 5.1 written in UTF8 need the BOM char
+            $ScriptContent = "77u/"+ScriptContent
 
             switch ($PSCmdlet.ParameterSetName) {
                 "String" {
