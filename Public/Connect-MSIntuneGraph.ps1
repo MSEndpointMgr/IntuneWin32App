@@ -1,10 +1,10 @@
 function Connect-MSIntuneGraph {
     <#
     .SYNOPSIS
-        Get or refresh an access token using either authorization code flow or device code flow, that can be used to authenticate and authorize against resources in Graph API.
+        Get or refresh an access token using various authentication flows for the Graph API.
 
     .DESCRIPTION
-        Get or refresh an access token using either authorization code flow or device code flow, that can be used to authenticate and authorize against resources in Graph API.
+        Get or refresh an access token using various authentication flows for the Graph API.
 
     .PARAMETER TenantID
         Specify the tenant name or ID, e.g. tenant.onmicrosoft.com or <GUID>.
@@ -41,6 +41,7 @@ function Connect-MSIntuneGraph {
         1.0.1 - (2022-03-28) Added ClientSecret parameter input to support client secret auth flow
         1.0.2 - (2022-09-03) Added new global variable to hold the tenant id passed as parameter input for access token refresh scenario
         1.0.3 - (2023-04-07) Added support for client certificate auth flow (thanks to apcsb)
+        1.0.4 - (2024-05-29) Updated to integrate New-ClientCredentialsAccessToken function for client secret flow (thanks to @tjgruber)
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -50,7 +51,7 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
         [ValidateNotNullOrEmpty()]
         [string]$TenantID,
-        
+
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Application ID (Client ID) for an Azure AD service principal. Uses by default the 'Microsoft Intune PowerShell' service principal Application ID.")]
         [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
@@ -67,7 +68,6 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
         [ValidateNotNullOrEmpty()]
         [System.Security.Cryptography.X509Certificates.X509Certificate2]$ClientCert,
-
 
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify the Redirect URI (also known as Reply URL) of the custom Azure AD service principal.")]
         [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
@@ -89,7 +89,7 @@ function Connect-MSIntuneGraph {
         if (-not([string]::IsNullOrEmpty($ClientID))) {
             Write-Verbose -Message "Using custom Azure AD service principal specified with Application ID: $($ClientID)"
 
-            # Adjust RedirectUri parameter input in case non was passed on command line
+            # Adjust RedirectUri parameter input in case none was passed on command line
             if ([string]::IsNullOrEmpty($RedirectUri)) {
                 switch -Wildcard ($PSVersionTable["PSVersion"]) {
                     "5.*" {
@@ -116,6 +116,19 @@ function Connect-MSIntuneGraph {
     Process {
         Write-Verbose -Message "Using authentication flow: $($PSCmdlet.ParameterSetName)"
 
+        # Check if the MSAL.PS module is loaded and install if needed
+        if (($PSCmdlet.ParameterSetName -ne "ClientSecret") -and (-not (Get-Module -ListAvailable -Name MSAL.PS))) {
+            Write-Verbose -Message "MSAL.PS module not found. Installing MSAL.PS module..."
+            try {
+                Install-Module -Name MSAL.PS -Scope CurrentUser -Force -ErrorAction Stop
+                Write-Verbose -Message "MSAL.PS module installed successfully."
+            }
+            catch {
+                Write-Error -Message "Failed to install MSAL.PS module. Error: $_"
+                return
+            }
+        }
+
         try {
             # Construct table with common parameter input for Get-MsalToken cmdlet
             $AccessTokenArguments = @{
@@ -125,7 +138,7 @@ function Connect-MSIntuneGraph {
                 "ErrorAction" = "Stop"
             }
 
-            # Dynamically add parameter input for Get-MsalToken based on parameter set name
+            # Dynamically add parameter input based on parameter set name
             switch ($PSCmdlet.ParameterSetName) {
                 "Interactive" {
                     if ($PSBoundParameters["Refresh"]) {
@@ -140,49 +153,59 @@ function Connect-MSIntuneGraph {
                 }
                 "ClientSecret" {
                     Write-Verbose "Using clientSecret"
-                    $AccessTokenArguments.Add("ClientSecret", $(ConvertTo-SecureString $clientSecret -AsPlainText -Force))
+                    try {
+                        $Global:AccessToken = New-ClientCredentialsAccessToken -TenantID $TenantID -ClientID $ClientID -ClientSecret $ClientSecret
+                        $Global:AccessTokenTenantID = $TenantID
+                    }
+                    catch {
+                        Write-Error "An error occurred while retrieving access token using client credentials: $_"
+                        return
+                    }
+                    $AccessTokenArguments = $null  # Skip MSAL token retrieval
                 }
                 "ClientCert" {
                     Write-Verbose "Using clientCert"
                     $AccessTokenArguments.Add("ClientCertificate", $ClientCert)
                 }
-
             }
 
-            # Dynamically add parameter input for Get-MsalToken based on command line input
-            if ($PSBoundParameters["Interactive"]) {
-                $AccessTokenArguments.Add("Interactive", $true)
-            }
-            if ($PSBoundParameters["DeviceCode"]) {
-                if (-not($PSBoundParameters["Refresh"])) {
-                    $AccessTokenArguments.Add("DeviceCode", $true)
+            if ($AccessTokenArguments) {
+                # Dynamically add parameter input based on command line input
+                if ($PSBoundParameters["Interactive"]) {
+                    $AccessTokenArguments.Add("Interactive", $true)
+                }
+                if ($PSBoundParameters["DeviceCode"]) {
+                    if (-not($PSBoundParameters["Refresh"])) {
+                        $AccessTokenArguments.Add("DeviceCode", $true)
+                    }
+                }
+
+                try {
+                    # Attempt to retrieve or refresh an access token
+                    $Global:AccessToken = Get-MsalToken @AccessTokenArguments
+                    $Global:AccessTokenTenantID = $TenantID
+                    Write-Verbose -Message "Successfully retrieved access token"
+                }
+                catch {
+                    Write-Warning -Message "An error occurred while attempting to retrieve or refresh access token: $_"
+                    return
                 }
             }
 
             try {
-                # Attempt to retrieve or refresh an access token
-                $Global:AccessToken = Get-MsalToken @AccessTokenArguments
-                $Global:AccessTokenTenantID = $TenantID
-                Write-Verbose -Message "Successfully retrieved access token"
-                
-                try {
-                    # Construct the required authentication header
-                    $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
-                    Write-Verbose -Message "Successfully constructed authentication header"
+                # Construct the required authentication header
+                $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
+                Write-Verbose -Message "Successfully constructed authentication header"
 
-                    # Handle return value
-                    return $Global:AuthenticationHeader
-                }
-                catch [System.Exception] {
-                    Write-Warning -Message "An error occurred while attempting to construct authentication header. Error message: $($PSItem.Exception.Message)"
-                }
+                # Handle return value
+                return $Global:AuthenticationHeader
             }
-            catch [System.Exception] {
-                Write-Warning -Message "An error occurred while attempting to retrieve or refresh access token. Error message: $($PSItem.Exception.Message)"
+            catch {
+                Write-Warning -Message "An error occurred while attempting to construct authentication header: $_"
             }
         }
-        catch [System.Exception] {
-            Write-Warning -Message "An error occurred while constructing parameter input for access token retrieval. Error message: $($PSItem.Exception.Message)"
+        catch {
+            Write-Warning -Message "An error occurred while constructing parameter input for access token retrieval: $_"
         }
     }
 }
