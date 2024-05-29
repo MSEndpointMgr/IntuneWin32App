@@ -116,6 +116,19 @@ function Connect-MSIntuneGraph {
     Process {
         Write-Verbose -Message "Using authentication flow: $($PSCmdlet.ParameterSetName)"
 
+        # Check if the MSAL.PS module is loaded and install if needed
+        if (($PSCmdlet.ParameterSetName -ne "ClientSecret") -and (-not (Get-Module -ListAvailable -Name MSAL.PS))) {
+            Write-Verbose -Message "MSAL.PS module not found. Installing MSAL.PS module..."
+            try {
+                Install-Module -Name MSAL.PS -Scope CurrentUser -Force -ErrorAction Stop
+                Write-Verbose -Message "MSAL.PS module installed successfully."
+            }
+            catch {
+                Write-Error -Message "Failed to install MSAL.PS module. Error: $_"
+                return
+            }
+        }
+
         try {
             # Construct table with common parameter input for Get-MsalToken cmdlet
             $AccessTokenArguments = @{
