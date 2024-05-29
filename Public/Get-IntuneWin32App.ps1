@@ -34,7 +34,7 @@ function Get-IntuneWin32App {
 
         [parameter(Mandatory = $true, ParameterSetName = "ID", HelpMessage = "Specify the ID for a Win32 application.")]
         [ValidateNotNullOrEmpty()]
-        [string]$ID 
+        [string]$ID
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -89,7 +89,7 @@ function Get-IntuneWin32App {
                         $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)"
                         $Win32AppList.Add($Win32App)
                     }
-                    
+
                     # Handle return value
                     return $Win32AppList
                 }

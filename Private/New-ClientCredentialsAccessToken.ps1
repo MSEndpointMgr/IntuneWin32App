@@ -45,10 +45,10 @@ function New-ClientCredentialsAccessToken {
             "client_secret" = $ClientSecret
             "grant_type"    = "client_credentials"
         }
-        
+
         try {
             $GraphAPIAuthResult = Invoke-RestMethod -Method Post -Uri $graphRequestUri -Body $graphTokenRequestBody -ErrorAction Stop
-            
+
             # Validate the result
             if (-not $GraphAPIAuthResult.access_token) {
                 throw "No access token was returned in the response."

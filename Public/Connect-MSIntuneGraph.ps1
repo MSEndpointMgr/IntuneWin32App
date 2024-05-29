@@ -51,7 +51,7 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
         [ValidateNotNullOrEmpty()]
         [string]$TenantID,
-        
+
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Application ID (Client ID) for an Azure AD service principal. Uses by default the 'Microsoft Intune PowerShell' service principal Application ID.")]
         [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
@@ -191,7 +191,7 @@ function Connect-MSIntuneGraph {
                     return
                 }
             }
-            
+
             try {
                 # Construct the required authentication header
                 $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
