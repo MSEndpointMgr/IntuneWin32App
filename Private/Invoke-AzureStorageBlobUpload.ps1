@@ -55,7 +55,7 @@ function Invoke-AzureStorageBlobUpload {
         $UTCDateTime = (Get-Date).ToUniversalTime()
 
         # Determine the token expiration count as minutes
-        $TokenExpireMinutes = [System.Math]::Round(([datetime]$Global:AccessToken.ExpiresOn.ToUniversalTime().UtcDateTime - $UTCDateTime).TotalMinutes)
+        $TokenExpireMinutes = [System.Math]::Round(([datetime]$Global:AccessToken.ExpiresOn.ToUniversalTime() - $UTCDateTime).TotalMinutes)
 
         # Determine if refresh of access token is required when expiration count is less than or equal to minimum age
         if ($TokenExpireMinutes -le 10) {
