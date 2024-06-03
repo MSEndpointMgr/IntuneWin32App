@@ -7,7 +7,7 @@ function Invoke-AzureStorageBlobUpload {
         Upload and commit .intunewin file into Azure Storage blob container.
 
         This is a modified function that was originally developed by Dave Falkus and is available here:
-        https://github.com/microsoftgraph/powershell-intune-samples/blob/master/LOB_Application/Win32_Application_Add.ps1        
+        https://github.com/microsoftgraph/powershell-intune-samples/blob/master/LOB_Application/Win32_Application_Add.ps1
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -20,8 +20,8 @@ function Invoke-AzureStorageBlobUpload {
         1.0.1 - (2020-09-20) Fixed an issue where the System.IO.BinaryReader wouldn't open a file path containing whitespaces
         1.0.2 - (2021-03-15) Fixed an issue where SAS Uri renewal wasn't working correctly
         1.0.3 - (2022-09-03) Added access token refresh functionality when a token is about to expire, to prevent uploads from failing due to an expire access token
-        1.0.4 - (2023-09-04) Updated with Test-AccessToken function
-    #>    
+        1.0.5 - (2024-06-03) Added retry logic for chunk uploads and finalization steps to enhance reliability (thanks to @tjgruber)
+    #>
     param(
         [parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -36,6 +36,8 @@ function Invoke-AzureStorageBlobUpload {
         [string]$Resource
     )
     $ChunkSizeInBytes = 1024l * 1024l * 6l;
+    $RetryCount = 5
+    $RetryDelay = 10
 
     # Start the timer for SAS URI renewal
     $SASRenewalTimer = [System.Diagnostics.Stopwatch]::StartNew()
@@ -46,7 +48,7 @@ function Invoke-AzureStorageBlobUpload {
     $BinaryReader = New-Object -TypeName System.IO.BinaryReader([System.IO.File]::Open($FilePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite))
     $Position = $BinaryReader.BaseStream.Seek(0, [System.IO.SeekOrigin]::Begin)
 
-    # Upload each chunk and dheck whether a SAS URI renewal is required after each chunk is uploaded and renew if needed
+    # Upload each chunk and check whether a SAS URI renewal is required after each chunk is uploaded and renew if needed
     $ChunkIDs = @()
     for ($Chunk = 0; $Chunk -lt $ChunkCount; $Chunk++) {
         Write-Verbose -Message "SAS Uri renewal timer has elapsed for: $($SASRenewalTimer.Elapsed.Minutes) minute $($SASRenewalTimer.Elapsed.Seconds) seconds"
@@ -75,11 +77,34 @@ function Invoke-AzureStorageBlobUpload {
 
         Write-Progress -Activity "Uploading file to Azure Storage blob" -Status "Uploading chunk $($CurrentChunk) of $($ChunkCount)" -PercentComplete ($CurrentChunk / $ChunkCount * 100)
         Write-Verbose -Message "Uploading file to Azure Storage blob, processing chunk '$($CurrentChunk)' of '$($ChunkCount)'"
-        $UploadResponse = Invoke-AzureStorageBlobUploadChunk -StorageUri $StorageUri -ChunkID $ChunkID -Bytes $Bytes
-        
+
+        $UploadSuccess = $false
+        for ($i = 0; $i -lt $RetryCount; $i++) {
+            try {
+                if ($i -eq 1) {
+                    Write-Verbose -Message "First retry, attempting SAS Uri renewal"
+                    $RenewedSASUri = Invoke-AzureStorageBlobUploadRenew -Resource $Resource
+                    $StorageUri = $RenewedSASUri
+                    $SASRenewalTimer.Restart()
+                }
+                $UploadResponse = Invoke-AzureStorageBlobUploadChunk -StorageUri $StorageUri -ChunkID $ChunkID -Bytes $Bytes
+                $UploadSuccess = $true
+                break
+            } catch {
+                Write-Warning "Failed to upload chunk. Attempt $($i + 1) of $RetryCount. Error: $_"
+                Start-Sleep -Seconds $RetryDelay
+            }
+        }
+
+        if (-not $UploadSuccess) {
+            Write-Error "Failed to upload chunk after $RetryCount attempts. Aborting upload."
+            return
+        }
+
         if (($CurrentChunk -lt $ChunkCount) -and ($SASRenewalTimer.ElapsedMilliseconds -ge 450000)) {
             Write-Verbose -Message "SAS Uri renewal is required, attempting to renew"
             $RenewedSASUri = Invoke-AzureStorageBlobUploadRenew -Resource $Resource
+            $StorageUri = $RenewedSASUri
             $SASRenewalTimer.Restart()
         }
     }
@@ -91,7 +116,22 @@ function Invoke-AzureStorageBlobUpload {
     Write-Progress -Completed -Activity "Uploading File to Azure Storage blob"
 
     # Finalize the upload of the content file to Azure Storage blob
-    Invoke-AzureStorageBlobUploadFinalize -StorageUri $StorageUri -ChunkID $ChunkIDs
+    $FinalizeSuccess = $false
+    for ($i = 0; $i -lt $RetryCount; $i++) {
+        try {
+            Invoke-AzureStorageBlobUploadFinalize -StorageUri $StorageUri -ChunkID $ChunkIDs
+            $FinalizeSuccess = $true
+            break
+        } catch {
+            Write-Warning "Failed to finalize Azure Storage blob upload. Attempt $($i + 1) of $RetryCount. Error: $_"
+            Start-Sleep -Seconds $RetryDelay
+        }
+    }
+
+    if (-not $FinalizeSuccess) {
+        Write-Error "Failed to finalize upload after $RetryCount attempts. Aborting upload."
+        return
+    }
 
     # Close and dispose binary reader object
     $BinaryReader.Close()

@@ -18,6 +18,7 @@ function Invoke-AzureStorageBlobUploadFinalize {
         Version history:
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2024-05-29) Added content-type header to the REST request to ensure correct handling of the request body (thanks to @tjgruber)
+        1.0.2 - (2024-06-03) Added exception throwing on failure to support retry logic in the finalization process (thanks to @tjgruber)
     #>
     param(
         [parameter(Mandatory = $true)]
@@ -45,8 +46,9 @@ function Invoke-AzureStorageBlobUploadFinalize {
 
     try {
         $WebResponse = Invoke-RestMethod -Uri $Uri -Method "Put" -Body $XML -Headers $Headers -ErrorAction Stop
-    }
-    catch {
+        return $WebResponse
+    } catch {
         Write-Warning -Message "Failed to finalize Azure Storage blob upload. Error message: $($_.Exception.Message)"
+        throw $_
     }
 }
