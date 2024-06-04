@@ -19,7 +19,7 @@ function Invoke-AzureStorageBlobUpload {
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2020-09-20) Fixed an issue where the System.IO.BinaryReader wouldn't open a file path containing whitespaces
         1.0.2 - (2021-03-15) Fixed an issue where SAS Uri renewal wasn't working correctly
-        1.0.3 - (2022-09-03) Added access token refresh functionality when a token is about to expire, to prevent uploads from failing due to an expire access token
+        1.0.3 - (2022-09-03) Added access token refresh functionality when a token is about to expire, to prevent uploads from failing due to an expired access token
         1.0.5 - (2024-06-03) Added retry logic for chunk uploads and finalization steps to enhance reliability (thanks to @tjgruber)
     #>
     param(
@@ -83,9 +83,16 @@ function Invoke-AzureStorageBlobUpload {
             try {
                 if ($i -eq 1) {
                     Write-Verbose -Message "First retry, attempting SAS Uri renewal"
-                    $RenewedSASUri = Invoke-AzureStorageBlobUploadRenew -Resource $Resource
-                    $StorageUri = $RenewedSASUri
-                    $SASRenewalTimer.Restart()
+                    try {
+                        $RenewedSASUri = Invoke-AzureStorageBlobUploadRenew -Resource $Resource
+                        if ($null -ne $RenewedSASUri) {
+                            $StorageUri = $RenewedSASUri
+                        } else {
+                            Write-Warning "SAS Uri renewal failed"
+                        }
+                    } catch {
+                        Write-Warning "SAS Uri renewal attempt failed with error: $_. Continuing with retries."
+                    }
                 }
                 $UploadResponse = Invoke-AzureStorageBlobUploadChunk -StorageUri $StorageUri -ChunkID $ChunkID -Bytes $Bytes
                 $UploadSuccess = $true
@@ -103,9 +110,17 @@ function Invoke-AzureStorageBlobUpload {
 
         if (($CurrentChunk -lt $ChunkCount) -and ($SASRenewalTimer.ElapsedMilliseconds -ge 450000)) {
             Write-Verbose -Message "SAS Uri renewal is required, attempting to renew"
-            $RenewedSASUri = Invoke-AzureStorageBlobUploadRenew -Resource $Resource
-            $StorageUri = $RenewedSASUri
-            $SASRenewalTimer.Restart()
+            try {
+                $RenewedSASUri = Invoke-AzureStorageBlobUploadRenew -Resource $Resource
+                if ($null -ne $RenewedSASUri) {
+                    $StorageUri = $RenewedSASUri
+                    $SASRenewalTimer.Restart()
+                } else {
+                    Write-Warning "SAS Uri renewal failed, continuing with existing Uri"
+                }
+            } catch {
+                Write-Warning "SAS Uri renewal attempt failed with error: $_. Continuing with existing Uri."
+            }
         }
     }
 
