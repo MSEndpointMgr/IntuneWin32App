@@ -549,7 +549,7 @@ function Add-IntuneWin32App {
 
                     # Define retry parameters
                     $CreateContentVRetryCount = 5
-                    $CreateContentRetryDelay = 10
+                    $CreateContentVRetryDelay = 10
 
                     # Create Content Version for the Win32 app
                     Write-Verbose -Message "Attempting to create contentVersions resource for the Win32 app"
@@ -566,7 +566,7 @@ function Add-IntuneWin32App {
                             }
                         } catch {
                             Write-Warning "An error occurred while creating content version. Attempt $($i + 1) of $CreateContentVRetryCount. Error: $_"
-                            Start-Sleep -Seconds $CreateContentRetryDelay
+                            Start-Sleep -Seconds $CreateContentVRetryDelay
                         }
                     }
                     if (-not $ContentVersionSuccess) {
@@ -589,10 +589,29 @@ function Add-IntuneWin32App {
                                 "isDependency" = $false
                             }
 
+                            # Define retry parameters
+                            $CreateContentVResourceRetryCount = 5
+                            $CreateContentVResourceRetryDelay = 10
+
                             # Create the contentVersions files resource
-                            $Win32MobileAppFileContentRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions/$($Win32MobileAppContentVersionRequest.id)/files" -Method "POST" -Body ($Win32AppFileBody | ConvertTo-Json)
-                            if ([string]::IsNullOrEmpty($Win32MobileAppFileContentRequest.id)) {
-                                Write-Warning -Message "Failed to create Azure Storage blob for contentVersions/files resource for Win32 app"
+                            $FileContentSuccess = $false
+                            for ($i = 0; $i -lt $CreateContentVResourceRetryCount; $i++) {
+                                try {
+                                    $Win32MobileAppFileContentRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions/$($Win32MobileAppContentVersionRequest.id)/files" -Method "POST" -Body ($Win32AppFileBody | ConvertTo-Json) -ErrorAction Stop
+                                    if ([string]::IsNullOrEmpty($Win32MobileAppFileContentRequest.id)) {
+                                        Write-Warning -Message "Failed to create Azure Storage blob for contentVersions/files resource for Win32 app"
+                                    } else {
+                                        $FileContentSuccess = $true
+                                        break
+                                    }
+                                } catch {
+                                    Write-Warning "An error occurred while creating file content. Attempt $($i + 1) of $CreateContentVResourceRetryCount. Error: $_"
+                                    Start-Sleep -Seconds $CreateContentVResourceRetryDelay
+                                }
+                            }
+                            if (-not $FileContentSuccess) {
+                                Write-Error "Failed to create file content after $CreateContentVResourceRetryCount attempts. Aborting process."
+                                return
                             }
                             else {
                                 # Wait for the Win32 app file content URI to be created
