@@ -505,16 +505,35 @@ function Add-IntuneWin32App {
                     $Win32AppBody.Add("requirementRules", $AdditionalRequirementRule)
                 }
 
-                # Create the Win32 app
-                Write-Verbose -Message "Attempting to create Win32 app using constructed body converted to JSON content"
-                $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps" -Method "POST" -Body ($Win32AppBody | ConvertTo-Json)
-                if ($Win32MobileAppRequest.'@odata.type' -notlike "#microsoft.graph.win32LobApp") {
-                    Write-Warning -Message "Failed to create Win32 app using constructed body. Passing converted body as JSON to output."
-                    Write-Warning -Message ($Win32AppBody | ConvertTo-Json); break
+                # Define retry parameters
+                $RetryCount = 5
+                $RetryDelay = 10
+
+                # Create the Win32 app with retry logic
+                $AppCreationSuccess = $false
+                for ($i = 0; $i -lt $RetryCount; $i++) {
+                    try {
+                        Write-Verbose -Message "Attempting to create Win32 app using constructed body converted to JSON content"
+                        $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps" -Method "POST" -Body ($Win32AppBody | ConvertTo-Json) -ErrorAction Stop
+                        if ($Win32MobileAppRequest.'@odata.type' -notlike "#microsoft.graph.win32LobApp") {
+                            Write-Warning -Message "Failed to create Win32 app using constructed body. Passing converted body as JSON to output."
+                            Write-Warning -Message ($Win32AppBody | ConvertTo-Json); break
+                        } else {
+                            Write-Verbose -Message "Successfully created Win32 app with ID: $($Win32MobileAppRequest.id)"
+                            $AppCreationSuccess = $true
+                            break
+                        }
+                    } catch {
+                        Write-Warning "An error occurred while creating the Win32 application. Attempt $($i + 1) of $RetryCount. Error: $_"
+                        Start-Sleep -Seconds $RetryDelay
+                    }
+                }
+
+                if (-not $AppCreationSuccess) {
+                    Write-Error "Failed to create Win32 app after $RetryCount attempts. Aborting process."
+                    return
                 }
                 else {
-                    Write-Verbose -Message "Successfully created Win32 app with ID: $($Win32MobileAppRequest.id)"
-
                     # Invoke request to setup the reference pointers of each category added to the Win32 app
                     if ($PSBoundParameters["CategoryName"]) {
                         if ($CategoryList.Count -ge 1) {
