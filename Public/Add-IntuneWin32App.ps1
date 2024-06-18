@@ -506,12 +506,12 @@ function Add-IntuneWin32App {
                 }
 
                 # Define retry parameters
-                $RetryCount = 5
-                $RetryDelay = 10
+                $CreateWin32AppRetryCount = 5
+                $CreateWin32AppRetryDelay = 10
 
                 # Create the Win32 app with retry logic
                 $AppCreationSuccess = $false
-                for ($i = 0; $i -lt $RetryCount; $i++) {
+                for ($i = 0; $i -lt $CreateWin32AppRetryCount; $i++) {
                     try {
                         Write-Verbose -Message "Attempting to create Win32 app using constructed body converted to JSON content"
                         $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps" -Method "POST" -Body ($Win32AppBody | ConvertTo-Json) -ErrorAction Stop
@@ -524,13 +524,13 @@ function Add-IntuneWin32App {
                             break
                         }
                     } catch {
-                        Write-Warning "An error occurred while creating the Win32 application. Attempt $($i + 1) of $RetryCount. Error: $_"
-                        Start-Sleep -Seconds $RetryDelay
+                        Write-Warning "An error occurred while creating the Win32 application. Attempt $($i + 1) of $CreateWin32AppRetryCount. Error: $_"
+                        Start-Sleep -Seconds $CreateWin32AppRetryDelay
                     }
                 }
 
                 if (-not $AppCreationSuccess) {
-                    Write-Error "Failed to create Win32 app after $RetryCount attempts. Aborting process."
+                    Write-Error "Failed to create Win32 app after $CreateWin32AppRetryCount attempts. Aborting process."
                     return
                 }
                 else {
@@ -547,15 +547,33 @@ function Add-IntuneWin32App {
                         }
                     }
 
+                    # Define retry parameters
+                    $CreateContentVRetryCount = 5
+                    $CreateContentRetryDelay = 10
+
                     # Create Content Version for the Win32 app
                     Write-Verbose -Message "Attempting to create contentVersions resource for the Win32 app"
-                    $Win32MobileAppContentVersionRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions" -Method "POST" -Body "{}"
-                    if ([string]::IsNullOrEmpty($Win32MobileAppContentVersionRequest.id)) {
-                        Write-Warning -Message "Failed to create contentVersions resource for Win32 app"
+                    $ContentVersionSuccess = $false
+                    for ($i = 0; $i -lt $CreateContentVRetryCount; $i++) {
+                        try {
+                            $Win32MobileAppContentVersionRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions" -Method "POST" -Body "{}" -ErrorAction Stop
+                            if ([string]::IsNullOrEmpty($Win32MobileAppContentVersionRequest.id)) {
+                                Write-Warning -Message "Failed to create contentVersions resource for Win32 app"
+                            } else {
+                                Write-Verbose -Message "Successfully created contentVersions resource with ID: $($Win32MobileAppContentVersionRequest.id)"
+                                $ContentVersionSuccess = $true
+                                break
+                            }
+                        } catch {
+                            Write-Warning "An error occurred while creating content version. Attempt $($i + 1) of $CreateContentVRetryCount. Error: $_"
+                            Start-Sleep -Seconds $CreateContentRetryDelay
+                        }
+                    }
+                    if (-not $ContentVersionSuccess) {
+                        Write-Error "Failed to create content version after $CreateContentVRetryCount attempts. Aborting process."
+                        return
                     }
                     else {
-                        Write-Verbose -Message "Successfully created contentVersions resource with ID: $($Win32MobileAppContentVersionRequest.id)"
-
                         # Extract compressed .intunewin file to subfolder
                         $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName "Expand"
                         if ($IntuneWinFilePath -ne $null) {
