@@ -11,16 +11,16 @@ function Add-IntuneWin32App {
 
     .PARAMETER DisplayName
         Specify a display name for the Win32 application.
-    
+
     .PARAMETER Description
         Specify a description for the Win32 application.
-    
+
     .PARAMETER Publisher
         Specify a publisher name for the Win32 application.
 
     .PARAMETER AppVersion
         Specify the app version for the Win32 application.
-    
+
     .PARAMETER Developer
         Specify the developer name for the Win32 application.
 
@@ -32,10 +32,10 @@ function Add-IntuneWin32App {
 
     .PARAMETER InformationURL
         Specify the information URL for the Win32 application.
-    
+
     .PARAMETER PrivacyURL
         Specify the privacy URL for the Win32 application.
-    
+
     .PARAMETER CompanyPortalFeaturedApp
         Specify whether to have the Win32 application featured in Company Portal or not.
 
@@ -44,13 +44,13 @@ function Add-IntuneWin32App {
 
     .PARAMETER InstallCommandLine
         Specify the install command line for the Win32 application.
-    
+
     .PARAMETER UninstallCommandLine
         Specify the uninstall command line for the Win32 application.
 
     .PARAMETER InstallExperience
         Specify the install experience for the Win32 application. Supported values are: system or user.
-    
+
     .PARAMETER RestartBehavior
         Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.
 
@@ -59,7 +59,7 @@ function Add-IntuneWin32App {
 
     .PARAMETER AllowAvailableUninstall
         Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.
-    
+
     .PARAMETER DetectionRule
         Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.
 
@@ -106,7 +106,7 @@ function Add-IntuneWin32App {
         1.0.6 - (2021-08-31) Added AppVersion optional parameter
         1.0.7 - (2022-09-02) Removed break command that would prevent the Win32 app body JSON output from being display in case an error occured
         1.0.8 - (2022-10-02) Added UseAzCopy parameter switch to override the native transfer method. Specify the UseAzCopy parameter switch when uploading large applications.
-                             Added fallback removal code for the cleanup operation at the end of this function, since OneDrive's Files On Demand feature sometimes blocks the 
+                             Added fallback removal code for the cleanup operation at the end of this function, since OneDrive's Files On Demand feature sometimes blocks the
                              expanded .intunewin file cleanup process.
         1.0.9 - (2023-01-20) Added parameter AzCopyWindowStyle and ScopeTagName. Updated regex pattern for .intunewin file and parameter FilePath.
                              Added support for specifying Scope Tags when creating the Win 32 app, using the ScopeTagName parameter. Added UnattendedInstall and
@@ -332,7 +332,7 @@ function Add-IntuneWin32App {
                         }
                     }
                 }
-                
+
                 # Generate Win32 application body data table with different parameters based upon parameter set name
                 Write-Verbose -Message "Start constructing basic layout of Win32 app body"
                 switch ($PSCmdlet.ParameterSetName) {
@@ -373,7 +373,7 @@ function Add-IntuneWin32App {
                         if (-not($PSBoundParameters["Developer"])) {
                             $Developer = [string]::Empty
                         }
-                        
+
                         # Generate Win32 application body
                         $AppBodySplat = @{
                             "MSI" = $true
@@ -479,7 +479,7 @@ function Add-IntuneWin32App {
                 if (($DetectionRule.'@odata.type' -contains "#microsoft.graph.win32LobAppPowerShellScriptDetection") -and (@($DetectionRules).'@odata.type'.Count -gt 1)) {
                     Write-Warning -Message "Multiple PowerShell Script detection rules were detected, this is not a supported configuration"; break
                 }
-               
+
                 # Add detection rules to Win32 app body object
                 Write-Verbose -Message "Detection rule objects passed validation checks, attempting to add to existing Win32 app body"
                 $Win32AppBody.Add("detectionRules", $DetectionRule)
@@ -693,7 +693,7 @@ function Add-IntuneWin32App {
                                         $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)" -Method "GET"
                                         Write-Output -InputObject $Win32MobileAppRequest
                                     }
-                                }                                
+                                }
                             }
 
                             try {
