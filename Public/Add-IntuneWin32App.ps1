@@ -11,16 +11,16 @@ function Add-IntuneWin32App {
 
     .PARAMETER DisplayName
         Specify a display name for the Win32 application.
-    
+
     .PARAMETER Description
         Specify a description for the Win32 application.
-    
+
     .PARAMETER Publisher
         Specify a publisher name for the Win32 application.
 
     .PARAMETER AppVersion
         Specify the app version for the Win32 application.
-    
+
     .PARAMETER Developer
         Specify the developer name for the Win32 application.
 
@@ -32,10 +32,10 @@ function Add-IntuneWin32App {
 
     .PARAMETER InformationURL
         Specify the information URL for the Win32 application.
-    
+
     .PARAMETER PrivacyURL
         Specify the privacy URL for the Win32 application.
-    
+
     .PARAMETER CompanyPortalFeaturedApp
         Specify whether to have the Win32 application featured in Company Portal or not.
 
@@ -44,13 +44,13 @@ function Add-IntuneWin32App {
 
     .PARAMETER InstallCommandLine
         Specify the install command line for the Win32 application.
-    
+
     .PARAMETER UninstallCommandLine
         Specify the uninstall command line for the Win32 application.
 
     .PARAMETER InstallExperience
         Specify the install experience for the Win32 application. Supported values are: system or user.
-    
+
     .PARAMETER RestartBehavior
         Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.
 
@@ -59,7 +59,7 @@ function Add-IntuneWin32App {
 
     .PARAMETER AllowAvailableUninstall
         Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.
-    
+
     .PARAMETER DetectionRule
         Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.
 
@@ -106,7 +106,7 @@ function Add-IntuneWin32App {
         1.0.6 - (2021-08-31) Added AppVersion optional parameter
         1.0.7 - (2022-09-02) Removed break command that would prevent the Win32 app body JSON output from being display in case an error occured
         1.0.8 - (2022-10-02) Added UseAzCopy parameter switch to override the native transfer method. Specify the UseAzCopy parameter switch when uploading large applications.
-                             Added fallback removal code for the cleanup operation at the end of this function, since OneDrive's Files On Demand feature sometimes blocks the 
+                             Added fallback removal code for the cleanup operation at the end of this function, since OneDrive's Files On Demand feature sometimes blocks the
                              expanded .intunewin file cleanup process.
         1.0.9 - (2023-01-20) Added parameter AzCopyWindowStyle and ScopeTagName. Updated regex pattern for .intunewin file and parameter FilePath.
                              Added support for specifying Scope Tags when creating the Win 32 app, using the ScopeTagName parameter. Added UnattendedInstall and
@@ -332,7 +332,7 @@ function Add-IntuneWin32App {
                         }
                     }
                 }
-                
+
                 # Generate Win32 application body data table with different parameters based upon parameter set name
                 Write-Verbose -Message "Start constructing basic layout of Win32 app body"
                 switch ($PSCmdlet.ParameterSetName) {
@@ -373,7 +373,7 @@ function Add-IntuneWin32App {
                         if (-not($PSBoundParameters["Developer"])) {
                             $Developer = [string]::Empty
                         }
-                        
+
                         # Generate Win32 application body
                         $AppBodySplat = @{
                             "MSI" = $true
@@ -479,7 +479,7 @@ function Add-IntuneWin32App {
                 if (($DetectionRule.'@odata.type' -contains "#microsoft.graph.win32LobAppPowerShellScriptDetection") -and (@($DetectionRules).'@odata.type'.Count -gt 1)) {
                     Write-Warning -Message "Multiple PowerShell Script detection rules were detected, this is not a supported configuration"; break
                 }
-               
+
                 # Add detection rules to Win32 app body object
                 Write-Verbose -Message "Detection rule objects passed validation checks, attempting to add to existing Win32 app body"
                 $Win32AppBody.Add("detectionRules", $DetectionRule)
@@ -505,16 +505,35 @@ function Add-IntuneWin32App {
                     $Win32AppBody.Add("requirementRules", $AdditionalRequirementRule)
                 }
 
-                # Create the Win32 app
-                Write-Verbose -Message "Attempting to create Win32 app using constructed body converted to JSON content"
-                $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps" -Method "POST" -Body ($Win32AppBody | ConvertTo-Json)
-                if ($Win32MobileAppRequest.'@odata.type' -notlike "#microsoft.graph.win32LobApp") {
-                    Write-Warning -Message "Failed to create Win32 app using constructed body. Passing converted body as JSON to output."
-                    Write-Warning -Message ($Win32AppBody | ConvertTo-Json); break
+                # Define retry parameters
+                $CreateWin32AppRetryCount = 5
+                $CreateWin32AppRetryDelay = 10
+
+                # Create the Win32 app with retry logic
+                $AppCreationSuccess = $false
+                for ($i = 0; $i -lt $CreateWin32AppRetryCount; $i++) {
+                    try {
+                        Write-Verbose -Message "Attempting to create Win32 app using constructed body converted to JSON content"
+                        $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps" -Method "POST" -Body ($Win32AppBody | ConvertTo-Json) -ErrorAction Stop
+                        if ($Win32MobileAppRequest.'@odata.type' -notlike "#microsoft.graph.win32LobApp") {
+                            Write-Warning -Message "Failed to create Win32 app using constructed body. Passing converted body as JSON to output."
+                            Write-Warning -Message ($Win32AppBody | ConvertTo-Json); break
+                        } else {
+                            Write-Verbose -Message "Successfully created Win32 app with ID: $($Win32MobileAppRequest.id)"
+                            $AppCreationSuccess = $true
+                            break
+                        }
+                    } catch {
+                        Write-Warning "An error occurred while creating the Win32 application. Attempt $($i + 1) of $CreateWin32AppRetryCount. Error: $_"
+                        Start-Sleep -Seconds $CreateWin32AppRetryDelay
+                    }
+                }
+
+                if (-not $AppCreationSuccess) {
+                    Write-Error "Failed to create Win32 app after $CreateWin32AppRetryCount attempts. Aborting process."
+                    return
                 }
                 else {
-                    Write-Verbose -Message "Successfully created Win32 app with ID: $($Win32MobileAppRequest.id)"
-
                     # Invoke request to setup the reference pointers of each category added to the Win32 app
                     if ($PSBoundParameters["CategoryName"]) {
                         if ($CategoryList.Count -ge 1) {
@@ -528,15 +547,33 @@ function Add-IntuneWin32App {
                         }
                     }
 
+                    # Define retry parameters
+                    $CreateContentVRetryCount = 5
+                    $CreateContentVRetryDelay = 10
+
                     # Create Content Version for the Win32 app
                     Write-Verbose -Message "Attempting to create contentVersions resource for the Win32 app"
-                    $Win32MobileAppContentVersionRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions" -Method "POST" -Body "{}"
-                    if ([string]::IsNullOrEmpty($Win32MobileAppContentVersionRequest.id)) {
-                        Write-Warning -Message "Failed to create contentVersions resource for Win32 app"
+                    $ContentVersionSuccess = $false
+                    for ($i = 0; $i -lt $CreateContentVRetryCount; $i++) {
+                        try {
+                            $Win32MobileAppContentVersionRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions" -Method "POST" -Body "{}" -ErrorAction Stop
+                            if ([string]::IsNullOrEmpty($Win32MobileAppContentVersionRequest.id)) {
+                                Write-Warning -Message "Failed to create contentVersions resource for Win32 app"
+                            } else {
+                                Write-Verbose -Message "Successfully created contentVersions resource with ID: $($Win32MobileAppContentVersionRequest.id)"
+                                $ContentVersionSuccess = $true
+                                break
+                            }
+                        } catch {
+                            Write-Warning "An error occurred while creating content version. Attempt $($i + 1) of $CreateContentVRetryCount. Error: $_"
+                            Start-Sleep -Seconds $CreateContentVRetryDelay
+                        }
+                    }
+                    if (-not $ContentVersionSuccess) {
+                        Write-Error "Failed to create content version after $CreateContentVRetryCount attempts. Aborting process."
+                        return
                     }
                     else {
-                        Write-Verbose -Message "Successfully created contentVersions resource with ID: $($Win32MobileAppContentVersionRequest.id)"
-
                         # Extract compressed .intunewin file to subfolder
                         $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName "Expand"
                         if ($IntuneWinFilePath -ne $null) {
@@ -552,10 +589,29 @@ function Add-IntuneWin32App {
                                 "isDependency" = $false
                             }
 
+                            # Define retry parameters
+                            $CreateContentVResourceRetryCount = 5
+                            $CreateContentVResourceRetryDelay = 10
+
                             # Create the contentVersions files resource
-                            $Win32MobileAppFileContentRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions/$($Win32MobileAppContentVersionRequest.id)/files" -Method "POST" -Body ($Win32AppFileBody | ConvertTo-Json)
-                            if ([string]::IsNullOrEmpty($Win32MobileAppFileContentRequest.id)) {
-                                Write-Warning -Message "Failed to create Azure Storage blob for contentVersions/files resource for Win32 app"
+                            $FileContentSuccess = $false
+                            for ($i = 0; $i -lt $CreateContentVResourceRetryCount; $i++) {
+                                try {
+                                    $Win32MobileAppFileContentRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)/microsoft.graph.win32LobApp/contentVersions/$($Win32MobileAppContentVersionRequest.id)/files" -Method "POST" -Body ($Win32AppFileBody | ConvertTo-Json) -ErrorAction Stop
+                                    if ([string]::IsNullOrEmpty($Win32MobileAppFileContentRequest.id)) {
+                                        Write-Warning -Message "Failed to create Azure Storage blob for contentVersions/files resource for Win32 app"
+                                    } else {
+                                        $FileContentSuccess = $true
+                                        break
+                                    }
+                                } catch {
+                                    Write-Warning "An error occurred while creating file content. Attempt $($i + 1) of $CreateContentVResourceRetryCount. Error: $_"
+                                    Start-Sleep -Seconds $CreateContentVResourceRetryDelay
+                                }
+                            }
+                            if (-not $FileContentSuccess) {
+                                Write-Error "Failed to create file content after $CreateContentVResourceRetryCount attempts. Aborting process."
+                                return
                             }
                             else {
                                 # Wait for the Win32 app file content URI to be created
@@ -637,7 +693,7 @@ function Add-IntuneWin32App {
                                         $Win32MobileAppRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32MobileAppRequest.id)" -Method "GET"
                                         Write-Output -InputObject $Win32MobileAppRequest
                                     }
-                                }                                
+                                }
                             }
 
                             try {
