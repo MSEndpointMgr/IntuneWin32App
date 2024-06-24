@@ -36,6 +36,9 @@ function Add-IntuneWin32AppAssignmentGroup {
     .PARAMETER DeliveryOptimizationPriority
         Specify to download content in the background using default value of 'notConfigured', or set to download in foreground using 'foreground'.
 
+    .PARAMETER AutoUpdateSupersededApps
+        Specify to automatically update superseded app using default value of 'notConfigured'.
+
     .PARAMETER EnableRestartGracePeriod
         Specify whether Restart Grace Period functionality for this assignment should be configured, additional parameter input using at least RestartGracePeriod and RestartCountDownDisplay is required.
 
@@ -113,6 +116,11 @@ function Add-IntuneWin32AppAssignmentGroup {
         [ValidateNotNullOrEmpty()]
         [ValidateSet("notConfigured", "foreground")]
         [string]$DeliveryOptimizationPriority = "notConfigured",
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify to automatically update superseded app using default value of 'notConfigured'.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("notConfigured", "enabled", "unknownFutureValue")]
+        [string]$AutoUpdateSupersededApps = "notConfigured",
 
         [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify whether Restart Grace Period functionality for this assignment should be configured, additional parameter input using at least RestartGracePeriod and RestartCountDownDisplay is required.")]
         [ValidateNotNullOrEmpty()]
@@ -256,12 +264,17 @@ function Add-IntuneWin32AppAssignmentGroup {
             }
             switch ($PSCmdlet.ParameterSetName) {
                 "GroupInclude" {
+                    # Construct table for autoUpdate settings
+                    $AutoUpdateSettings = @{
+                        "autoUpdateSupersededApps" = $AutoUpdateSupersededApps
+                    }
                     $SettingsTable = @{
                         "@odata.type" = "#microsoft.graph.win32LobAppAssignmentSettings"
                         "notifications" = $Notification
                         "restartSettings" = $null
                         "deliveryOptimizationPriority" = $DeliveryOptimizationPriority
                         "installTimeSettings" = $null
+                        "autoUpdateSettings" = $AutoUpdateSettings
                     }
                     $Win32AppAssignmentBody.Add("settings", $SettingsTable)
                 }
