@@ -167,6 +167,8 @@ function Get-IntuneWin32AppAssignment {
                                             Notifications = $Win32AppAssignment.settings.notifications
                                             RestartSettings = $Win32AppAssignment.settings.restartSettings
                                             InstallTimeSettings = $Win32AppAssignment.settings.installTimeSettings
+                                            AutoUpdateSettings = $Win32AppAssignment.settings.autoUpdateSettings
+
                                         }
                                         $Win32AppAssignmentList.Add($PSObject) | Out-Null
                                     }
@@ -210,6 +212,7 @@ function Get-IntuneWin32AppAssignment {
                                     Notifications = $Win32AppAssignment.settings.notifications
                                     RestartSettings = $Win32AppAssignment.settings.restartSettings
                                     InstallTimeSettings = $Win32AppAssignment.settings.installTimeSettings
+                                    AutoUpdateSettings = $Win32AppAssignment.settings.autoUpdateSettings
                                 }
                                 $Win32AppAssignmentList.Add($PSObject) | Out-Null
                             }
