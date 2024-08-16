@@ -29,6 +29,9 @@ function Add-IntuneWin32AppAssignmentGroup {
 
     .PARAMETER DeadlineTime
         Specify a date time object for the deadline of the assignment.
+    
+    .PARAMETER AutoUpdateSupersededApps
+        Specify to automatically update superseded app using default value of 'notConfigured'.
 
     .PARAMETER UseLocalTime
         Specify to use either UTC of device local time for the assignment, set to 'True' for device local time and 'False' for UTC.
@@ -58,7 +61,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-09-20
-        Updated:     2023-09-20
+        Updated:     2024-08-16
 
         Version history:
         1.0.0 - (2020-09-20) Function created
@@ -67,6 +70,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         1.0.3 - (2021-08-31) Updated to use new authentication header
         1.0.4 - (2023-09-04) Updated with Test-AccessToken function
         1.0.5 - (2023-09-20) Updated with FilterName and FilterMode parameters
+        1.0.6 - (2024-08-16) Updated with autoUpdateSettings parameters
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -113,6 +117,11 @@ function Add-IntuneWin32AppAssignmentGroup {
         [ValidateNotNullOrEmpty()]
         [ValidateSet("notConfigured", "foreground")]
         [string]$DeliveryOptimizationPriority = "notConfigured",
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify to automatically update superseded app using default value of 'notConfigured'.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("notConfigured", "enabled", "unknownFutureValue")]
+        [string]$AutoUpdateSupersededApps = "notConfigured",
 
         [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify whether Restart Grace Period functionality for this assignment should be configured, additional parameter input using at least RestartGracePeriod and RestartCountDownDisplay is required.")]
         [ValidateNotNullOrEmpty()]
@@ -254,6 +263,12 @@ function Add-IntuneWin32AppAssignmentGroup {
                 "source" = "direct"
                 "target" = $TargetAssignment
             }
+
+            # Construct table for autoUpdate settings
+            $AutoUpdateSettings = @{
+                "autoUpdateSupersededAppsState" = $AutoUpdateSupersededApps
+            }
+
             switch ($PSCmdlet.ParameterSetName) {
                 "GroupInclude" {
                     $SettingsTable = @{
@@ -261,12 +276,26 @@ function Add-IntuneWin32AppAssignmentGroup {
                         "notifications" = $Notification
                         "restartSettings" = $null
                         "deliveryOptimizationPriority" = $DeliveryOptimizationPriority
+                        "autoUpdateSettings" = $null
                         "installTimeSettings" = $null
                     }
                     $Win32AppAssignmentBody.Add("settings", $SettingsTable)
                 }
                 "GroupExclude" {
                     $Win32AppAssignmentBody.Add("settings", $null)
+                }
+            }
+
+            if ($AutoUpdateSupersededApps -eq "enable") {
+                if ($Win32App.supersededAppCount -gt 0) {
+                    Write-Verbose -Message "Detected that Win32 app has an app to supersed"
+
+                    $Win32AppAssignmentBody.settings.autoUpdateSettings = @{
+                        "autoUpdateSupersededAppsState" = $AutoUpdateSupersededApps
+                    }
+                }
+                else {
+                    Write-Warning -Message "Win32 app was not configured for superseding an app. Please add a superseding relationship."
                 }
             }
 
