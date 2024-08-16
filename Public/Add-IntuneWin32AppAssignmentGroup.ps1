@@ -286,8 +286,8 @@ function Add-IntuneWin32AppAssignmentGroup {
                 }
             }
 
-            if ($AutoUpdateSupersededApps -eq "enable") {
-                if ($Win32App.supersededAppCount -gt 0) {
+            if ($AutoUpdateSupersededApps -eq "enabled") {
+                if ($Win32App.supersededAppCount -ne 0) {
                     Write-Verbose -Message "Detected that Win32 app has an app to supersed"
 
                     $Win32AppAssignmentBody.settings.autoUpdateSettings = @{
