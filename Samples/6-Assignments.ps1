@@ -32,6 +32,7 @@ $AssignmentArgs = @{
     "EnableRestartGracePeriod" = $true
     "RestartNotificationSnooze" = 220
     "Verbose" = $true
+    "AutoUpdateSupersededApps" = "enabled"
 }
 Add-IntuneWin32AppAssignmentGroup @AssignmentArgs
 
@@ -72,6 +73,7 @@ $AssignmentArgs = @{
     "EnableRestartGracePeriod" = $true
     "RestartNotificationSnooze" = 220
     "Verbose" = $true
+    "AutoUpdateSupersededApps" = "enabled"
 }
 Add-IntuneWin32AppAssignmentAllDevices @AssignmentArgs
 
@@ -97,5 +99,6 @@ $AssignmentArgs = @{
     "EnableRestartGracePeriod" = $true
     "RestartNotificationSnooze" = 220
     "Verbose" = $true
+    "AutoUpdateSupersededApps" = "enabled"
 }
 Add-IntuneWin32AppAssignmentAllUsers @AssignmentArgs

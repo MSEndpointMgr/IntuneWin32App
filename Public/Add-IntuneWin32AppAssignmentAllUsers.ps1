@@ -21,6 +21,9 @@ function Add-IntuneWin32AppAssignmentAllUsers {
     .PARAMETER DeadlineTime
         Specify a date time object for the deadline of the assignment.
 
+    .PARAMETER AutoUpdateSupersededApps
+        Specify to automatically update superseded app using default value of 'notConfigured'.
+
     .PARAMETER UseLocalTime
         Specify to use either UTC of device local time for the assignment, set to 'True' for device local time and 'False' for UTC.
 
@@ -56,6 +59,7 @@ function Add-IntuneWin32AppAssignmentAllUsers {
         1.0.1 - (2021-04-01) Updated token expired message to a warning instead of verbose output
         1.0.2 - (2021-08-31) Updated to use new authentication header
         1.0.3 - (2023-09-04) Updated with Test-AccessToken function
+        1.0.4 - (2024-08-19) Updated with autoUpdateSettings parameters
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -89,6 +93,11 @@ function Add-IntuneWin32AppAssignmentAllUsers {
         [ValidateNotNullOrEmpty()]
         [ValidateSet("notConfigured", "foreground")]
         [string]$DeliveryOptimizationPriority = "notConfigured",
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify to automatically update superseded app using default value of 'notConfigured'.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("notConfigured", "enabled", "unknownFutureValue")]
+        [string]$AutoUpdateSupersededApps = "notConfigured",
 
         [parameter(Mandatory = $false, HelpMessage = "Specify whether Restart Grace Period functionality for this assignment should be configured, additional parameter input using at least RestartGracePeriod and RestartCountDownDisplay is required.")]
         [ValidateNotNullOrEmpty()]
@@ -206,12 +215,21 @@ function Add-IntuneWin32AppAssignmentAllUsers {
                 "source" = "direct"
                 "target" = $TargetAssignment
             }
+
+            # Construct table for autoUpdate settings
+            if($AutoUpdateSupersededApps -eq "enabled"){if($Win32App.supersededAppCount -eq 0){$AutoUpdateSupersededApps = "notConfigured"}}
+
+            $AutoUpdateSettings = @{
+                "autoUpdateSupersededAppsState" = $AutoUpdateSupersededApps
+            }
+
             $SettingsTable = @{
                 "@odata.type" = "#microsoft.graph.win32LobAppAssignmentSettings"
                 "notifications" = $Notification
                 "restartSettings" = $null
                 "deliveryOptimizationPriority" = $DeliveryOptimizationPriority
                 "installTimeSettings" = $null
+                "autoUpdateSettings" = $AutoUpdateSettings
             }
             $Win32AppAssignmentBody.Add("settings", $SettingsTable)
 

@@ -70,7 +70,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         1.0.3 - (2021-08-31) Updated to use new authentication header
         1.0.4 - (2023-09-04) Updated with Test-AccessToken function
         1.0.5 - (2023-09-20) Updated with FilterName and FilterMode parameters
-        1.0.6 - (2024-08-16) Updated with autoUpdateSettings parameters
+        1.0.6 - (2024-08-19) Updated with autoUpdateSettings parameters
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -265,6 +265,8 @@ function Add-IntuneWin32AppAssignmentGroup {
             }
 
             # Construct table for autoUpdate settings
+            if($AutoUpdateSupersededApps -eq "enabled"){if($Win32App.supersededAppCount -eq 0){$AutoUpdateSupersededApps = "notConfigured"}}
+
             $AutoUpdateSettings = @{
                 "autoUpdateSupersededAppsState" = $AutoUpdateSupersededApps
             }
@@ -276,8 +278,8 @@ function Add-IntuneWin32AppAssignmentGroup {
                         "notifications" = $Notification
                         "restartSettings" = $null
                         "deliveryOptimizationPriority" = $DeliveryOptimizationPriority
-                        "autoUpdateSettings" = $null
                         "installTimeSettings" = $null
+                        "autoUpdateSettings" = $AutoUpdateSettings
                     }
                     $Win32AppAssignmentBody.Add("settings", $SettingsTable)
                 }
