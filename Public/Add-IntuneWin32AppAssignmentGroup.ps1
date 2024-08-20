@@ -61,7 +61,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-09-20
-        Updated:     2024-08-16
+        Updated:     2024-08-20
 
         Version history:
         1.0.0 - (2020-09-20) Function created
@@ -70,7 +70,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         1.0.3 - (2021-08-31) Updated to use new authentication header
         1.0.4 - (2023-09-04) Updated with Test-AccessToken function
         1.0.5 - (2023-09-20) Updated with FilterName and FilterMode parameters
-        1.0.6 - (2024-08-19) Updated with autoUpdateSettings parameters
+        1.0.6 - (2024-08-20) Updated with autoUpdateSettings parameters
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -285,19 +285,6 @@ function Add-IntuneWin32AppAssignmentGroup {
                 }
                 "GroupExclude" {
                     $Win32AppAssignmentBody.Add("settings", $null)
-                }
-            }
-
-            if ($AutoUpdateSupersededApps -eq "enabled") {
-                if ($Win32App.supersededAppCount -ne 0) {
-                    Write-Verbose -Message "Detected that Win32 app has an app to supersed"
-
-                    $Win32AppAssignmentBody.settings.autoUpdateSettings = @{
-                        "autoUpdateSupersededAppsState" = $AutoUpdateSupersededApps
-                    }
-                }
-                else {
-                    Write-Warning -Message "Win32 app was not configured for superseding an app. Please add a superseding relationship."
                 }
             }
 
