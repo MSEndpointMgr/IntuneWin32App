@@ -19,6 +19,7 @@ function Invoke-IntuneGraphRequest {
         1.0.3 - (2022-10-02) Changed content type for requests to support UTF8
         1.0.4 - (2023-01-23) Added non-mandatory Route parameter to support different routes of Graph API in addition to better handle error response body depending on PSEdition
         1.0.5 - (2023-02-03) Improved error handling
+        1.0.6 - (2024-08-22) Enhanced URI construction to handle optional Route parameters
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -27,7 +28,6 @@ function Invoke-IntuneGraphRequest {
         [string]$APIVersion,
 
         [parameter(Mandatory = $false)]
-        [ValidateNotNullOrEmpty()]
         [string]$Route = "deviceAppManagement",
 
         [parameter(Mandatory = $true)]
@@ -49,7 +49,11 @@ function Invoke-IntuneGraphRequest {
     )
     try {
         # Construct full URI
-        $GraphURI = "https://graph.microsoft.com/$($APIVersion)/$($Route)/$($Resource)"
+        $GraphURI = if ([string]::IsNullOrEmpty($Route)) {
+            "https://graph.microsoft.com/$($APIVersion)/$($Resource)"
+        } else {
+            "https://graph.microsoft.com/$($APIVersion)/$($Route)/$($Resource)"
+        }
         Write-Verbose -Message "$($Method) $($GraphURI)"
 
         # Call Graph API and get JSON response
