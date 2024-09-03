@@ -19,11 +19,12 @@ Add-IntuneWin32AppAssignmentGroup @AssignmentArgs
 
 
 # Create a group based include assignment with additional configuration
+# AutoUpdateSupersededApps only for Intent Available
 $AssignmentArgs = @{
     "Include" = $true
     "ID" = $Win32AppID
     "GroupID" = $GroupID
-    "Intent" = "required" #available, uninstall
+    "Intent" = "available" #required, uninstall
     "Notification" = "hideAll"
     "AvailableTime" = (Get-Date).AddHours(1)
     "DeadlineTime" = (Get-Date).AddDays(1)
@@ -32,6 +33,7 @@ $AssignmentArgs = @{
     "EnableRestartGracePeriod" = $true
     "RestartNotificationSnooze" = 220
     "Verbose" = $true
+    "AutoUpdateSupersededApps" = "enabled"
 }
 Add-IntuneWin32AppAssignmentGroup @AssignmentArgs
 
@@ -61,9 +63,10 @@ Add-IntuneWin32AppAssignmentAllDevices @AssignmentArgs
 
 
 # Add an 'All Devices' assignment with additional configuration
+# AutoUpdateSupersededApps only for Intent Available
 $AssignmentArgs = @{
     "ID" = $Win32AppID
-    "Intent" = "required" #available, uninstall
+    "Intent" = "available" #required, uninstall
     "Notification" = "hideAll"
     "AvailableTime" = (Get-Date).AddHours(1)
     "DeadlineTime" = (Get-Date).AddDays(1)
@@ -72,6 +75,7 @@ $AssignmentArgs = @{
     "EnableRestartGracePeriod" = $true
     "RestartNotificationSnooze" = 220
     "Verbose" = $true
+    "AutoUpdateSupersededApps" = "enabled"
 }
 Add-IntuneWin32AppAssignmentAllDevices @AssignmentArgs
 
@@ -86,9 +90,10 @@ Add-IntuneWin32AppAssignmentAllUsers @AssignmentArgs
 
 
 # Add an 'All Users' assignment with additional configuration
+# AutoUpdateSupersededApps only for Intent Available
 $AssignmentArgs = @{
     "ID" = $Win32AppID
-    "Intent" = "required" #available, uninstall
+    "Intent" = "available" #required, uninstall
     "Notification" = "hideAll"
     "AvailableTime" = (Get-Date).AddHours(1)
     "DeadlineTime" = (Get-Date).AddDays(1)
@@ -97,5 +102,6 @@ $AssignmentArgs = @{
     "EnableRestartGracePeriod" = $true
     "RestartNotificationSnooze" = 220
     "Verbose" = $true
+    "AutoUpdateSupersededApps" = "enabled"
 }
 Add-IntuneWin32AppAssignmentAllUsers @AssignmentArgs
