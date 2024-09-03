@@ -49,13 +49,14 @@ function Add-IntuneWin32AppAssignmentAllUsers {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-09-20
-        Updated:     2023-09-04
+        Updated:     2024-09-03
 
         Version history:
         1.0.0 - (2020-09-20) Function created
         1.0.1 - (2021-04-01) Updated token expired message to a warning instead of verbose output
         1.0.2 - (2021-08-31) Updated to use new authentication header
         1.0.3 - (2023-09-04) Updated with Test-AccessToken function
+        1.0.4 - (2024-09-03) Removed AvailableTime validation
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -130,15 +131,6 @@ function Add-IntuneWin32AppAssignmentAllUsers {
 
         # Set script variable for error action preference
         $ErrorActionPreference = "Stop"
-
-        # Validate that Available parameter input datetime object is in the past if the Deadline parameter is not passed on the command line
-        if ($PSBoundParameters["AvailableTime"]) {
-            if (-not($PSBoundParameters["DeadlineTime"])) {
-                if ($AvailableTime -gt (Get-Date).AddDays(-1)) {
-                    Write-Warning -Message "Validation failed for parameter input, available date time needs to be before the current used 'as soon as possible' deadline date and time, with a offset of 1 day"; break
-                }
-            }
-        }
 
         # Validate that Deadline parameter input datetime object is in the future if the Available parameter is not passed on the command line
         if ($PSBoundParameters["DeadlineTime"]) {
