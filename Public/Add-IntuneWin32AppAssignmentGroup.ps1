@@ -61,7 +61,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-09-20
-        Updated:     2024-08-16
+        Updated:     2024-09-03
 
         Version history:
         1.0.0 - (2020-09-20) Function created
@@ -71,6 +71,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         1.0.4 - (2023-09-04) Updated with Test-AccessToken function
         1.0.5 - (2023-09-20) Updated with FilterName and FilterMode parameters
         1.0.6 - (2024-09-03) Updated with autoUpdateSettings parameters
+        1.0.7 - (2024-09-03) Deleted AvailableTime validation
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -168,15 +169,6 @@ function Add-IntuneWin32AppAssignmentGroup {
         if ($PSBoundParameters["AutoUpdateSupersededApps"]) {
             if ($PSBoundParameters["Intent"] -ne "available") {
                 Write-Warning -Message "Validation failed for parameter input, AutoUpdateSupersededApps is only allowed with Intent equals available."; break
-            }
-        }
-
-        # Validate that Available parameter input datetime object is in the past if the Deadline parameter is not passed on the command line
-        if ($PSBoundParameters["AvailableTime"]) {
-            if (-not($PSBoundParameters["DeadlineTime"])) {
-                if ($AvailableTime -gt (Get-Date).AddDays(-1)) {
-                    Write-Warning -Message "Validation failed for parameter input, available date time needs to be before the current used 'as soon as possible' deadline date and time, with a offset of 1 day"; break
-                }
             }
         }
 
