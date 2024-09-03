@@ -24,9 +24,6 @@ function Add-IntuneWin32AppAssignmentAllUsers {
     .PARAMETER AutoUpdateSupersededApps
         Specify to automatically update superseded app using default value of 'notConfigured'.
 
-    .PARAMETER AutoUpdateSupersededApps
-        Specify to automatically update superseded app using default value of 'notConfigured'.
-
     .PARAMETER UseLocalTime
         Specify to use either UTC of device local time for the assignment, set to 'True' for device local time and 'False' for UTC.
 
