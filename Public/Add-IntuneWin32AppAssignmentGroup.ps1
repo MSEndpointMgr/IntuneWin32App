@@ -29,6 +29,9 @@ function Add-IntuneWin32AppAssignmentGroup {
 
     .PARAMETER DeadlineTime
         Specify a date time object for the deadline of the assignment.
+    
+    .PARAMETER AutoUpdateSupersededApps
+        Specify to automatically update superseded app using default value of 'notConfigured'.
 
     .PARAMETER UseLocalTime
         Specify to use either UTC of device local time for the assignment, set to 'True' for device local time and 'False' for UTC.
@@ -58,7 +61,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-09-20
-        Updated:     2023-09-20
+        Updated:     2024-09-03
 
         Version history:
         1.0.0 - (2020-09-20) Function created
@@ -67,6 +70,8 @@ function Add-IntuneWin32AppAssignmentGroup {
         1.0.3 - (2021-08-31) Updated to use new authentication header
         1.0.4 - (2023-09-04) Updated with Test-AccessToken function
         1.0.5 - (2023-09-20) Updated with FilterName and FilterMode parameters
+        1.0.6 - (2024-09-03) Updated with autoUpdateSettings parameters
+        1.0.7 - (2024-09-03) Deleted AvailableTime validation
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -114,6 +119,11 @@ function Add-IntuneWin32AppAssignmentGroup {
         [ValidateSet("notConfigured", "foreground")]
         [string]$DeliveryOptimizationPriority = "notConfigured",
 
+        [parameter(Mandatory = $false, HelpMessage = "Specify to automatically update superseded app using default value of 'notConfigured'.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("notConfigured", "enabled", "unknownFutureValue")]
+        [string]$AutoUpdateSupersededApps = "notConfigured",
+
         [parameter(Mandatory = $false, ParameterSetName = "GroupInclude", HelpMessage = "Specify whether Restart Grace Period functionality for this assignment should be configured, additional parameter input using at least RestartGracePeriod and RestartCountDownDisplay is required.")]
         [ValidateNotNullOrEmpty()]
         [bool]$EnableRestartGracePeriod = $false,
@@ -143,7 +153,7 @@ function Add-IntuneWin32AppAssignmentGroup {
     )
     Begin {
         # Ensure required authentication header variable exists
-        if ($Global:AuthenticationHeader -eq $null) {
+        if ($null -eq $Global:AuthenticationHeader) {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
         }
         else {
@@ -155,12 +165,10 @@ function Add-IntuneWin32AppAssignmentGroup {
         # Set script variable for error action preference
         $ErrorActionPreference = "Stop"
 
-        # Validate that Available parameter input datetime object is in the past if the Deadline parameter is not passed on the command line
-        if ($PSBoundParameters["AvailableTime"]) {
-            if (-not($PSBoundParameters["DeadlineTime"])) {
-                if ($AvailableTime -gt (Get-Date).AddDays(-1)) {
-                    Write-Warning -Message "Validation failed for parameter input, available date time needs to be before the current used 'as soon as possible' deadline date and time, with a offset of 1 day"; break
-                }
+        # Validate that Deadline parameter input datetime object is in the future if the Available parameter is not passed on the command line
+        if ($PSBoundParameters["AutoUpdateSupersededApps"]) {
+            if ($PSBoundParameters["Intent"] -ne "available") {
+                Write-Warning -Message "Validation failed for parameter input, AutoUpdateSupersededApps is only allowed with Intent equals available."; break
             }
         }
 
@@ -214,9 +222,9 @@ function Add-IntuneWin32AppAssignmentGroup {
             # Ensure a Filter exist by given name from parameter input
             Write-Verbose -Message "Querying for specified Filter: $($FilterName)"
             $AssignmentFilters = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceManagement/assignmentFilters" -Verbose
-            if ($AssignmentFilters -ne $null) {
+            if ($null -ne $AssignmentFilters) {
                 $AssignmentFilter = $AssignmentFilters | Where-Object { $PSItem.displayName -eq $FilterName }
-                if ($AssignmentFilter -ne $null) {
+                if ($null -ne $AssignmentFilter) {
                     Write-Verbose -Message "Found Filter with display name '$($AssignmentFilter.displayName)' and id: $($AssignmentFilter.id)"
                 }
                 else {
@@ -228,7 +236,7 @@ function Add-IntuneWin32AppAssignmentGroup {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
         $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
-        if ($Win32App -ne $null) {
+        if ($null -ne $Win32App) {
             $Win32AppID = $Win32App.id
 
             # Construct target assignment body
@@ -242,8 +250,8 @@ function Add-IntuneWin32AppAssignmentGroup {
             }
             $TargetAssignment = @{
                 "@odata.type" = $DataType
-                "deviceAndAppManagementAssignmentFilterId" = if ($AssignmentFilter -ne $null) { $AssignmentFilter.id } else { $null }
-                "deviceAndAppManagementAssignmentFilterType" = if ($AssignmentFilter -ne $null) { $FilterMode } else { "none" }
+                "deviceAndAppManagementAssignmentFilterId" = if ($null -ne $AssignmentFilter) { $AssignmentFilter.id } else { $null }
+                "deviceAndAppManagementAssignmentFilterType" = if ($null -ne $AssignmentFilter) { $FilterMode } else { "none" }
                 "groupId" = $GroupID
             }
 
@@ -254,6 +262,7 @@ function Add-IntuneWin32AppAssignmentGroup {
                 "source" = "direct"
                 "target" = $TargetAssignment
             }
+
             switch ($PSCmdlet.ParameterSetName) {
                 "GroupInclude" {
                     $SettingsTable = @{
@@ -267,6 +276,13 @@ function Add-IntuneWin32AppAssignmentGroup {
                 }
                 "GroupExclude" {
                     $Win32AppAssignmentBody.Add("settings", $null)
+                }
+            }
+
+            # Amend AutoUpdateSupersededApps property if Intent equals available and the app superseeds an other app
+            if (($Intent -eq "available") -and ($Win32App.supersededAppCount -gt 0)) {
+                $Win32AppAssignmentBody.settings.autoUpdateSettings = @{
+                    "autoUpdateSupersededAppsState" = $AutoUpdateSupersededApps
                 }
             }
 
