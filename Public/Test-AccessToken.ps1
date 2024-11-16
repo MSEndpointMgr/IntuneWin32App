@@ -13,13 +13,14 @@ function Test-AccessToken {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-04-08
-        Updated:     2024-03-07
+        Updated:     2024-11-15
 
         Version history:
         1.0.0 - (2021-04-08) Script created
         1.0.1 - (2023-09-04) Updated to use TotalMinutes instead of Minutes property, which would cause for inaccurate results
         1.0.2 - (2024-03-07) Invocation of function when access token is null will now return false
         1.0.3 - (2024-05-29) Updated to handle tokens with ExpiresOn property (thanks to @tjgruber)
+        1.0.4 - (2024-11-15) Refactor date handling for token to fix locale-specific parsing issues (thanks to @tjgruber)
     #>
     param(
         [parameter(Mandatory = $false, HelpMessage = "Specify the renewal threshold for access token age in minutes.")]
@@ -43,8 +44,21 @@ function Test-AccessToken {
                 return $false
             }
 
-            # Determine the token expiration count as minutes
-            $TokenExpireMinutes = [System.Math]::Round(($ExpiresOn - $UTCDateTime).TotalMinutes)
+            # Convert ExpiresOn to DateTimeOffset in UTC
+            $ExpiresOnUTC = [DateTimeOffset]::Parse(
+                $Global:AccessToken.ExpiresOn.ToString(),
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::AssumeUniversal
+                ).ToUniversalTime()
+
+            # Get the current UTC time as DateTimeOffset
+            $UTCDateTime = [DateTimeOffset]::UtcNow
+
+            # Calculate the TimeSpan between expiration and current time
+            $TimeSpan = $ExpiresOnUTC - $UTCDateTime
+
+            # Calculate the token expiration time in minutes
+            $TokenExpireMinutes = [System.Math]::Round($TimeSpan.TotalMinutes)
 
             # Determine if refresh of access token is required when expiration count is less than or equal to minimum age
             if ($TokenExpireMinutes -le $RenewalThresholdMinutes) {
