@@ -43,8 +43,21 @@ function Test-AccessToken {
                 return $false
             }
 
-            # Determine the token expiration count as minutes
-            $TokenExpireMinutes = [System.Math]::Round(($ExpiresOn - $UTCDateTime).TotalMinutes)
+            # Convert ExpiresOn to DateTimeOffset in UTC
+            $ExpiresOnUTC = [DateTimeOffset]::Parse(
+                $Global:AccessToken.ExpiresOn.ToString(),
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::AssumeUniversal
+                ).ToUniversalTime()
+
+            # Get the current UTC time as DateTimeOffset
+            $UTCDateTime = [DateTimeOffset]::UtcNow
+
+            # Calculate the TimeSpan between expiration and current time
+            $TimeSpan = $ExpiresOnUTC - $UTCDateTime
+
+            # Calculate the token expiration time in minutes
+            $TokenExpireMinutes = [System.Math]::Round($TimeSpan.TotalMinutes)
 
             # Determine if refresh of access token is required when expiration count is less than or equal to minimum age
             if ($TokenExpireMinutes -le $RenewalThresholdMinutes) {
