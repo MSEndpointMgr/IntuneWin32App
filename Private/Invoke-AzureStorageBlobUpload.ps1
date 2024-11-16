@@ -53,11 +53,21 @@ function Invoke-AzureStorageBlobUpload {
     for ($Chunk = 0; $Chunk -lt $ChunkCount; $Chunk++) {
         Write-Verbose -Message "SAS Uri renewal timer has elapsed for: $($SASRenewalTimer.Elapsed.Minutes) minute $($SASRenewalTimer.Elapsed.Seconds) seconds"
 
-        # Refresh access token if about to expire
-        $UTCDateTime = (Get-Date).ToUniversalTime()
+        # Convert ExpiresOn to DateTimeOffset in UTC
+        $ExpiresOnUTC = [DateTimeOffset]::Parse(
+            $Global:AccessToken.ExpiresOn.ToString(),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::AssumeUniversal
+            ).ToUniversalTime()
 
-        # Determine the token expiration count as minutes
-        $TokenExpireMinutes = [System.Math]::Round(([datetime]$Global:AccessToken.ExpiresOn.ToUniversalTime() - $UTCDateTime).TotalMinutes)
+        # Get the current UTC time as DateTimeOffset
+        $UTCDateTime = [DateTimeOffset]::UtcNow
+
+        # Calculate the TimeSpan between expiration and current time
+        $TimeSpan = $ExpiresOnUTC - $UTCDateTime
+
+        # Calculate the token expiration time in minutes
+        $TokenExpireMinutes = [System.Math]::Round($TimeSpan.TotalMinutes)
 
         # Determine if refresh of access token is required when expiration count is less than or equal to minimum age
         if ($TokenExpireMinutes -le 10) {
