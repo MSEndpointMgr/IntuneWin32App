@@ -103,6 +103,7 @@ FunctionsToExport = @("Add-IntuneWin32App",
                       "Remove-IntuneWin32AppDependency",
                       "Remove-IntuneWin32AppSupersedence",
                       "Set-IntuneWin32App",
+                      "Set-IntuneWin32AppDetectionRule",
                       "Test-AccessToken",
                       "Update-IntuneWin32AppPackageFile"
 )
