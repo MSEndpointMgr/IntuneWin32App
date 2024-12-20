@@ -114,6 +114,7 @@ function Add-IntuneWin32App {
                              Added CategoryName parameter. UseAzCopy parameter will now only be allowed if content size is 100MB or more.
         1.1.0 - (2023-03-17) Added parameter switch AllowAvailableUninstall. Fixed issue #77 related to scope tags and custom roles.
         1.1.1 - (2023-09-02) Added parameter MaximumInstallationTimeInMinutes. Updated with Test-AccessToken function.
+        1.1.2 - (2024-12-19) Added logic to make Expand folder unique to avoid file access conflicts. (tjgruber)
     #>
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName = "MSI")]
     param(
@@ -575,7 +576,8 @@ function Add-IntuneWin32App {
                     }
                     else {
                         # Extract compressed .intunewin file to subfolder
-                        $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName "Expand"
+                        $SubFolderName = "Expand_" + [System.Guid]::NewGuid().ToString("N").Substring(0, 12)
+                        $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName $SubFolderName
                         if ($IntuneWinFilePath -ne $null) {
                             # Create a new file entry in Intune for the upload of the .intunewin file
                             Write-Verbose -Message "Constructing Win32 app content file body for uploading of .intunewin file"

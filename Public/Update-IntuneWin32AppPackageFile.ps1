@@ -25,6 +25,7 @@ function Update-IntuneWin32AppPackageFile {
         1.0.3 - (2021-08-31) Fixed an issue where the PATCH operation would remove the largeIcon property value of the Win32 app
         1.0.4 - (2023-01-20) Updated regex pattern for parameter FilePath
         1.0.5 - (2023-09-04) Updated with Test-AccessToken function
+        1.0.6 - (2024-12-19) Added logic to make Expand folder unique to avoid file access conflicts. (tjgruber)
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -92,7 +93,8 @@ function Update-IntuneWin32AppPackageFile {
                     Write-Verbose -Message "Successfully created contentVersions resource with ID: $($Win32AppContentVersionRequest.id)"
 
                     # Extract compressed .intunewin file to subfolder
-                    $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName "Expand"
+                    $SubFolderName = "Expand_" + [System.Guid]::NewGuid().ToString("N").Substring(0, 12)
+                    $IntuneWinFilePath = Expand-IntuneWin32AppCompressedFile -FilePath $FilePath -FileName $IntuneWinXMLMetaData.ApplicationInfo.FileName -FolderName $SubFolderName
                     if ($IntuneWinFilePath -ne $null) {
                         # Create a new file entry in Intune for the upload of the .intunewin file
                         Write-Verbose -Message "Constructing Win32 app content file body for uploading of .intunewin file"
