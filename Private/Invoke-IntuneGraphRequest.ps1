@@ -10,7 +10,7 @@ function Invoke-IntuneGraphRequest {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-02-03
+        Updated:     2024-12-24
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -19,6 +19,7 @@ function Invoke-IntuneGraphRequest {
         1.0.3 - (2022-10-02) Changed content type for requests to support UTF8
         1.0.4 - (2023-01-23) Added non-mandatory Route parameter to support different routes of Graph API in addition to better handle error response body depending on PSEdition
         1.0.5 - (2023-02-03) Improved error handling
+        1.0.6 - (2024-12-24) Added retry logic to handle transient errors like 429 TooManyRequests. (tjgruber)
     #>    
     param(
         [parameter(Mandatory = $true)]
@@ -47,77 +48,86 @@ function Invoke-IntuneGraphRequest {
         [ValidateNotNullOrEmpty()]
         [string]$ContentType = "application/json; charset=utf-8"
     )
-    try {
-        # Construct full URI
-        $GraphURI = "https://graph.microsoft.com/$($APIVersion)/$($Route)/$($Resource)"
-        Write-Verbose -Message "$($Method) $($GraphURI)"
 
-        # Call Graph API and get JSON response
-        switch ($Method) {
-            "GET" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction Stop -Verbose:$false
+    # Retry parameters
+    $RetryCount = 5
+    $RetryDelay = 10
+
+    for ($i = 0; $i -lt $RetryCount; $i++) {
+        try {
+            # Construct full URI
+            $GraphURI = "https://graph.microsoft.com/$($APIVersion)/$($Route)/$($Resource)"
+            Write-Verbose -Message "$($Method) $($GraphURI)"
+
+            # Call Graph API and get JSON response
+            switch ($Method) {
+                "GET" {
+                    $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction Stop -Verbose:$false
+                }
+                "POST" {
+                    $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
+                }
+                "PATCH" {
+                    $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
+                }
+                "DELETE" {
+                    $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction Stop -Verbose:$false
+                }
             }
-            "POST" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
+
+            # If successful, return the response
+            return $GraphResponse
+
+        } catch [System.Net.WebException] {
+            # Capture current error
+            $ExceptionItem = $PSItem
+
+            # Check if response is a 429 TooManyRequests
+            if ($ExceptionItem.Exception.Response.StatusCode -eq 429) {
+                Write-Warning "Graph request failed with status code '429 TooManyRequests'. Retrying in $RetryDelay seconds... (Attempt $($i + 1) of $RetryCount)"
+                Start-Sleep -Seconds $RetryDelay
+            } else {
+                # Handle non-429 exceptions
+                $ErrorMessage = "Graph request failed with status code '$($ExceptionItem.Exception.Response.StatusCode)'."
+                Write-Warning $ErrorMessage
+
+                # Extract response error details for cross-platform compatibility
+                $ResponseBody = [PSCustomObject]@{
+                    "ErrorMessage" = [string]::Empty
+                    "ErrorCode" = [string]::Empty
+                }
+
+                switch ($PSVersionTable.PSVersion.Major) {
+                    "5" {
+                        # Read response stream (PowerShell 5 compatibility)
+                        $StreamReader = New-Object -TypeName "System.IO.StreamReader" -ArgumentList @($ExceptionItem.Exception.Response.GetResponseStream())
+                        $StreamReader.BaseStream.Position = 0
+                        $StreamReader.DiscardBufferedData()
+                        $ResponseReader = ($StreamReader.ReadToEnd() | ConvertFrom-Json)
+
+                        # Set response error details
+                        $ResponseBody.ErrorMessage = $ResponseReader.error.message
+                        $ResponseBody.ErrorCode = $ResponseReader.error.code
+                    }
+                    default {
+                        # Read error details for modern PowerShell versions
+                        $ErrorDetails = $ExceptionItem.ErrorDetails.Message | ConvertFrom-Json
+                        $ResponseBody.ErrorMessage = $ErrorDetails.error.message
+                        $ResponseBody.ErrorCode = $ErrorDetails.error.code
+                    }
+                }
+
+                # Log error details and rethrow the exception
+                Write-Warning "Error details: $($ResponseBody.ErrorCode) - $($ResponseBody.ErrorMessage)"
+                throw $ExceptionItem
             }
-            "PATCH" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -Body $Body -ContentType $ContentType -ErrorAction Stop -Verbose:$false
-            }
-            "DELETE" {
-                $GraphResponse = Invoke-RestMethod -Uri $GraphURI -Headers $Global:AuthenticationHeader -Method $Method -ErrorAction Stop -Verbose:$false
-            }
+        } catch {
+            # Handle all other exceptions and retry
+            Write-Warning "Graph request failed with error: $_. Retrying in $RetryDelay seconds... (Attempt $($i + 1) of $RetryCount)"
+            Start-Sleep -Seconds $RetryDelay
         }
-
-        return $GraphResponse
     }
-    catch [System.Exception] {
-        # Capture current error
-        $ExceptionItem = $PSItem
 
-        # Construct response error custom object for cross platform support
-        $ResponseBody = [PSCustomObject]@{
-            "ErrorMessage" = [string]::Empty
-            "ErrorCode" = [string]::Empty
-        }
-
-        # Read response error details differently depending PSVersion
-        switch ($PSVersionTable.PSVersion.Major) {
-            "5" {
-                # Read the response stream
-                $StreamReader = New-Object -TypeName "System.IO.StreamReader" -ArgumentList @($ExceptionItem.Exception.Response.GetResponseStream())
-                $StreamReader.BaseStream.Position = 0
-                $StreamReader.DiscardBufferedData()
-                $ResponseReader = ($StreamReader.ReadToEnd() | ConvertFrom-Json)
-
-                # Set response error details
-                $ResponseBody.ErrorMessage = $ResponseReader.error.message
-                $ResponseBody.ErrorCode = $ResponseReader.error.code
-            }
-            default {
-                $ErrorDetails = $ExceptionItem.ErrorDetails.Message | ConvertFrom-Json
-
-                # Set response error details
-                $ResponseBody.ErrorMessage = $ErrorDetails.error.message
-                $ResponseBody.ErrorCode = $ErrorDetails.error.code
-            }
-        }
-
-        # Convert status code to integer for output
-        $HttpStatusCodeInteger = ([int][System.Net.HttpStatusCode]$ExceptionItem.Exception.Response.StatusCode)
-
-        switch ($Method) {
-            "GET" {
-                # Output warning message that the request failed with error message description from response stream
-                Write-Warning -Message "Graph request failed with status code '$($HttpStatusCodeInteger) ($($ExceptionItem.Exception.Response.StatusCode))'. Error details: $($ResponseBody.ErrorCode) - $($ResponseBody.ErrorMessage)"
-            }
-            default {
-                # Construct new custom error record
-                $SystemException = New-Object -TypeName "System.Management.Automation.RuntimeException" -ArgumentList ("{0}: {1}" -f $ResponseBody.ErrorCode, $ResponseBody.ErrorMessage)
-                $ErrorRecord = New-Object -TypeName "System.Management.Automation.ErrorRecord" -ArgumentList @($SystemException, $ErrorID, [System.Management.Automation.ErrorCategory]::NotImplemented, [string]::Empty)
-
-                # Throw a terminating custom error record
-                $PSCmdlet.ThrowTerminatingError($ErrorRecord)
-            }
-        }
-    }
+    # If all retries fail, throw an error
+    throw "Graph request failed after $RetryCount attempts. Aborting."
 }
