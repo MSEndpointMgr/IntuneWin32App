@@ -10,7 +10,7 @@ function Invoke-IntuneGraphRequest {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2023-02-03
+        Updated:     2024-12-24
 
         Version history:
         1.0.0 - (2020-01-04) Function created
