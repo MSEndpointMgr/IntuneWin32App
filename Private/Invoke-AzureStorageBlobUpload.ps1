@@ -37,8 +37,6 @@ function Invoke-AzureStorageBlobUpload {
         [string]$Resource
     )
     $ChunkSizeInBytes = 1024l * 1024l * 6l;
-    $RetryCount = 5
-    $RetryDelay = 10
 
     # Start the timer for SAS URI renewal
     $SASRenewalTimer = [System.Diagnostics.Stopwatch]::StartNew()
@@ -90,20 +88,22 @@ function Invoke-AzureStorageBlobUpload {
         Write-Verbose -Message "Uploading file to Azure Storage blob, processing chunk '$($CurrentChunk)' of '$($ChunkCount)'"
 
         $UploadSuccess = $false
+        $RetryCount = 5
         for ($i = 0; $i -lt $RetryCount; $i++) {
             try {
                 $UploadResponse = Invoke-AzureStorageBlobUploadChunk -StorageUri $StorageUri -ChunkID $ChunkID -Bytes $Bytes
                 $UploadSuccess = $true
                 break
             } catch {
-                Write-Warning "Failed to upload chunk. Attempt $($i + 1) of $RetryCount. Error: $_"
+                $RetryDelay = Get-Random -Minimum 7 -Maximum 13
+                Write-Warning "Failed to upload chunk. Attempt [$($i + 1)] of [$RetryCount]. Retrying in [$RetryDelay] seconds. Error: $_"
                 Start-Sleep -Seconds $RetryDelay
-                Write-Warning "Retrying upload of chunk '$($CurrentChunk)' of '$($ChunkCount)'"
+                Write-Warning "Retrying upload of chunk [$($CurrentChunk)] of [$($ChunkCount)]"
             }
         }
 
         if (-not $UploadSuccess) {
-            Write-Error "Failed to upload chunk after $RetryCount attempts. Aborting upload."
+            Write-Error "Failed to upload chunk after [$RetryCount] attempts. Aborting upload."
             return
         }
 
@@ -137,7 +137,8 @@ function Invoke-AzureStorageBlobUpload {
             $FinalizeSuccess = $true
             break
         } catch {
-            Write-Warning "Failed to finalize Azure Storage blob upload. Attempt $($i + 1) of $RetryCount. Error: $_"
+            $RetryDelay = Get-Random -Minimum 7 -Maximum 13
+            Write-Warning "Failed to finalize Azure Storage blob upload. Attempt $($i + 1) of $RetryCount. Retrying in [$RetryDelay] seconds. Error: $_"
             Start-Sleep -Seconds $RetryDelay
         }
     }

@@ -51,7 +51,6 @@ function Invoke-IntuneGraphRequest {
 
     # Retry parameters
     $RetryCount = 5
-    $RetryDelay = 10
 
     for ($i = 0; $i -lt $RetryCount; $i++) {
         try {
@@ -84,7 +83,8 @@ function Invoke-IntuneGraphRequest {
 
             # Check if response is a 429 TooManyRequests
             if ($ExceptionItem.Exception.Response.StatusCode -eq 429) {
-                Write-Warning "Graph request failed with status code '429 TooManyRequests'. Retrying in $RetryDelay seconds... (Attempt $($i + 1) of $RetryCount)"
+                $RetryDelay = Get-Random -Minimum 7 -Maximum 13
+                Write-Warning "Graph request failed with status code '429 TooManyRequests'. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
                 Start-Sleep -Seconds $RetryDelay
             } else {
                 # Handle non-429 exceptions
@@ -117,15 +117,25 @@ function Invoke-IntuneGraphRequest {
                     }
                 }
 
-                # Log error details and rethrow the exception
-                Write-Warning "Error details: $($ResponseBody.ErrorCode) - $($ResponseBody.ErrorMessage)"
-                throw $ExceptionItem
+                # Check for "TransientError|Timeout|ServiceUnavailable|TooManyRequests" matches and retry
+                $transientErrorMatch = "TransientError|Timeout|ServiceUnavailable|TooManyRequests"
+                if ($ResponseBody.ErrorCode -match $transientErrorMatch -or $ResponseBody.ErrorMessage -match $transientErrorMatch) {
+                    $RetryDelay = Get-Random -Minimum 7 -Maximum 13
+                    Write-Warning "Graph request failed with transient error: $($ResponseBody.ErrorCode). Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
+                    Start-Sleep -Seconds $RetryDelay
+                } else {
+                    # Log error details and rethrow the exception
+                    Write-Warning "Error details: $($ResponseBody.ErrorCode) - $($ResponseBody.ErrorMessage)"
+                    throw $ExceptionItem
+                }
+
             }
         } catch {
             # Handle "TransientError|Timeout|ServiceUnavailable|TooManyRequests" exceptions and retry
             $transientErrorMatch = "TransientError|Timeout|ServiceUnavailable|TooManyRequests"
             if ($_.Exception.Message -match $transientErrorMatch -or $_.ErrorDetails.Message -match $transientErrorMatch) {
-                Write-Warning "Graph request failed with transient error: $_. Retrying in $RetryDelay seconds... (Attempt $($i + 1) of $RetryCount)"
+                $RetryDelay = Get-Random -Minimum 7 -Maximum 13
+                Write-Warning "Graph request failed with transient error: $_. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
                 Start-Sleep -Seconds $RetryDelay
             }
 
