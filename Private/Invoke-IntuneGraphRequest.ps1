@@ -20,7 +20,7 @@ function Invoke-IntuneGraphRequest {
         1.0.4 - (2023-01-23) Added non-mandatory Route parameter to support different routes of Graph API in addition to better handle error response body depending on PSEdition
         1.0.5 - (2023-02-03) Improved error handling
         1.0.6 - (2024-12-24) Added retry logic to handle transient errors like 429 TooManyRequests. (tjgruber)
-    #>    
+    #>
     param(
         [parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -122,9 +122,16 @@ function Invoke-IntuneGraphRequest {
                 throw $ExceptionItem
             }
         } catch {
-            # Handle all other exceptions and retry
-            Write-Warning "Graph request failed with error: $_. Retrying in $RetryDelay seconds... (Attempt $($i + 1) of $RetryCount)"
-            Start-Sleep -Seconds $RetryDelay
+            # Handle "TransientError|Timeout|ServiceUnavailable|TooManyRequests" exceptions and retry
+            $transientErrorMatch = "TransientError|Timeout|ServiceUnavailable|TooManyRequests"
+            if ($_.Exception.Message -match $transientErrorMatch -or $_.ErrorDetails.Message -match $transientErrorMatch) {
+                Write-Warning "Graph request failed with transient error: $_. Retrying in $RetryDelay seconds... (Attempt $($i + 1) of $RetryCount)"
+                Start-Sleep -Seconds $RetryDelay
+            }
+
+            # Handle non-transient errors
+            Write-Warning "Graph request failed with unexpected error: $_. Aborting."
+            break
         }
     }
 
