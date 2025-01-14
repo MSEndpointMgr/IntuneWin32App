@@ -131,20 +131,23 @@ function Invoke-IntuneGraphRequest {
 
             }
         } catch {
-            # Handle "TransientError|Timeout|ServiceUnavailable|TooManyRequests" exceptions and retry
+            # Handle and define transient error patterns
             $transientErrorMatch = "TransientError|Timeout|ServiceUnavailable|TooManyRequests"
             if ($_.Exception.Message -match $transientErrorMatch -or $_.ErrorDetails.Message -match $transientErrorMatch) {
+                # Transient error: Retry logic
                 $RetryDelay = Get-Random -Minimum 7 -Maximum 13
-                Write-Warning "Graph request failed with transient error: $_. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
+                Write-Warning "Graph request failed with transient error: [$(($_ | Out-String).Trim())]. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
                 Start-Sleep -Seconds $RetryDelay
+            } else {
+                # Non-transient error: Exit loop and stop retries
+                Write-Warning "Graph request failed with unexpected non-transient error: [$(($_ | Out-String).Trim())]."
+                throw "Graph request failed due to a non-retryable error. Aborting after $($i + 1) attempts. Error: [$(($_ | Out-String).Trim())]"
             }
 
-            # Handle non-transient errors
-            Write-Warning "Graph request failed with unexpected error: $_. Aborting."
-            break
         }
+
     }
 
     # If all retries fail, throw an error
-    throw "Graph request failed after $RetryCount attempts. Aborting."
+    throw "Graph request failed after $RetryCount attempts or an unexpected error occurred. Aborting."
 }
