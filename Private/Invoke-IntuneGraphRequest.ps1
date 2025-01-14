@@ -121,11 +121,11 @@ function Invoke-IntuneGraphRequest {
                 $transientErrorMatch = "TransientError|Timeout|ServiceUnavailable|TooManyRequests"
                 if ($ResponseBody.ErrorCode -match $transientErrorMatch -or $ResponseBody.ErrorMessage -match $transientErrorMatch) {
                     $RetryDelay = Get-Random -Minimum 7 -Maximum 13
-                    Write-Warning "Graph request failed with transient error: $($ResponseBody.ErrorCode). Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
+                    Write-Warning "Graph request failed with transient WebException. ErrorCode: [$(($ResponseBody.ErrorCode | Out-String).Trim())]. ErrorMessage: [$(($ResponseBody.ErrorMessage | Out-String).Trim())]. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
                     Start-Sleep -Seconds $RetryDelay
                 } else {
                     # Log error details and rethrow the exception
-                    Write-Warning "Error details: $($ResponseBody.ErrorCode) - $($ResponseBody.ErrorMessage)"
+                    Write-Warning "ErrorCode: [$(($ResponseBody.ErrorCode | Out-String).Trim())]. ErrorMessage: [$(($ResponseBody.ErrorMessage | Out-String).Trim())]."
                     throw $ExceptionItem
                 }
 
@@ -136,12 +136,12 @@ function Invoke-IntuneGraphRequest {
             if ($_.Exception.Message -match $transientErrorMatch -or $_.ErrorDetails.Message -match $transientErrorMatch) {
                 # Transient error: Retry logic
                 $RetryDelay = Get-Random -Minimum 7 -Maximum 13
-                Write-Warning "Graph request failed with transient error: [$(($_ | Out-String).Trim())]. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
+                Write-Warning "Graph request failed with transient error. ErrorCode: [$(($ResponseBody.ErrorCode | Out-String).Trim())]. ErrorMessage: [$(($ResponseBody.ErrorMessage | Out-String).Trim())]. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
                 Start-Sleep -Seconds $RetryDelay
             } else {
                 # Non-transient error: Exit loop and stop retries
                 Write-Warning "Graph request failed with unexpected non-transient error: [$(($_ | Out-String).Trim())]."
-                throw "Graph request failed due to a non-retryable error. Aborting after $($i + 1) attempts. Error: [$(($_ | Out-String).Trim())]"
+                throw "Graph request failed due to a non-retryable error. Aborting after [$($i + 1)] attempts. Error: [$(($_ | Out-String).Trim())]"
             }
 
         }
@@ -149,5 +149,5 @@ function Invoke-IntuneGraphRequest {
     }
 
     # If all retries fail, throw an error
-    throw "Graph request failed after $RetryCount attempts or an unexpected error occurred. Aborting."
+    throw "Graph request failed after [$RetryCount] attempts or an unexpected error occurred. Aborting."
 }
