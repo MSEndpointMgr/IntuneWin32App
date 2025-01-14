@@ -1,10 +1,28 @@
 function Invoke-IntuneGraphRequest {
     <#
     .SYNOPSIS
-        Perform a specific call to Intune Graph API, either as GET, POST or PATCH methods.
+        Perform a specific call to Intune Graph API, either as GET, POST, PATCH, or DELETE.
 
     .DESCRIPTION
-        Perform a specific call to Intune Graph API, either as GET, POST or PATCH methods.
+        Perform a specific call to Intune Graph API with retry logic for transient errors.
+
+    .PARAMETER APIVersion
+        The Graph API version (e.g., Beta, v1.0).
+
+    .PARAMETER Route
+        The API route (default: "deviceAppManagement").
+
+    .PARAMETER Resource
+        The resource path for the API call.
+
+    .PARAMETER Method
+        The HTTP method to use (GET, POST, PATCH, DELETE).
+
+    .PARAMETER Body
+        The body of the request (for POST or PATCH).
+
+    .PARAMETER ContentType
+        The content type of the request (default: "application/json; charset=utf-8").
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -19,7 +37,7 @@ function Invoke-IntuneGraphRequest {
         1.0.3 - (2022-10-02) Changed content type for requests to support UTF8
         1.0.4 - (2023-01-23) Added non-mandatory Route parameter to support different routes of Graph API in addition to better handle error response body depending on PSEdition
         1.0.5 - (2023-02-03) Improved error handling
-        1.0.6 - (2024-12-24) Added retry logic to handle transient errors and improved error handling for pipeline use. (tjgruber)
+        1.0.6 - (2025-01-14) Rewritten to handle transient errors and improved error handling for pipeline use. (tjgruber)
     #>
     param(
         [parameter(Mandatory = $true)]
@@ -51,8 +69,10 @@ function Invoke-IntuneGraphRequest {
 
     # Retry parameters
     $RetryCount = 5
+    $RetryDelayRange = @{ Min = 7; Max = 13 }
+    $TransientErrors = "TransientError|Timeout|ServiceUnavailable|TooManyRequests"
 
-    for ($i = 0; $i -lt $RetryCount; $i++) {
+    for ($Attempt = 1; $Attempt -le $RetryCount; $Attempt++) {
         try {
             # Construct full URI
             $GraphURI = "https://graph.microsoft.com/$($APIVersion)/$($Route)/$($Resource)"
@@ -78,76 +98,33 @@ function Invoke-IntuneGraphRequest {
             return $GraphResponse
 
         } catch [System.Net.WebException] {
-            # Capture current error
-            $ExceptionItem = $PSItem
-
-            # Check if response is a 429 TooManyRequests
-            if ($ExceptionItem.Exception.Response.StatusCode -eq 429) {
-                $RetryDelay = Get-Random -Minimum 7 -Maximum 13
-                Write-Warning "Graph request failed with status code '429 TooManyRequests'. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
+            # Handle WebException for transient errors
+            $StatusCode = $_.Exception.Response.StatusCode
+            if ($StatusCode -eq 429 -or $StatusCode -eq 503) {
+                $RetryDelay = Get-Random -Minimum $RetryDelayRange.Min -Maximum $RetryDelayRange.Max
+                Write-Warning "Request failed with status code [$StatusCode]. Retrying in [$RetryDelay] seconds... (Attempt [$Attempt] of [$RetryCount])"
                 Start-Sleep -Seconds $RetryDelay
-            } else {
-                # Handle non-429 exceptions
-                $ErrorMessage = "Graph request failed with status code '$($ExceptionItem.Exception.Response.StatusCode)'."
-                Write-Warning $ErrorMessage
-
-                # Extract response error details for cross-platform compatibility
-                $ResponseBody = [PSCustomObject]@{
-                    "ErrorMessage" = [string]::Empty
-                    "ErrorCode" = [string]::Empty
-                }
-
-                switch ($PSVersionTable.PSVersion.Major) {
-                    "5" {
-                        # Read response stream (PowerShell 5 compatibility)
-                        $StreamReader = New-Object -TypeName "System.IO.StreamReader" -ArgumentList @($ExceptionItem.Exception.Response.GetResponseStream())
-                        $StreamReader.BaseStream.Position = 0
-                        $StreamReader.DiscardBufferedData()
-                        $ResponseReader = ($StreamReader.ReadToEnd() | ConvertFrom-Json)
-
-                        # Set response error details
-                        $ResponseBody.ErrorMessage = $ResponseReader.error.message
-                        $ResponseBody.ErrorCode = $ResponseReader.error.code
-                    }
-                    default {
-                        # Read error details for modern PowerShell versions
-                        $ErrorDetails = $ExceptionItem.ErrorDetails.Message | ConvertFrom-Json
-                        $ResponseBody.ErrorMessage = $ErrorDetails.error.message
-                        $ResponseBody.ErrorCode = $ErrorDetails.error.code
-                    }
-                }
-
-                # Check for "TransientError|Timeout|ServiceUnavailable|TooManyRequests" matches and retry
-                $transientErrorMatch = "TransientError|Timeout|ServiceUnavailable|TooManyRequests"
-                if ($ResponseBody.ErrorCode -match $transientErrorMatch -or $ResponseBody.ErrorMessage -match $transientErrorMatch) {
-                    $RetryDelay = Get-Random -Minimum 7 -Maximum 13
-                    Write-Warning "Graph request failed with transient error: $($ResponseBody.ErrorCode). Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
-                    Start-Sleep -Seconds $RetryDelay
-                } else {
-                    # Log error details and rethrow the exception
-                    Write-Warning "Error details: $($ResponseBody.ErrorCode) - $($ResponseBody.ErrorMessage)"
-                    throw $ExceptionItem
-                }
-
+                continue
             }
+
+            # Handle non-retryable WebException
+            Write-Warning "Non-retryable WebException occurred. Status code: [$StatusCode]. Message: [$($_.Exception.Message)]"
+            throw $_
         } catch {
-            # Handle and define transient error patterns
-            $transientErrorMatch = "TransientError|Timeout|ServiceUnavailable|TooManyRequests"
-            if ($_.Exception.Message -match $transientErrorMatch -or $_.ErrorDetails.Message -match $transientErrorMatch) {
-                # Transient error: Retry logic
-                $RetryDelay = Get-Random -Minimum 7 -Maximum 13
-                Write-Warning "Graph request failed with transient error: [$(($_ | Out-String).Trim())]. Retrying in [$RetryDelay] seconds... (Attempt [$($i + 1)] of [$RetryCount])"
+            # Handle other exceptions (e.g., transient error patterns)
+            if ($_.Exception.Message -match $TransientErrors) {
+                $RetryDelay = Get-Random -Minimum $RetryDelayRange.Min -Maximum $RetryDelayRange.Max
+                Write-Warning "Transient error detected. Retrying in [$RetryDelay] seconds... (Attempt [$Attempt] of [$RetryCount])"
                 Start-Sleep -Seconds $RetryDelay
-            } else {
-                # Non-transient error: Exit loop and stop retries
-                Write-Warning "Graph request failed with unexpected non-transient error: [$(($_ | Out-String).Trim())]."
-                throw "Graph request failed due to a non-retryable error. Aborting after $($i + 1) attempts. Error: [$(($_ | Out-String).Trim())]"
+                continue
             }
 
+            # Handle non-retryable errors
+            Write-Warning "Non-retryable error occurred. Message: [$($_.Exception.Message)]"
+            throw $_
         }
-
     }
 
-    # If all retries fail, throw an error
-    throw "Graph request failed after $RetryCount attempts or an unexpected error occurred. Aborting."
+    # All retries failed
+    throw "Graph request failed after [$RetryCount] attempts. Aborting."
 }
