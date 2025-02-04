@@ -96,7 +96,7 @@ function Invoke-AzureStorageBlobUpload {
                 break
             } catch {
                 $RetryDelay = Get-Random -Minimum 7 -Maximum 13
-                Write-Warning "Failed to upload chunk. Attempt [$($i + 1)] of [$RetryCount]. Retrying in [$RetryDelay] seconds. Error: $_"
+                Write-Warning "Failed to upload chunk [$($CurrentChunk)] of [$($ChunkCount)]. Attempt [$($i + 1)] of [$RetryCount]. Retrying in [$RetryDelay] seconds. Error: $_"
                 Start-Sleep -Seconds $RetryDelay
                 Write-Warning "Retrying upload of chunk [$($CurrentChunk)] of [$($ChunkCount)]"
             }
