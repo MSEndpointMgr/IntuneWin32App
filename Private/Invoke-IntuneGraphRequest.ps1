@@ -68,8 +68,8 @@ function Invoke-IntuneGraphRequest {
     )
 
     # Retry parameters
-    $RetryCount = 5
-    $RetryDelayRange = @{ Min = 7; Max = 13 }
+    $RetryCount = 8
+    $RetryDelayRange = @{ Min = 7; Max = 30 }
     $TransientErrors = "TransientError|Timeout|ServiceUnavailable|TooManyRequests|429|503"
 
     for ($Attempt = 1; $Attempt -le $RetryCount; $Attempt++) {
