@@ -27,6 +27,10 @@ function Test-IntuneWin32AppAssignment {
         [ValidateNotNullOrEmpty()]
         [string]$ID,
 
+        [parameter(Mandatory = $false, HelpMessage = "Specify the DataType in this assignment")]
+        [ValidateNotNullOrEmpty()]
+        [string]$DataType,
+
         [parameter(Mandatory = $false, HelpMessage = "Specify the target type of the assignment, AllDevices, AllUsers or Group.")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("AllDevices", "AllUsers", "Group")]
@@ -57,7 +61,7 @@ function Test-IntuneWin32AppAssignment {
                 switch ($Target) {
                     "Group" {
                         foreach ($Win32AppAssignment in $Win32AppAssignments.value) {
-                            if ($Win32AppAssignment.target.'@odata.type' -match "groupAssignmentTarget") {
+                            if ($Win32AppAssignment.target.'@odata.type' -eq $DataType) {
                                 if ($Win32AppAssignment.target.groupId -like $GroupID) {
                                     Write-Warning -Message "Win32 app assignment with id '$($Win32AppAssignment.id)' of target type '$($Target)' and GroupID '$($Win32AppAssignment.target.groupId)' already exists, duplicate assignments of this type is not permitted"
                                     $DuplicateAssignmentDetected = $true
