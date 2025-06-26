@@ -1,5 +1,8 @@
 # Release notes for IntuneWin32App module
 
+## 1.4.5
+- Added DetectionRule parameter to `Set-IntuneWin32App` function to support updating detection rules for existing Win32 applications.
+
 ## 1.4.4
 - Improved handling of empty object references in functions `Remove-IntuneWin32AppSupersedence` and `Remove-IntuneWin32AppDependency` functions that would render a null value to be added in the JSON construct instead of `[]`.
 - Function `New-IntuneWin32AppPackage` function should now work better as for it's enforced output that it doesn't like when attempted to be hidden.

@@ -39,16 +39,24 @@ function Set-IntuneWin32App {
     .PARAMETER CompanyPortalFeaturedApp
         Specify whether to have the Win32 application featured in Company Portal or not.
 
+    .PARAMETER AllowAvailableUninstall
+        Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.
+
+    .PARAMETER DetectionRule
+        Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.
+
     .NOTES
         Author:      Nickolaj Andersen
+        Updated by:  Onni Rautanen
         Contact:     @NickolajA
         Created:     2023-01-25
-        Updated:     2023-09-04
+        Updated:     2025-06-26
 
         Version history:
         1.0.0 - (2023-01-25) Function created
         1.0.1 - (2023-03-17) Added AllowAvailableUninstall parameter switch.
         1.0.2 - (2023-09-04) Updated with Test-AccessToken function
+        1.4.5 - (2025-06-26) Added DetectionRule parameter for updating detection rules
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -96,7 +104,11 @@ function Set-IntuneWin32App {
         [bool]$CompanyPortalFeaturedApp,
 
         [parameter(Mandatory = $false, HelpMessage = "Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.")]
-        [bool]$AllowAvailableUninstall
+        [bool]$AllowAvailableUninstall,
+
+        [parameter(Mandatory = $false, HelpMessage = "Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.")]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.Specialized.OrderedDictionary[]]$DetectionRule
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -157,6 +169,11 @@ function Set-IntuneWin32App {
             }
             if ($PSBoundParameters["AllowAvailableUninstall"]) {
                 $Win32AppBody.Add("allowAvailableUninstall", $AllowAvailableUninstall)
+            }
+
+            # Handle detection rules
+            if ($PSBoundParameters["DetectionRule"]) {
+                $Win32AppBody.Add("detectionRules", $DetectionRule)
             }
 
             try {
