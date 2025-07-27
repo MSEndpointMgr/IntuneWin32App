@@ -271,7 +271,7 @@ function New-IntuneWin32AppBody {
         $MinimumSupportedWindowsRelease = $RequirementRule["minimumSupportedWindowsRelease"]
     }
     else {
-        $ApplicableArchitectures = "x64,x86"
+        $ApplicableArchitectures = "x64,x86,arm64"
         $MinimumSupportedWindowsRelease = "2H20"
     }
 

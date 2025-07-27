@@ -43,7 +43,7 @@ function New-IntuneWin32AppRequirementRule {
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the architecture as a requirement for the Win32 app.")]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet("x64", "x86", "All")]
+        [ValidateSet("x64", "x86", "arm64", "All")]
         [string]$Architecture,
 
         [parameter(Mandatory = $true, HelpMessage = "Specify the minimum supported Windows release version as a requirement for the Win32 app.")]
@@ -73,7 +73,8 @@ function New-IntuneWin32AppRequirementRule {
         $ArchitectureTable = @{
             "x64" = "x64"
             "x86" = "x86"
-            "All" = "x64,x86"
+            "arm64" = "arm64"
+            "All" = "x64,x86,arm64"
         }
 
         # Construct table for supported operating systems
