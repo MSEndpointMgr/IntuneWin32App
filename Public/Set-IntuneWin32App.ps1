@@ -241,7 +241,7 @@ function Set-IntuneWin32App {
                 $Win32AppBody.Add("informationUrl", $InformationURL)
             }
             if ($PSBoundParameters["PrivacyURL"]) {
-                $Win32AppBody.Add("privacyUrl", $PrivacyURL)
+                $Win32AppBody.Add("privacyInformationUrl", $PrivacyURL)
             }
             if ($PSBoundParameters["CompanyPortalFeaturedApp"]) {
                 $Win32AppBody.Add("isFeatured", $CompanyPortalFeaturedApp)
