@@ -21,6 +21,18 @@ function Set-IntuneWin32App {
     .PARAMETER AppVersion
         Specify a new app version for the Win32 application.
 
+    .PARAMETER CategoryName
+        Specify the name of either a single or an array of category names for the Win32 application.
+
+    .PARAMETER CompanyPortalFeaturedApp
+        Specify whether to have the Win32 application featured in Company Portal or not.
+
+    .PARAMETER InformationURL
+        Specify a new information URL for the Win32 application.
+
+    .PARAMETER PrivacyURL
+        Specify a new privacy URL for the Win32 application.
+
     .PARAMETER Developer
         Specify a new developer name for the Win32 application.
 
@@ -30,35 +42,26 @@ function Set-IntuneWin32App {
     .PARAMETER Notes
         Specify a new notes property for the Win32 application.
 
-    .PARAMETER InformationURL
-        Specify a new information URL for the Win32 application.
-
-    .PARAMETER PrivacyURL
-        Specify a new privacy URL for the Win32 application.
-
-    .PARAMETER CompanyPortalFeaturedApp
-        Specify whether to have the Win32 application featured in Company Portal or not.
-
-    .PARAMETER CategoryName
-        Specify the name of either a single or an array of category names for the Win32 application.
+    .PARAMETER Icon
+        Provide a Base64 encoded string of the PNG/JPG/JPEG file.
 
     .PARAMETER InstallCommandLine
         Specify the install command line for the Win32 application.
     
     .PARAMETER UninstallCommandLine
         Specify the uninstall command line for the Win32 application.
-    
-    .PARAMETER RestartBehavior
-        Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.
 
     .PARAMETER MaximumInstallationTimeInMinutes
         Specify the maximum installation time in minutes for the Win32 application (default is 60 minutes).
 
     .PARAMETER AllowAvailableUninstall
-        Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.
-    
-    .PARAMETER DetectionRule
-        Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.
+        Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available. 
+
+    .PARAMETER RestartBehavior
+        Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.
+
+    .PARAMETER ReturnCode
+        Provide an array of a single or multiple hash-tables for the Win32 application with return code information.
 
     .PARAMETER RequirementRule
         Provide an OrderedDictionary object as requirement rule that will be used for the Win32 application.
@@ -66,26 +69,8 @@ function Set-IntuneWin32App {
     .PARAMETER AdditionalRequirementRule
         Provide an array of OrderedDictionary objects as additional requirement rule, e.g. for file, registry or script rules, that will be used for the Win32 application.
 
-    .PARAMETER ReturnCode
-        Provide an array of a single or multiple hash-tables for the Win32 application with return code information.
-
-    .PARAMETER Icon
-        Provide a Base64 encoded string of the PNG/JPG/JPEG file.
-
-    .PARAMETER ScopeTagName
-        Specify the name of either a single or an array of Scope Tag names to be set instead of the Default tag.
-
-    .PARAMETER UseAzCopy
-        Specify the UseAzCopy parameter switch when adding an application with source files larger than 500MB.
-
-    .PARAMETER AzCopyWindowStyle
-        Specify whether the AzCopy content transfer progress should use -WindowStyle Hidden or -NoNewWindow parameters for Start-Process. NoNewWindow will show transfer output, Hidden will not show progress but will support multi-threaded jobs.
-
-    .PARAMETER UnattendedInstall
-        Specify to enforce the MSI installer to run silently, with /quiet added to the install command line of the Win32 application.
-
-    .PARAMETER UnattendedUninstall
-        Specify to enforce the MSI installer to run silently, with /quiet added to the uninstall command line of the Win32 application.
+    .PARAMETER DetectionRule
+        Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -97,7 +82,7 @@ function Set-IntuneWin32App {
         1.0.0 - (2023-01-25) Function created
         1.0.1 - (2023-03-17) Added AllowAvailableUninstall parameter switch.
         1.0.2 - (2023-09-04) Updated with Test-AccessToken function
-        1.0.3 - (2025-10-20) Added additional parameters and improved error handling
+        1.0.3 - (2025-10-20) Added additional parameters
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
