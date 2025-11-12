@@ -166,6 +166,7 @@ function Set-IntuneWin32App {
             }
             catch [System.Exception] {
                 Write-Warning -Message "An error occurred while update Win32 app object. Error message: $($_.Exception.Message)"
+                throw
             }
         }
         else {
