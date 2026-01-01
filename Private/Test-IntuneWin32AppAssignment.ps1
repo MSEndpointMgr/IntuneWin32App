@@ -57,7 +57,7 @@ function Test-IntuneWin32AppAssignment {
                 switch ($Target) {
                     "Group" {
                         foreach ($Win32AppAssignment in $Win32AppAssignments.value) {
-                            if ($Win32AppAssignment.target.'@odata.type' -match "groupAssignmentTarget") {
+                            if ($Win32AppAssignment.target.'@odata.type' -eq "#microsoft.graph.groupAssignmentTarget") {
                                 if ($Win32AppAssignment.target.groupId -like $GroupID) {
                                     Write-Warning -Message "Win32 app assignment with id '$($Win32AppAssignment.id)' of target type '$($Target)' and GroupID '$($Win32AppAssignment.target.groupId)' already exists, duplicate assignments of this type is not permitted"
                                     $DuplicateAssignmentDetected = $true
