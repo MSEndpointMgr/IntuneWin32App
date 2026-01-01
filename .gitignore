@@ -1,0 +1,24 @@
+# Test files and directories
+Tests/
+
+# PowerShell Gallery publishing artifacts
+*.nupkg
+
+# Local development files
+*.local.ps1
+*.dev.ps1
+
+# Output directories
+Output/
+Build/
+
+# Visual Studio Code settings
+.vscode/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Log files
+*.log
+*.txt

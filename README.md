@@ -35,6 +35,8 @@ Currently the following functions are supported in the module:
 - New-IntuneWin32AppSupersedence
 - Remove-IntuneWin32App
 - Remove-IntuneWin32AppAssignment
+- Remove-IntuneWin32AppAssignmentAllDevices
+- Remove-IntuneWin32AppAssignmentAllUsers
 - Remove-IntuneWin32AppDependency
 - Remove-IntuneWin32AppSupersedence
 - Set-IntuneWin32App
@@ -101,8 +103,9 @@ $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 $DisplayName = $IntuneWinMetaData.ApplicationInfo.Name + " " + $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 $Publisher = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiPublisher
 
-# Create requirement rule for all platforms and Windows 10 20H2
-$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "20H2"
+# Create requirement rule for Intel/AMD platforms and Windows 10 20H2
+# Note: Use "AllWithARM64" for universal targeting, or "arm64" for ARM64 only
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "x64x86" -MinimumSupportedWindowsRelease "20H2"
 
 # Create MSI detection rule
 $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
@@ -125,8 +128,8 @@ $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 # Create custom display name like 'Name' and 'Version'
 $DisplayName = "Enable BitLocker Encryption 1.0"
 
-# Create requirement rule for all platforms and Windows 10 20H2
-$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "20H2"
+# Create requirement rule for Intel/AMD platforms and Windows 10 20H2
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "x64x86" -MinimumSupportedWindowsRelease "20H2"
 
 # Create PowerShell script detection rule
 $DetectionScriptFile = "C:\Win32Apps\Output\Get-BitLockerEncryptionDetection.ps1"
@@ -210,8 +213,8 @@ $IntuneWinMetaData = Get-IntuneWin32AppMetaData -FilePath $IntuneWinFile
 $DisplayName = $IntuneWinMetaData.ApplicationInfo.Name + " " + $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
 $Publisher = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiPublisher
 
-# Create requirement rule for all platforms and Windows 10 20H2
-$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "20H2"  
+# Create requirement rule for Intel/AMD platforms and Windows 10 20H2
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "x64x86" -MinimumSupportedWindowsRelease "20H2"  
   
 # Create MSI detection rule
 $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
