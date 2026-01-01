@@ -4,13 +4,15 @@ function Connect-MSIntuneGraph {
         Get or refresh an access token using various authentication flows for the Graph API.
 
     .DESCRIPTION
-        Get or refresh an access token using various authentication flows for the Graph API.
+        Get or refresh an access token using either authorization code flow or device code flow, that can be used to authenticate and authorize against resources in Graph API.
+        
+        Note: When running in Windows Terminal, use the -DeviceCode parameter to avoid "Error creating window handle" issues with interactive authentication.
 
     .PARAMETER TenantID
         Specify the tenant name or ID, e.g. tenant.onmicrosoft.com or <GUID>.
 
     .PARAMETER ClientID
-        Application ID (Client ID) for an Azure AD service principal. Uses by default the 'Microsoft Intune PowerShell' service principal Application ID.
+        Application ID (Client ID) for an Azure AD service principal.
 
     .PARAMETER ClientSecret
         Application secret (Client Secret) for an Azure AD service principal.
@@ -23,9 +25,11 @@ function Connect-MSIntuneGraph {
 
     .PARAMETER DeviceCode
         Specify delegated login using devicecode flow, you will be prompted to navigate to https://microsoft.com/devicelogin
+        This method is recommended when running in Windows Terminal or other environments where window handle creation may fail.
 
     .PARAMETER Interactive
-        Specify to force an interactive prompt for credentials.
+        Specify to force an interactive prompt for credentials. Note: This may fail in Windows Terminal with "Error creating window handle" 
+        - use DeviceCode parameter instead for Windows Terminal compatibility.
 
     .PARAMETER Refresh
         Specify to refresh an existing access token.
@@ -34,7 +38,7 @@ function Connect-MSIntuneGraph {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2022-09-03
+        Updated:     2025-12-07
 
         Version history:
         1.0.0 - (2021-08-31) Script created
@@ -42,6 +46,7 @@ function Connect-MSIntuneGraph {
         1.0.2 - (2022-09-03) Added new global variable to hold the tenant id passed as parameter input for access token refresh scenario
         1.0.3 - (2023-04-07) Added support for client certificate auth flow (thanks to apcsb)
         1.0.4 - (2024-05-29) Updated to integrate New-ClientCredentialsAccessToken function for client secret flow (thanks to @tjgruber)
+        1.0.5 - (2025-12-07) BREAKING CHANGE: Removed deprecated Microsoft Intune PowerShell enterprise application fallback, ClientID now mandatory
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -51,15 +56,15 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
         [ValidateNotNullOrEmpty()]
         [string]$TenantID,
-
-        [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Application ID (Client ID) for an Azure AD service principal. Uses by default the 'Microsoft Intune PowerShell' service principal Application ID.")]
-        [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
+        
+        [parameter(Mandatory = $true, ParameterSetName = "Interactive", HelpMessage = "Application ID (Client ID) for an Entra ID service principal.")]
+        [parameter(Mandatory = $true, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
         [ValidateNotNullOrEmpty()]
         [string]$ClientID,
 
-        [parameter(Mandatory = $false, HelpMessage = "Application secret (Client Secret) for an Azure AD service principal.")]
+        [parameter(Mandatory = $false, HelpMessage = "Application secret (Client Secret) for an Entra ID service principal.")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
         [ValidateNotNullOrEmpty()]
         [string]$ClientSecret,
@@ -86,32 +91,24 @@ function Connect-MSIntuneGraph {
     )
     Begin {
         # Determine the correct RedirectUri (also known as Reply URL) to use with MSAL.PS
-        if (-not([string]::IsNullOrEmpty($ClientID))) {
-            Write-Verbose -Message "Using custom Azure AD service principal specified with Application ID: $($ClientID)"
+        Write-Verbose -Message "Using Entra ID service principal with Application ID: $($ClientID)"
 
-            # Adjust RedirectUri parameter input in case none was passed on command line
-            if ([string]::IsNullOrEmpty($RedirectUri)) {
-                switch -Wildcard ($PSVersionTable["PSVersion"]) {
-                    "5.*" {
-                        $RedirectUri = "https://login.microsoftonline.com/common/oauth2/nativeclient"
-                    }
-                    "7.*" {
-                        $RedirectUri = "http://localhost"
-                    }
+        # Adjust RedirectUri parameter input in case none was passed on command line
+        if ([string]::IsNullOrEmpty($RedirectUri)) {
+            switch -Wildcard ($PSVersionTable["PSVersion"]) {
+                "5.*" {
+                    $RedirectUri = "https://login.microsoftonline.com/common/oauth2/nativeclient"
+                }
+                "7.*" {
+                    $RedirectUri = "http://localhost"
                 }
             }
         }
-        else {
-            # Define static variables
-            $ClientID = "d1ddf0e4-d672-4dae-b554-9d5bdfd93547"
-            $RedirectUri = "urn:ietf:wg:oauth:2.0:oob"
 
-            Write-Verbose -Message "Using the default 'Microsoft Intune PowerShell' service principal with Application ID: $($ClientID)"
-            Write-Verbose -Message "Using RedirectUri with value: $($RedirectUri)"
+        Write-Verbose -Message "Using RedirectUri with value: $($RedirectUri)"
 
-            # Set default error action preference configuration
-            $ErrorActionPreference = "Stop"
-        }
+        # Set default error action preference configuration
+        $ErrorActionPreference = "Stop"
     }
     Process {
         Write-Verbose -Message "Using authentication flow: $($PSCmdlet.ParameterSetName)"

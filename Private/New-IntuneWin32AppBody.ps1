@@ -266,12 +266,14 @@ function New-IntuneWin32AppBody {
     )
     # Determine values for requirement rules
     if ($PSBoundParameters["RequirementRule"]) {
-        # Define required requirement rules propertoes
+        # Define required requirement rules properties
         $ApplicableArchitectures = $RequirementRule["applicableArchitectures"]
+        $AllowedArchitectures = $RequirementRule["allowedArchitectures"]
         $MinimumSupportedWindowsRelease = $RequirementRule["minimumSupportedWindowsRelease"]
     }
     else {
         $ApplicableArchitectures = "x64,x86"
+        $AllowedArchitectures = $null
         $MinimumSupportedWindowsRelease = "2H20"
     }
 
@@ -279,7 +281,6 @@ function New-IntuneWin32AppBody {
         "MSI" {
             $Win32AppBody = [ordered]@{
                 "@odata.type" = "#microsoft.graph.win32LobApp"
-                "applicableArchitectures" = $ApplicableArchitectures
                 "description" = $Description
                 "developer" = $Developer
                 "displayVersion" = $AppVersion
@@ -308,6 +309,15 @@ function New-IntuneWin32AppBody {
                 }
                 "publisher" = $Publisher
                 "runAs32bit" = $false
+            }
+
+            # Add architecture properties based on what's available in the requirement rule
+            if ($AllowedArchitectures) {
+                $Win32AppBody.Add("allowedArchitectures", $AllowedArchitectures)
+                $Win32AppBody.Add("applicableArchitectures", "none")
+            }
+            else {
+                $Win32AppBody.Add("applicableArchitectures", $ApplicableArchitectures)
             }
 
             # Handle unattended/interactive install and uninstall command lines
@@ -366,7 +376,6 @@ function New-IntuneWin32AppBody {
         "EXE" {
             $Win32AppBody = [ordered]@{
                 "@odata.type" = "#microsoft.graph.win32LobApp"
-                "applicableArchitectures" = $ApplicableArchitectures
                 "description" = $Description
                 "developer" = $Developer
                 "displayVersion" = $AppVersion
@@ -389,6 +398,15 @@ function New-IntuneWin32AppBody {
                 "msiInformation" = $null
                 "publisher" = $Publisher
                 "runAs32bit" = $false
+            }
+
+            # Add architecture properties based on what's available in the requirement rule
+            if ($AllowedArchitectures) {
+                $Win32AppBody.Add("allowedArchitectures", $AllowedArchitectures)
+                $Win32AppBody.Add("applicableArchitectures", "none")
+            }
+            else {
+                $Win32AppBody.Add("applicableArchitectures", $ApplicableArchitectures)
             }
 
             # Add requirement rule items dynamically

@@ -21,11 +21,12 @@ function Test-AccessToken {
         1.0.2 - (2024-03-07) Invocation of function when access token is null will now return false
         1.0.3 - (2024-05-29) Updated to handle tokens with ExpiresOn property (thanks to @tjgruber)
         1.0.4 - (2024-11-15) Refactor date handling for token to fix locale-specific parsing issues (thanks to @tjgruber)
+        1.0.5 - (2025-12-07) Reduced default RenewalThresholdMinutes from 10 to 5 minutes to avoid conflicts with minimum Access Token Lifetime policies
     #>
     param(
         [parameter(Mandatory = $false, HelpMessage = "Specify the renewal threshold for access token age in minutes.")]
         [ValidateNotNullOrEmpty()]
-        [Int]$RenewalThresholdMinutes = 10
+        [int]$RenewalThresholdMinutes = 5
     )
     Process {
         if ($null -eq $Global:AccessToken) {

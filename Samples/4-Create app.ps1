@@ -17,7 +17,11 @@ $DetectionRule = New-IntuneWin32AppDetectionRuleMSI @DetectionRuleArguments
 
 
 # Create operative system requirement rule
-$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedOperatingSystem "1909"
+# Examples of different architecture options:
+# $RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "x64" -MinimumSupportedWindowsRelease "W10_22H2"        # x64 only
+# $RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "arm64" -MinimumSupportedWindowsRelease "W10_22H2"      # ARM64 only
+# $RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "AllWithARM64" -MinimumSupportedWindowsRelease "W10_22H2" # x64, x86, and ARM64
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "x64x86" -MinimumSupportedWindowsRelease "W10_22H2"
 
 
 # Create custom return code
