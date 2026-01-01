@@ -21,6 +21,18 @@ function Set-IntuneWin32App {
     .PARAMETER AppVersion
         Specify a new app version for the Win32 application.
 
+    .PARAMETER CategoryName
+        Specify the name of either a single or an array of category names for the Win32 application.
+
+    .PARAMETER CompanyPortalFeaturedApp
+        Specify whether to have the Win32 application featured in Company Portal or not.
+
+    .PARAMETER InformationURL
+        Specify a new information URL for the Win32 application.
+
+    .PARAMETER PrivacyURL
+        Specify a new privacy URL for the Win32 application.
+
     .PARAMETER Developer
         Specify a new developer name for the Win32 application.
 
@@ -30,14 +42,35 @@ function Set-IntuneWin32App {
     .PARAMETER Notes
         Specify a new notes property for the Win32 application.
 
-    .PARAMETER InformationURL
-        Specify a new information URL for the Win32 application.
+    .PARAMETER Icon
+        Provide a Base64 encoded string of the PNG/JPG/JPEG file.
 
-    .PARAMETER PrivacyURL
-        Specify a new privacy URL for the Win32 application.
+    .PARAMETER InstallCommandLine
+        Specify the install command line for the Win32 application.
+    
+    .PARAMETER UninstallCommandLine
+        Specify the uninstall command line for the Win32 application.
 
-    .PARAMETER CompanyPortalFeaturedApp
-        Specify whether to have the Win32 application featured in Company Portal or not.
+    .PARAMETER MaximumInstallationTimeInMinutes
+        Specify the maximum installation time in minutes for the Win32 application (default is 60 minutes).
+
+    .PARAMETER AllowAvailableUninstall
+        Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available. 
+
+    .PARAMETER RestartBehavior
+        Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.
+
+    .PARAMETER ReturnCode
+        Provide an array of a single or multiple hash-tables for the Win32 application with return code information.
+
+    .PARAMETER RequirementRule
+        Provide an OrderedDictionary object as requirement rule that will be used for the Win32 application.
+
+    .PARAMETER AdditionalRequirementRule
+        Provide an array of OrderedDictionary objects as additional requirement rule, e.g. for file, registry or script rules, that will be used for the Win32 application.
+
+    .PARAMETER DetectionRule
+        Provide an array of a single or multiple OrderedDictionary objects as detection rules that will be used for the Win32 application.
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -49,6 +82,7 @@ function Set-IntuneWin32App {
         1.0.0 - (2023-01-25) Function created
         1.0.1 - (2023-03-17) Added AllowAvailableUninstall parameter switch.
         1.0.2 - (2023-09-04) Updated with Test-AccessToken function
+        1.0.3 - (2025-10-20) Added additional parameters
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -72,6 +106,21 @@ function Set-IntuneWin32App {
         [ValidateNotNullOrEmpty()]
         [string]$AppVersion,
 
+        [parameter(Mandatory = $false, HelpMessage = "Specify the name of either a single or an array of category names for the Win32 application.")]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$CategoryName,
+        
+        [parameter(Mandatory = $false, HelpMessage = "Specify whether to have the Win32 application featured in Company Portal or not.")]
+        [bool]$CompanyPortalFeaturedApp,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify a new information URL for the Win32 application.")]
+        [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
+        [string]$InformationURL,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify a new privacy URL for the Win32 application.")]
+        [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
+        [string]$PrivacyURL,
+
         [parameter(Mandatory = $false, HelpMessage = "Specify a new developer name for the Win32 application.")]
         [ValidateNotNullOrEmpty()]
         [string]$Developer,
@@ -84,19 +133,46 @@ function Set-IntuneWin32App {
         [ValidateNotNullOrEmpty()]
         [string]$Notes,
 
-        [parameter(Mandatory = $false, HelpMessage = "Specify a new information URL for the Win32 application.")]
-        [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
-        [string]$InformationURL,
+        [parameter(Mandatory = $false, HelpMessage = "Provide a Base64 encoded string of the PNG/JPG/JPEG file.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Icon,
 
-        [parameter(Mandatory = $false, HelpMessage = "Specify a new privacy URL for the Win32 application.")]
-        [ValidatePattern("(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)")]
-        [string]$PrivacyURL,
+        [parameter(Mandatory = $false, HelpMessage = "Specify the install command line for the Win32 application.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$InstallCommandLine,
 
-        [parameter(Mandatory = $false, HelpMessage = "Specify whether to have the Win32 application featured in Company Portal or not.")]
-        [bool]$CompanyPortalFeaturedApp,
+        [parameter(Mandatory = $false, HelpMessage = "Specify the uninstall command line for the Win32 application.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$UninstallCommandLine,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify the maximum installation time in minutes for the Win32 application (default is 60 minutes).")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateRange(1, 1440)]
+        [int]$MaximumInstallationTimeInMinutes = 60,
 
         [parameter(Mandatory = $false, HelpMessage = "Specify whether to allow the Win32 application to be uninstalled from the Company Portal app when assigned as available.")]
-        [bool]$AllowAvailableUninstall
+        [bool]$AllowAvailableUninstall,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify the restart behavior for the Win32 application. Supported values are: allow, basedOnReturnCode, suppress or force.")]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet("allow", "basedOnReturnCode", "suppress", "force")]
+        [string]$RestartBehavior,
+
+        [parameter(Mandatory = $false, HelpMessage = "Provide an array of a single or multiple hash-tables for the Win32 application with return code information.")]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.Hashtable[]]$ReturnCode,
+
+        [parameter(Mandatory = $false, HelpMessage = "Provide an OrderedDictionary object as requirement rule that will be used for the Win32 application.")]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.Specialized.OrderedDictionary]$RequirementRule,
+
+        [parameter(Mandatory = $false, HelpMessage = "Provide an array of OrderedDictionary objects as additional requirement rule, e.g. for file, registry or script rules, that will be used for the Win32 application.")]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.Specialized.OrderedDictionary[]]$AdditionalRequirementRule,
+
+        [parameter(Mandatory = $false, HelpMessage = "Provide an array of a single or multiple OrderedDictionary objects as detection rules to override the current detection rules for the Win32 application.")]
+        [ValidateNotNullOrEmpty()]
+        [System.Collections.Specialized.OrderedDictionary[]]$DetectionRule
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -155,8 +231,85 @@ function Set-IntuneWin32App {
             if ($PSBoundParameters["CompanyPortalFeaturedApp"]) {
                 $Win32AppBody.Add("isFeatured", $CompanyPortalFeaturedApp)
             }
+            if ($PSBoundParameters["CategoryName"]) {
+                $CategoryList = New-Object -TypeName "System.Collections.ArrayList"
+                foreach ($CategoryNameItem in $CategoryName) {
+                    # Ensure category exist by given name from parameter input
+                    Write-Verbose -Message "Querying for specified Category: $($CategoryNameItem)"
+                    $Category = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileAppCategories?`$filter=displayName eq '$([System.Web.HttpUtility]::UrlEncode($CategoryNameItem))'" -Method "GET" -ErrorAction "Stop").value
+                    if ($Category -ne $null) {
+                        $PSObject = [PSCustomObject]@{
+                            id          = $Category.id
+                            displayName = $Category.displayName
+                        }
+                        $CategoryList.Add($PSObject) | Out-Null
+                    }
+                    else {
+                        Write-Warning -Message "Could not find category with name '$($CategoryNameItem)' or provided name resulted in multiple matches which is not supported"
+                    }
+                }
+
+                if ($CategoryList.Count -ge 1) {
+                    $Win32AppBody.Add("CategoryList", $CategoryList)
+                }
+            }
+            if ($PSBoundParameters["InstallCommandLine"]) {
+                $Win32AppBody.Add("installCommandLine", $InstallCommandLine)
+            }
+            if ($PSBoundParameters["UninstallCommandLine"]) {
+                $Win32AppBody.Add("uninstallCommandLine", $UninstallCommandLine)
+            }
+            if ($PSBoundParameters["RestartBehavior"]) {
+                $Win32AppBody.Add("restartBehavior", $RestartBehavior)
+            }
+            if ($PSBoundParameters["MaximumInstallationTimeInMinutes"]) {
+                $Win32AppBody.Add("maximumRunTimeInMinutes", $MaximumInstallationTimeInMinutes)
+            }
+            if ($PSBoundParameters["RequirementRule"]) {
+                $Win32AppBody.Add("requirementRule", @($RequirementRule))
+            }
+            if ($PSBoundParameters["AdditionalRequirementRule"]) {
+                if ($Win32AppBody.ContainsKey("requirementRules")) {
+                    $Win32AppBody["requirementRules"] += $AdditionalRequirementRule
+                }
+                else {
+                    $Win32AppBody.Add("requirementRules", $AdditionalRequirementRule)
+                }
+            }
+            if ($PSBoundParameters["ReturnCode"]) {
+                # Retrieve the default return codes for a Win32 app
+                Write-Verbose -Message "Retrieving default set of return codes for Win32 app body construction"
+                $DefaultReturnCodes = Get-IntuneWin32AppDefaultReturnCode
+
+                # Add custom return codes from parameter input to default set of objects
+                Write-Verbose -Message "Additional return codes where passed as command line input, adding to array of default return codes"
+                foreach ($ReturnCodeItem in $ReturnCode) {
+                    $DefaultReturnCodes += $ReturnCodeItem
+                }
+
+                # Add return codes to Win32 app body object
+                Write-Verbose -Message "Adding array of return codes to Win32 app body construction"
+                $Win32AppBody.Add("returnCodes", $DefaultReturnCodes)
+            }
+            if ($PSBoundParameters["Icon"]) {
+                $Win32AppBody.Add("largeIcon", @{
+                        "@odata.type" = "#microsoft.graph.mimeContent"
+                        "type"        = "image/png"
+                        "value"       = $Icon
+                    })
+            }
             if ($PSBoundParameters["AllowAvailableUninstall"]) {
                 $Win32AppBody.Add("allowAvailableUninstall", $AllowAvailableUninstall)
+            }
+            if ($PSBoundParameters["DetectionRule"]) {
+                # Validate that correct detection rules have been passed on command line, only 1 PowerShell script based detection rule is allowed
+                if (($DetectionRule.'@odata.type' -contains "#microsoft.graph.win32LobAppPowerShellScriptDetection") -and (@($DetectionRule).'@odata.type'.Count -gt 1)) {
+                    Write-Warning -Message "Multiple PowerShell Script detection rules were detected, this is not a supported configuration"; break
+                }
+               
+                # Add detection rules to Win32 app body object
+                Write-Verbose -Message "Detection rule objects passed validation checks, attempting to add to existing Win32 app body"
+                $Win32AppBody.Add("detectionRules", $DetectionRule)
             }
 
             try {
