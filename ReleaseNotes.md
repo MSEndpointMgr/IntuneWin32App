@@ -71,20 +71,6 @@
 - Fixed `Test-IntuneWin32AppAssignment` to properly detect `#microsoft.graph.groupAssignmentTarget` assignment types
 - Significantly improved automation and CI/CD pipeline support (tested extensively with GitHub Actions)
 
-
-## 1.4.4
-- **BREAKING CHANGE**: Updated `New-IntuneWin32AppRequirementRule` function to support ARM64 architecture and switched to modern `allowedArchitectures` property by default
-- **BREAKING CHANGE**: Updated `Connect-MSIntuneGraph` function to require explicit ClientID parameter - removed deprecated Microsoft Intune PowerShell enterprise application fallback
-- Added new architecture options: `arm64`, `x64x86`, `AllWithARM64` for comprehensive platform targeting
-- Enhanced architecture targeting to align with Microsoft Intune's "Check operating system architecture" feature
-- Improved architecture option naming for clarity: replaced confusing "All" option with explicit `x64x86`
-- Added `Remove-IntuneWin32AppAssignmentAllUsers` function to selectively remove 'All Users' assignments from Win32 apps
-- Added `Remove-IntuneWin32AppAssignmentAllDevices` function to selectively remove 'All Devices' assignments from Win32 apps
-- New remove functions intelligently handle assignment removal across all intents (required, available, uninstall) with detailed intent-aware feedback
-- Added ARM64 sample file demonstrating various architecture targeting scenarios
-- **CRITICAL FIX**: Updated `Test-AccessToken` function to use 5-minute renewal threshold (down from 10 minutes) to prevent conflicts with minimum Access Token Lifetime policies in Entra ID
-- Enhanced `Connect-MSIntuneGraph` function documentation with Windows Terminal compatibility guidance for authentication flows
-
 ## 1.4.4
 - Improved handling of empty object references in functions `Remove-IntuneWin32AppSupersedence` and `Remove-IntuneWin32AppDependency` functions that would render a null value to be added in the JSON construct instead of `[]`.
 - Function `New-IntuneWin32AppPackage` function should now work better as for it's enforced output that it doesn't like when attempted to be hidden.
