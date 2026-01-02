@@ -49,18 +49,42 @@ Install-Module -Name "IntuneWin32App" -AcceptLicense
 ```
 
 ## Module dependencies
-IntuneWin32App module requires the following modules, which will be automatically installed as dependencies:
-- MSAL.PS
+As of version 1.5.0, the IntuneWin32App module has **no external dependencies**. The module now uses native OAuth 2.0 implementation for all authentication flows, eliminating the need for MSAL.PS or any other third-party modules.
 
 ## Authentication
-In the previous versions of this module, the functions that interact with Microsoft Intune (essentially query the Graph API for resources), used have common parameters that required input on a per function basis. With the release of version 1.2.0 and going forward, the IntuneWin32App module replaces these common parameter requirements and replaces them with a single function, Connect-MSIntuneGraph, to streamline the authentication token retrieval with other modules and how they work.
+The IntuneWin32App module uses the `Connect-MSIntuneGraph` function to authenticate with Microsoft Graph API. As of version 1.5.0, the module implements native OAuth 2.0 flows without external dependencies.
 
-Before using any of the functions within this module that interacts with Graph API, ensure that an authentication token is acquired using the following command:
+### Authentication Requirements
+- **TenantID**: Your Entra ID tenant ID or domain (e.g., "name.onmicrosoft.com")
+- **ClientID**: Application (client) ID from your Entra ID app registration (required as of v1.5.0)
+
+### Supported Authentication Flows
+
+#### Interactive Authentication (Default)
+Uses OAuth 2.0 Authorization Code flow with PKCE. Opens browser for user sign-in:
 ```PowerShell
-Connect-MSIntuneGraph -TenantID "domain.onmicrosoft.com"
+Connect-MSIntuneGraph -TenantID "name.onmicrosoft.com" -ClientID "<your-client-id>"
 ```
 
-Delegated authentication (username / password) together with DeviceCode is currently the only authentication methods that are supported.
+#### Device Code Flow
+For environments without interactive browser access (e.g., remote sessions, SSH, Windows Terminal):
+```PowerShell
+Connect-MSIntuneGraph -TenantID "name.onmicrosoft.com" -ClientID "<your-client-id>" -DeviceCode
+```
+Displays a URL and code for authentication on another device.
+
+#### Client Secret Flow
+For unattended automation and CI/CD pipelines:
+```PowerShell
+$ClientSecret = "<your-client-secret>"
+Connect-MSIntuneGraph -TenantID "name.onmicrosoft.com" -ClientID "<your-client-id>" -ClientSecret $ClientSecret
+```
+
+### Entra ID App Registration Requirements
+Your Entra ID app registration must have:
+- **API Permissions**: `DeviceManagementApps.ReadWrite.All` and `DeviceManagementRBAC.Read.All` (Delegated or Application permissions)
+- **Redirect URI**: `http://localhost` (for Interactive flow)
+- **Public client**: Yes (for Interactive and Device Code flows)
 
 ## Encoding recommendations
 When for instance UTF-8 encoding is required, ensure the file is encoded with UTF-8 with BOM, this should address some problems reported in the past where certain characters was not shown correctly in the MEM portal.
@@ -141,6 +165,64 @@ $UninstallCommandLine = "cmd.exe /c"
 Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "Start BitLocker silent encryption" -Publisher "MSEndpointMgr" -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -RequirementRule $RequirementRule -ReturnCode $ReturnCode -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Verbose
 ```
 
+## Architecture Targeting (New in v1.5.0)
+The module now supports comprehensive architecture targeting including ARM64 devices. Use the `-Architecture` parameter in `New-IntuneWin32AppRequirementRule` with the following options:
+
+- **`x64`**: 64-bit Intel/AMD processors only
+- **`x86`**: 32-bit Intel/AMD processors only
+- **`arm64`**: ARM64 processors only (new in v1.5.0)
+- **`x64x86`**: Both 64-bit and 32-bit Intel/AMD processors
+- **`AllWithARM64`**: All architectures including ARM64 (universal targeting)
+
+Example for ARM64-compatible deployment:
+```PowerShell
+# Target all architectures including ARM64 devices
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "AllWithARM64" -MinimumSupportedWindowsRelease "W10_21H2"
+
+# Target ARM64 devices only
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "arm64" -MinimumSupportedWindowsRelease "W10_21H2"
+```
+
+## Updating Win32 Apps Post-Deployment (Enhanced in v1.5.0)
+The `Set-IntuneWin32App` function now supports extensive post-deployment modifications:
+
+```PowerShell
+# Get existing Win32 app
+$Win32App = Get-IntuneWin32App -DisplayName "7-Zip" -Verbose
+
+# Update detection rule
+$NewDetectionRule = New-IntuneWin32AppDetectionRuleFile -Path "C:\Program Files\7-Zip" -FileOrFolderName "7z.exe" -FileDetectionType "exists"
+Set-IntuneWin32App -ID $Win32App.id -DetectionRule $NewDetectionRule -Verbose
+
+# Update app icon
+$IconFile = "C:\Win32Apps\Icons\new-icon.png"
+$NewIcon = New-IntuneWin32AppIcon -FilePath $IconFile
+Set-IntuneWin32App -ID $Win32App.id -Icon $NewIcon -Verbose
+
+# Update install and uninstall commands
+Set-IntuneWin32App -ID $Win32App.id -InstallCommandLine "msiexec /i setup.msi /quiet" -UninstallCommandLine "msiexec /x {GUID} /quiet" -Verbose
+
+# Update requirement rule for ARM64 support
+$NewRequirementRule = New-IntuneWin32AppRequirementRule -Architecture "AllWithARM64" -MinimumSupportedWindowsRelease "W10_21H2"
+Set-IntuneWin32App -ID $Win32App.id -RequirementRule $NewRequirementRule -Verbose
+```
+
+## Selective Assignment Removal (New in v1.5.0)
+Remove specific assignment types without affecting others:
+
+```PowerShell
+# Get Win32 app
+$Win32App = Get-IntuneWin32App -DisplayName "7-Zip" -Verbose
+
+# Remove all 'All Users' assignments (available, required, uninstall)
+Remove-IntuneWin32AppAssignmentAllUsers -ID $Win32App.id -Verbose
+
+# Remove all 'All Devices' assignments
+Remove-IntuneWin32AppAssignmentAllDevices -ID $Win32App.id -Verbose
+
+# Group assignments remain intact
+
+
 ## Additional parameters for Add-IntuneWin32App function
 When creating a Win32 app, additional configuration is possible when using the Add-IntuneWin32App function. It's possible to set the icon for the Win32 app using the Icon parameter. If desired, it's also possible to add custom, in addition to the default, return codes by adding the ReturnCode parameter. Below is an example of how the Add-IntuneWin32App function could be extended with those parameters by using the New-IntuneWin32AppIcon and New-IntuneWin32AppReturnCode functions:
 
@@ -165,8 +247,8 @@ Assignments created with this module doesn't currently support specifying an ins
 # Get a specific Win32 app by it's display name
 $Win32App = Get-IntuneWin32App -DisplayName "7-zip" -Verbose
 
-# Add an include assignment for a specific Azure AD group
-$GroupID = "<Azure AD group ID>"
+# Add an include assignment for a specific Entra ID group
+$GroupID = "<Entra ID group ID>"
 Add-IntuneWin32AppAssignmentGroup -Include -ID $Win32App.id -GroupID $GroupID -Intent "available" -Notification "showAll" -Verbose
 ```
 ### Adding for all users
@@ -199,6 +281,9 @@ Expand-IntuneWin32AppPackage -FilePath $IntuneWinFile -Force -Verbose
 Below is an example that automates the complete process of creating the Win32 app content file, adding a new Win32 app in Microsoft Intune and assigns it to all users.
 
 ```PowerShell
+# Authenticate to Microsoft Graph
+Connect-MSIntuneGraph -TenantID "name.onmicrosoft.com" -ClientID "<your-client-id>"
+
 # Package MSI as .intunewin file
 $SourceFolder = "C:\Win32Apps\Source\7-Zip"
 $SetupFile = "7z1900-x64.msi"
@@ -214,7 +299,7 @@ $DisplayName = $IntuneWinMetaData.ApplicationInfo.Name + " " + $IntuneWinMetaDat
 $Publisher = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiPublisher
 
 # Create requirement rule for Intel/AMD platforms and Windows 10 20H2
-$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "x64x86" -MinimumSupportedWindowsRelease "20H2"  
+$RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "x64x86" -MinimumSupportedWindowsRelease "W10_20H2"  
   
 # Create MSI detection rule
 $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion

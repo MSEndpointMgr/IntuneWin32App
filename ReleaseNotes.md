@@ -1,14 +1,67 @@
 # Release notes for IntuneWin32App module
 
 ## 1.5.0
-- **BREAKING CHANGE**: Updated `New-IntuneWin32AppRequirementRule` function to support ARM64 architecture and switched to modern `allowedArchitectures` property by default
-- **BREAKING CHANGE**: Updated `Connect-MSIntuneGraph` function to require explicit ClientID parameter - removed deprecated Microsoft Intune PowerShell enterprise application fallback
-- **ENHANCEMENT**: Merged PR #162 - Comprehensive retry logic and authentication improvements for production reliability
+
+### Breaking Changes
+- Removed MSAL.PS dependency completely - module now uses native OAuth 2.0 implementation for all authentication flows
+- Updated `Connect-MSIntuneGraph` function to require explicit ClientID parameter - removed deprecated Microsoft Intune PowerShell enterprise application fallback
+- Updated `New-IntuneWin32AppRequirementRule` function to support ARM64 architecture and switched to modern `allowedArchitectures` property by default
+- ClientCert authentication flow temporarily disabled - not yet implemented without MSAL.PS dependency
+
+### New Features
+- Added native OAuth 2.0 Authorization Code flow with PKCE (RFC 7636) implementation for Interactive authentication
+- Added OAuth 2.0 Device Code flow support via new `New-DeviceCodeAccessToken` private function and `-DeviceCode` parameter in `Connect-MSIntuneGraph`
+- Added dynamic port assignment for OAuth callback HTTP listener - automatically finds available ports for localhost redirect
+- Implemented PowerShell 5.1 compatible cryptographic operations using RNGCryptoServiceProvider for PKCE code generation
+- Added `Remove-IntuneWin32AppAssignmentAllUsers` function to selectively remove 'All Users' assignments from Win32 apps
+- Added `Remove-IntuneWin32AppAssignmentAllDevices` function to selectively remove 'All Devices' assignments from Win32 apps
+- Added new architecture options: `arm64`, `x64x86`, `AllWithARM64` for comprehensive platform targeting
+- Added ARM64 sample file demonstrating various architecture targeting scenarios
+- Added comprehensive test suite with three test categories: Lifecycle, Assignments, and Components testing
+
+### Enhancements
+- Updated `Connect-MSIntuneGraph` function with enhanced error handling and token validation before constructing authentication header
+- Updated `Set-IntuneWin32App` function to return the updated Win32 app object for verification purposes
+- New remove assignment functions intelligently handle assignment removal across all intents (required, available, uninstall) with detailed intent-aware feedback
+- Enhanced architecture targeting to align with Microsoft Intune's "Check operating system architecture" feature
+- Improved architecture option naming for clarity: replaced confusing "All" option with explicit `x64x86`
+- Authentication functions now set global variables directly (`$Global:AccessToken`, `$Global:AccessTokenTenantID`, `$Global:AuthenticationHeader`) instead of returning values for cleaner code architecture
+- Test suite supports PowerShell 5.1 and 7.x with full ASCII compatibility for international environments
+- Enhanced `Connect-MSIntuneGraph` function documentation with Windows Terminal compatibility guidance for authentication flows
+- Merged PR #162 - Comprehensive retry logic and authentication improvements for production reliability
+- Merged PR #197 - Added `DetectionRule` parameter to `Set-IntuneWin32App` function enabling detection rule updates post-deployment with comprehensive validation
+- Merged PR #202 - Significantly expanded `Set-IntuneWin32App` function capabilities with multiple new parameters for comprehensive app configuration management
+
+### Authentication & Token Management
 - Added robust retry mechanisms throughout the module with exponential backoff for transient failures (429 rate limiting, 503 service unavailable)
 - Implemented retry logic for Win32 app creation, content version creation, file content creation, and Azure Storage blob operations
 - Added new `New-ClientCredentialsAccessToken` function for modern OAuth2.0 client credentials flow without MSAL.PS dependency
 - Enhanced `Test-AccessToken` function with improved token expiration handling using locale-safe DateTimeOffset parsing
+- Updated `Test-AccessToken` function to use 5-minute renewal threshold (down from 10 minutes) to prevent conflicts with minimum Access Token Lifetime policies in Entra ID
 - Updated `Invoke-IntuneGraphRequest` with comprehensive retry logic (up to 10 attempts with configurable delays)
+- Added verbose logging throughout retry operations for better debugging and monitoring
+- Maximum retry delays capped at 60 seconds to prevent excessive wait times
+- Transient error detection improved to handle API throttling and temporary service issues gracefully
+
+### Set-IntuneWin32App Enhancements
+- Added `DetectionRule` parameter supporting file, registry, MSI, and PowerShell script detection rules with comprehensive validation
+- Added validation to prevent multiple PowerShell script detection rules (only one script-based rule allowed per app)
+- Added `CategoryName` parameter enabling category assignment via friendly names with automatic Graph API lookup
+- Added `Icon` parameter with Base64 format validation for updating app icons post-deployment
+- Added `InstallCommandLine` and `UninstallCommandLine` parameters for modifying installation commands
+- Added `RestartBehavior` parameter with ValidateSet for controlling post-installation restart behavior (allow, basedOnReturnCode, suppress, force)
+- Added `MaximumInstallationTimeInMinutes` parameter with ValidateRange (1-1440) for timeout configuration
+- Added `RequirementRule` parameter for updating OS requirements and hardware specifications with comprehensive validation
+- Added `AdditionalRequirementRule` parameter supporting file, registry, and script-based requirement rules as array
+- Added `ReturnCode` parameter enabling custom return code definitions that merge with default Intune return codes
+- Implemented comprehensive validation for all parameters ensuring data integrity and proper API structure
+- Detection rule validation ensures proper @odata.type values and OrderedDictionary structure for all rule types
+- Added category lookup with error handling for not found or ambiguous category name scenarios
+- Enhanced requirement rule processing to extract OS requirements and validate hardware specifications (minimumFreeDiskSpaceInMB, minimumMemoryInMB, minimumNumberOfProcessors, minimumCpuSpeedInMHz)
+- Return code validation ensures required properties (returnCode, type) are present and merges with default codes automatically
+- Added throw statement in catch block for proper error propagation
+
+### Bug Fixes & Improvements
 - Improved Azure Storage blob upload reliability with retry logic in chunk uploads and finalization steps
 - Fixed locale-specific DateTime conversion issues in token expiration calculations for international environments
 - Added missing `content-type` header to Azure Storage blob upload finalization requests
@@ -16,22 +69,8 @@
 - Enhanced SAS URI renewal process with status checking loop for long-running uploads
 - Updated `Expand-IntuneWin32AppCompressedFile` to use unique folder names preventing extraction conflicts
 - Fixed `Test-IntuneWin32AppAssignment` to properly detect `#microsoft.graph.groupAssignmentTarget` assignment types
-- Added throw statement in `Set-IntuneWin32App` catch block for proper error propagation
-- Removed MSAL.PS from required modules list - now dynamically loaded only when needed (maintains backward compatibility)
-- Enhanced `Connect-MSIntuneGraph` with improved error handling and dynamic MSAL.PS module loading
 - Significantly improved automation and CI/CD pipeline support (tested extensively with GitHub Actions)
-- Added verbose logging throughout retry operations for better debugging and monitoring
-- Maximum retry delays capped at 60 seconds to prevent excessive wait times
-- Transient error detection improved to handle API throttling and temporary service issues gracefully
-- Added new architecture options: `arm64`, `x64x86`, `AllWithARM64` for comprehensive platform targeting
-- Enhanced architecture targeting to align with Microsoft Intune's "Check operating system architecture" feature
-- Improved architecture option naming for clarity: replaced confusing "All" option with explicit `x64x86`
-- Added `Remove-IntuneWin32AppAssignmentAllUsers` function to selectively remove 'All Users' assignments from Win32 apps
-- Added `Remove-IntuneWin32AppAssignmentAllDevices` function to selectively remove 'All Devices' assignments from Win32 apps
-- New remove functions intelligently handle assignment removal across all intents (required, available, uninstall) with detailed intent-aware feedback
-- Added ARM64 sample file demonstrating various architecture targeting scenarios
-- **CRITICAL FIX**: Updated `Test-AccessToken` function to use 5-minute renewal threshold (down from 10 minutes) to prevent conflicts with minimum Access Token Lifetime policies in Entra ID
-- Enhanced `Connect-MSIntuneGraph` function documentation with Windows Terminal compatibility guidance for authentication flows
+
 
 ## 1.4.4
 - **BREAKING CHANGE**: Updated `New-IntuneWin32AppRequirementRule` function to support ARM64 architecture and switched to modern `allowedArchitectures` property by default

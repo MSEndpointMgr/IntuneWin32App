@@ -4,9 +4,7 @@ function Connect-MSIntuneGraph {
         Get or refresh an access token using various authentication flows for the Graph API.
 
     .DESCRIPTION
-        Get or refresh an access token using either authorization code flow or device code flow, that can be used to authenticate and authorize against resources in Graph API.
-        
-        Note: When running in Windows Terminal, use the -DeviceCode parameter to avoid "Error creating window handle" issues with interactive authentication.
+        Get or refresh an access token using either authorization code flow or client credentials flow, that can be used to authenticate and authorize against resources in Graph API.
 
     .PARAMETER TenantID
         Specify the tenant name or ID, e.g. tenant.onmicrosoft.com or <GUID>.
@@ -23,22 +21,20 @@ function Connect-MSIntuneGraph {
     .PARAMETER RedirectUri
         Specify the Redirect URI (also known as Reply URL) of the custom Azure AD service principal.
 
-    .PARAMETER DeviceCode
-        Specify delegated login using devicecode flow, you will be prompted to navigate to https://microsoft.com/devicelogin
-        This method is recommended when running in Windows Terminal or other environments where window handle creation may fail.
-
     .PARAMETER Interactive
-        Specify to force an interactive prompt for credentials. Note: This may fail in Windows Terminal with "Error creating window handle" 
-        - use DeviceCode parameter instead for Windows Terminal compatibility.
+        Specify to force an interactive prompt for credentials using OAuth 2.0 Authorization Code flow with PKCE.
+
+    .PARAMETER DeviceCode
+        Specify to use device code authentication flow for environments where interactive browser is not available.
 
     .PARAMETER Refresh
-        Specify to refresh an existing access token.
+        Specify to refresh an existing access token. Note: Token refresh is not currently implemented.
 
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2025-12-07
+        Updated:     2026-01-02
 
         Version history:
         1.0.0 - (2021-08-31) Script created
@@ -47,6 +43,8 @@ function Connect-MSIntuneGraph {
         1.0.3 - (2023-04-07) Added support for client certificate auth flow (thanks to apcsb)
         1.0.4 - (2024-05-29) Updated to integrate New-ClientCredentialsAccessToken function for client secret flow (thanks to @tjgruber)
         1.0.5 - (2025-12-07) BREAKING CHANGE: Removed deprecated Microsoft Intune PowerShell enterprise application fallback, ClientID now mandatory
+        1.0.6 - (2026-01-02) BREAKING CHANGE: Removed MSAL.PS dependency, now uses New-DelegatedAccessToken for Interactive and New-ClientCredentialsAccessToken for ClientSecret flows
+        1.0.7 - (2026-01-02) Added DeviceCode authentication flow support using New-DeviceCodeAccessToken
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -75,34 +73,26 @@ function Connect-MSIntuneGraph {
         [System.Security.Cryptography.X509Certificates.X509Certificate2]$ClientCert,
 
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify the Redirect URI (also known as Reply URL) of the custom Azure AD service principal.")]
-        [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
         [ValidateNotNullOrEmpty()]
         [string]$RedirectUri = [string]::Empty,
 
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify to force an interactive prompt for credentials.")]
         [switch]$Interactive,
 
-        [parameter(Mandatory = $true, ParameterSetName = "DeviceCode", HelpMessage = "Specify to do delegated login using devicecode flow, you will be prompted to navigate to https://microsoft.com/devicelogin")]
+        [parameter(Mandatory = $false, ParameterSetName = "DeviceCode", HelpMessage = "Specify to use device code authentication flow.")]
         [switch]$DeviceCode,
 
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify to refresh an existing access token.")]
-        [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
         [switch]$Refresh
     )
     Begin {
-        # Determine the correct RedirectUri (also known as Reply URL) to use with MSAL.PS
+        # Determine the correct RedirectUri (also known as Reply URL) for OAuth authentication
         Write-Verbose -Message "Using Entra ID service principal with Application ID: $($ClientID)"
 
         # Adjust RedirectUri parameter input in case none was passed on command line
         if ([string]::IsNullOrEmpty($RedirectUri)) {
-            switch -Wildcard ($PSVersionTable["PSVersion"]) {
-                "5.*" {
-                    $RedirectUri = "https://login.microsoftonline.com/common/oauth2/nativeclient"
-                }
-                "7.*" {
-                    $RedirectUri = "http://localhost"
-                }
-            }
+            # Use http://localhost for loopback redirect (dynamic port will be assigned)
+            $RedirectUri = "http://localhost"
         }
 
         Write-Verbose -Message "Using RedirectUri with value: $($RedirectUri)"
@@ -113,83 +103,58 @@ function Connect-MSIntuneGraph {
     Process {
         Write-Verbose -Message "Using authentication flow: $($PSCmdlet.ParameterSetName)"
 
-        # Check if the MSAL.PS module is loaded and install if needed
-        if (($PSCmdlet.ParameterSetName -ne "ClientSecret") -and (-not (Get-Module -ListAvailable -Name MSAL.PS))) {
-            Write-Verbose -Message "MSAL.PS module not found. Installing MSAL.PS module..."
-            try {
-                Install-Module -Name MSAL.PS -Scope CurrentUser -Force -ErrorAction Stop
-                Write-Verbose -Message "MSAL.PS module installed successfully."
-            }
-            catch {
-                Write-Error -Message "Failed to install MSAL.PS module. Error: $_"
-                return
-            }
-        }
-
         try {
-            # Construct table with common parameter input for Get-MsalToken cmdlet
-            $AccessTokenArguments = @{
-                "TenantId"    = $TenantID
-                "ClientId"    = $ClientID
-                "RedirectUri" = $RedirectUri
-                "ErrorAction" = "Stop"
-            }
-
-            # Dynamically add parameter input based on parameter set name
+            # Handle different authentication flows
             switch ($PSCmdlet.ParameterSetName) {
                 "Interactive" {
-                    if ($PSBoundParameters["Refresh"]) {
-                        $AccessTokenArguments.Add("ForceRefresh", $true)
-                        $AccessTokenArguments.Add("Silent", $true)
+                    Write-Verbose -Message "Using New-DelegatedAccessToken for interactive authentication"
+                    try {
+                        New-DelegatedAccessToken -TenantID $TenantID -ClientID $ClientID -RedirectUri $RedirectUri
+                        $Global:AccessTokenTenantID = $TenantID
+                        Write-Verbose -Message "Successfully retrieved access token using New-DelegatedAccessToken"
+                    }
+                    catch {
+                        Write-Error -Message "An error occurred while retrieving access token using interactive authentication: $($_)"
+                        return
                     }
                 }
                 "DeviceCode" {
-                    if ($PSBoundParameters["Refresh"]) {
-                        $AccessTokenArguments.Add("ForceRefresh", $true)
+                    Write-Verbose -Message "Using New-DeviceCodeAccessToken for device code authentication"
+                    try {
+                        New-DeviceCodeAccessToken -TenantID $TenantID -ClientID $ClientID
+                        $Global:AccessTokenTenantID = $TenantID
+                        Write-Verbose -Message "Successfully retrieved access token using New-DeviceCodeAccessToken"
+                    }
+                    catch {
+                        Write-Error -Message "An error occurred while retrieving access token using device code authentication: $($_)"
+                        return
                     }
                 }
                 "ClientSecret" {
-                    Write-Verbose "Using clientSecret"
+                    Write-Verbose -Message "Using New-ClientCredentialsAccessToken for client secret authentication"
                     try {
-                        $Global:AccessToken = New-ClientCredentialsAccessToken -TenantID $TenantID -ClientID $ClientID -ClientSecret $ClientSecret
+                        New-ClientCredentialsAccessToken -TenantID $TenantID -ClientID $ClientID -ClientSecret $ClientSecret
                         $Global:AccessTokenTenantID = $TenantID
+                        Write-Verbose -Message "Successfully retrieved access token using client credentials"
                     }
                     catch {
-                        Write-Error "An error occurred while retrieving access token using client credentials: $_"
+                        Write-Error -Message "An error occurred while retrieving access token using client credentials: $($_)"
                         return
                     }
-                    $AccessTokenArguments = $null  # Skip MSAL token retrieval
                 }
                 "ClientCert" {
-                    Write-Verbose "Using clientCert"
-                    $AccessTokenArguments.Add("ClientCertificate", $ClientCert)
-                }
-            }
-
-            if ($AccessTokenArguments) {
-                # Dynamically add parameter input based on command line input
-                if ($PSBoundParameters["Interactive"]) {
-                    $AccessTokenArguments.Add("Interactive", $true)
-                }
-                if ($PSBoundParameters["DeviceCode"]) {
-                    if (-not($PSBoundParameters["Refresh"])) {
-                        $AccessTokenArguments.Add("DeviceCode", $true)
-                    }
-                }
-
-                try {
-                    # Attempt to retrieve or refresh an access token
-                    $Global:AccessToken = Get-MsalToken @AccessTokenArguments
-                    $Global:AccessTokenTenantID = $TenantID
-                    Write-Verbose -Message "Successfully retrieved access token"
-                }
-                catch {
-                    Write-Warning -Message "An error occurred while attempting to retrieve or refresh access token: $_"
+                    Write-Error -Message "ClientCert authentication flow is not yet implemented without MSAL.PS. Use -ClientSecret parameter instead."
                     return
                 }
             }
 
             try {
+                # Validate that access token was successfully retrieved
+                if (($null -eq $Global:AccessToken) -or ([string]::IsNullOrEmpty($Global:AccessToken.AccessToken))) {
+                    Write-Error -Message "Failed to retrieve access token"
+                    return
+                }
+                
                 # Construct the required authentication header
                 $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
                 Write-Verbose -Message "Successfully constructed authentication header"
@@ -198,11 +163,11 @@ function Connect-MSIntuneGraph {
                 return $Global:AuthenticationHeader
             }
             catch {
-                Write-Warning -Message "An error occurred while attempting to construct authentication header: $_"
+                Write-Warning -Message "An error occurred while attempting to construct authentication header: $($_)"
             }
         }
         catch {
-            Write-Warning -Message "An error occurred while constructing parameter input for access token retrieval: $_"
+            Write-Warning -Message "An error occurred while constructing parameter input for access token retrieval: $($_)"
         }
     }
 }

@@ -15,6 +15,9 @@ Build/
 # Visual Studio Code settings
 .vscode/
 
+# Copilot instructions (moved to .github/instructions)
+.copilot/
+
 # Temporary files
 *.tmp
 *.temp
