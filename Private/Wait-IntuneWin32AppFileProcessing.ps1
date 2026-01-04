@@ -25,7 +25,7 @@ function Wait-IntuneWin32AppFileProcessing {
         [string]$Resource
     )
     do {
-        $GraphRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource $Resource -Method "GET"
+        $GraphRequest = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource $Resource
         switch ($GraphRequest.uploadState) {
             "$($Stage)Pending" {
                 Write-Verbose -Message "Intune service request for operation '$($Stage)' is in pending state, sleeping for 10 seconds"

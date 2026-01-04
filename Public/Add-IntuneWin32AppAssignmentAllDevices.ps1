@@ -188,7 +188,7 @@ function Add-IntuneWin32AppAssignmentAllDevices {
 
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
-        $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
+        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
         if ($Win32App -ne $null) {
             $Win32AppID = $Win32App.id
 
@@ -262,7 +262,7 @@ function Add-IntuneWin32AppAssignmentAllDevices {
             if ($DuplicateAssignment -eq $false) {
                 try {
                     # Attempt to call Graph and create new assignment for Win32 app
-                    $Win32AppAssignmentResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/assignments" -Method "POST" -Body ($Win32AppAssignmentBody | ConvertTo-Json) -ContentType "application/json" -ErrorAction Stop
+                    $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments" -Body ($Win32AppAssignmentBody | ConvertTo-Json) -ErrorAction Stop
                     if ($Win32AppAssignmentResponse.id) {
                         Write-Verbose -Message "Successfully created Win32 app assignment with ID: $($Win32AppAssignmentResponse.id)"
                         Write-Output -InputObject $Win32AppAssignmentResponse

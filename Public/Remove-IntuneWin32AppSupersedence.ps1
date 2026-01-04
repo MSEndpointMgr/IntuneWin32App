@@ -45,25 +45,29 @@ function Remove-IntuneWin32AppSupersedence {
     Process {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
-        $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
+        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
         if ($Win32App -ne $null) {
             $Win32AppID = $Win32App.id
 
             # Check for existing dependency relations for Win32 app, as these relationships should not be removed
             $Dependencies = Get-IntuneWin32AppDependency -ID $Win32AppID
 
-            # Create relationships table to handle potential empty dependencies relations
-            $Win32AppRelationshipsTable = [ordered]@{
-                "relationships" = if ($Dependencies) { @($Dependencies) } else { , @() }
+            # Create relationships body - handle empty array case
+            if ($Dependencies) {
+                $Win32AppRelationshipsTable = @{
+                    "relationships" = @($Dependencies)
+                }
+                $Body = $Win32AppRelationshipsTable | ConvertTo-Json -Depth 10 -Compress
+            }
+            else {
+                # Manually construct JSON with empty array since ConvertTo-Json may convert @() to null
+                $Body = '{"relationships":[]}'
             }
 
-            try {
-                # Attempt to call Graph and remove supersedence configuration for Win32 app
-                Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/updateRelationships" -Method "POST" -Body ($Win32AppRelationshipsTable | ConvertTo-Json) -ErrorAction Stop
-            }
-            catch [System.Exception] {
-                Write-Warning -Message "An error occurred while removing supersedence configuration for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"
-            }
+            Write-Verbose -Message "Request body: $Body"
+
+            # Attempt to call Graph and remove supersedence configuration for Win32 app
+            Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships" -Body $Body
         }
         else {
             Write-Warning -Message "Query for Win32 app returned an empty result, no apps matching the specified search criteria with ID '$($ID)' was found"

@@ -50,9 +50,9 @@ function Remove-IntuneWin32App {
     Process {
         switch ($PSCmdlet.ParameterSetName) {
             "DisplayName" {
-                $MobileApps = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps" -Method "GET"
-                if ($MobileApps.value.Count -ge 1) {
-                    $Win32MobileApps = $MobileApps.value | Where-Object { $_.'@odata.type' -like "#microsoft.graph.win32LobApp" }
+                $MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps"
+                if ($MobileApps.Count -ge 1) {
+                    $Win32MobileApps = $MobileApps | Where-Object { $_.'@odata.type' -like "#microsoft.graph.win32LobApp" }
                     if ($Win32MobileApps -ne $null) {
                         $Win32App = $Win32MobileApps | Where-Object { $_.displayName -like $DisplayName }
                         if ($Win32App -ne $null) {
@@ -79,7 +79,7 @@ function Remove-IntuneWin32App {
         if (-not([string]::IsNullOrEmpty($Win32AppID))) {
             try {
                 # Attempt to call Graph and delete Win32 app
-                $Win32AppDeletionResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)" -Method "DELETE" -ErrorAction Stop
+                $Win32AppDeletionResponse = Invoke-MSGraphOperation -Delete -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)" -ErrorAction Stop
             }
             catch [System.Exception] {
                 Write-Warning -Message "An error occurred while deleting Win32 app with ID: $($Win32AppID). Error message: $($_.Exception.Message)"

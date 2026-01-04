@@ -25,7 +25,7 @@ function Invoke-AzureStorageBlobUploadRenew {
         [ValidateNotNullOrEmpty()]
         [string]$Resource
     )
-    $RenewSASURIRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "$($Resource)/renewUpload" -Method "POST" -Body "{}"
+    $RenewSASURIRequest = Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/$($Resource)/renewUpload" -Body "{}"
 
     # Loop to wait for the renewal process to complete and check the status
     $attempts = 0
@@ -33,7 +33,7 @@ function Invoke-AzureStorageBlobUploadRenew {
     $waitTime = 5 # seconds
 
     while ($attempts -lt $maxAttempts) {
-        $FilesProcessingRequest = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "$($Resource)" -Method "GET"
+        $FilesProcessingRequest = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/$($Resource)"
         if ($FilesProcessingRequest.uploadState -eq "azureStorageUriRenewalSuccess") {
             return $FilesProcessingRequest.azureStorageUri
         } elseif ($FilesProcessingRequest.uploadState -eq "azureStorageUriRenewalFailed") {

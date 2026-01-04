@@ -38,6 +38,10 @@ function Invoke-AzureStorageBlobUpload {
     )
     $ChunkSizeInBytes = 1024l * 1024l * 6l;
 
+    # Allow time for SAS token propagation in Azure Storage backend
+    Write-Verbose -Message "Waiting for Azure Storage SAS token propagation"
+    Start-Sleep -Seconds 2
+
     # Start the timer for SAS URI renewal
     $SASRenewalTimer = [System.Diagnostics.Stopwatch]::StartNew()
 

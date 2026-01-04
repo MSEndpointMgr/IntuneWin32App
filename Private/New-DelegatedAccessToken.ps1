@@ -23,10 +23,11 @@ function New-DelegatedAccessToken {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2026-01-02
-        Updated:     2026-01-02
+        Updated:     2026-01-04
 
         Version history:
         1.0.0 - (2026-01-02) Script created
+        1.0.1 - (2026-01-04) Added refresh token storage for silent token renewal
     #>
     param(
         [parameter(Mandatory = $true, HelpMessage = "Tenant ID of the Entra ID tenant.")]
@@ -43,7 +44,7 @@ function New-DelegatedAccessToken {
 
         [parameter(Mandatory = $false, HelpMessage = "Array of permission scopes to request.")]
         [ValidateNotNullOrEmpty()]
-        [String[]]$Scopes = @("DeviceManagementApps.ReadWrite.All", "DeviceManagementRBAC.Read.All")
+        [String[]]$Scopes = @("DeviceManagementApps.ReadWrite.All", "DeviceManagementRBAC.Read.All", "offline_access")
     )
     Process {
         try {
@@ -84,10 +85,10 @@ function New-DelegatedAccessToken {
             
             try {
                 $HttpListener.Start()
-                Write-Verbose -Message "HTTP listener started on $ActualRedirectUri"
+                Write-Verbose -Message "HTTP listener started on $($ActualRedirectUri)"
             }
             catch {
-                throw "Failed to start HTTP listener on $ActualRedirectUri. Error: $_"
+                throw "Failed to start HTTP listener on $($ActualRedirectUri). Error: $($_)"
             }
 
             # Build authorization URL using the dynamic redirect URI
@@ -122,7 +123,7 @@ function New-DelegatedAccessToken {
                 # Send response to browser
                 if ($AuthCode) {
                     $Response.StatusCode = 200
-                    $ResponseString = "<html><head><title>Authentication Successful</title></head><body style='font-family: Arial, sans-serif; text-align: center; padding: 50px;'><h1 style='color: green;'>Authentication Successful!</h1><p>You have successfully authenticated.</p><p>You can close this window and return to PowerShell.</p></body></html>"
+                    $ResponseString = "<html><head><title>Authentication Successful</title></head><body style='font-family: Arial, sans-serif; text-align: center; padding: 50px;'><h1 style='color: green;'>Authentication Successful</h1><p>You have successfully authenticated.</p><p>You can close this window and return to PowerShell.</p></body></html>"
                 }
                 elseif ($ErrorCode) {
                     # Set appropriate HTTP status code based on OAuth error type
@@ -175,7 +176,7 @@ function New-DelegatedAccessToken {
                 $Response.Close()
             }
             catch {
-                throw "Failed to process authentication callback: $_"
+                throw "Failed to process authentication callback: $($_)"
             }
             finally {
                 # Give time for response to be delivered before stopping listener
@@ -220,7 +221,7 @@ function New-DelegatedAccessToken {
                 throw "No access token was returned in the response."
             }
 
-            Write-Verbose -Message "Authentication successful!"
+            Write-Verbose -Message "Authentication successful"
 
             # Add ExpiresOn property for token expiration tracking
             $TokenResponse | Add-Member -MemberType NoteProperty -Name "ExpiresOn" -Value ((Get-Date).AddSeconds($TokenResponse.expires_in).ToUniversalTime()) -Force
@@ -230,12 +231,18 @@ function New-DelegatedAccessToken {
             
             # Add AccessToken property for consistent access
             $TokenResponse | Add-Member -MemberType NoteProperty -Name "AccessToken" -Value $TokenResponse.access_token -Force
+            
+            # Store refresh token if available for silent token renewal
+            if ($TokenResponse.refresh_token) {
+                $TokenResponse | Add-Member -MemberType NoteProperty -Name "RefreshToken" -Value $TokenResponse.refresh_token -Force
+                Write-Verbose -Message "Refresh token stored for silent token renewal"
+            }
 
             # Set global variable
             $Global:AccessToken = $TokenResponse
         }
         catch {
-            throw "Error retrieving the access token: $_"
+            throw "Error retrieving the access token: $($_)"
         }
     }
 }

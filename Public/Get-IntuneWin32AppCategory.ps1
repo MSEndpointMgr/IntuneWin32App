@@ -53,18 +53,18 @@ function Get-IntuneWin32AppCategory {
         # Construct resource uri depending on parameter set name
         switch ($PSCmdlet.ParameterSetName) {
             "DisplayName" {
-                $Resource = "mobileAppCategories?`$filter=displayName eq '$([System.Web.HttpUtility]::UrlEncode($DisplayName))'"
+                $Resource = "deviceAppManagement/mobileAppCategories?`$filter=displayName eq '$([System.Web.HttpUtility]::UrlEncode($DisplayName))'"
             }
             "List" {
-                $Resource = "mobileAppCategories"
+                $Resource = "deviceAppManagement/mobileAppCategories"
             }
         }
 
         try {
             # Invoke Graph API call to retrieve categories
-            $Win32AppCategories = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource $Resource -Method "GET" -ErrorAction "Stop"
-            if ($Win32AppCategories.value.Count -ge 1) {
-                foreach ($Win32AppCategory in $Win32AppCategories.value) {
+            $Win32AppCategories = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource $Resource -ErrorAction "Stop"
+            if ($Win32AppCategories.Count -ge 1) {
+                foreach ($Win32AppCategory in $Win32AppCategories) {
                     $PSObject = [PSCustomObject]@{
                         ID = $Win32AppCategory.id
                         DisplayName = $Win32AppCategory.displayName

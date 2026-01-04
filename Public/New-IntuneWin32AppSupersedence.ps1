@@ -54,7 +54,7 @@ function New-IntuneWin32AppSupersedence {
     Process {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
-        $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
+        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
         if ($Win32App -ne $null) {
             $Win32AppID = $Win32App.id
 

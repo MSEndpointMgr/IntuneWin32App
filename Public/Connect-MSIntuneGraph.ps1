@@ -34,7 +34,7 @@ function Connect-MSIntuneGraph {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2026-01-02
+        Updated:     2026-01-04
 
         Version history:
         1.0.0 - (2021-08-31) Script created
@@ -45,6 +45,7 @@ function Connect-MSIntuneGraph {
         1.0.5 - (2025-12-07) BREAKING CHANGE: Removed deprecated Microsoft Intune PowerShell enterprise application fallback, ClientID now mandatory
         1.0.6 - (2026-01-02) BREAKING CHANGE: Removed MSAL.PS dependency, now uses New-DelegatedAccessToken for Interactive and New-ClientCredentialsAccessToken for ClientSecret flows
         1.0.7 - (2026-01-02) Added DeviceCode authentication flow support using New-DeviceCodeAccessToken
+        1.0.8 - (2026-01-04) Implemented silent token refresh using Update-AccessTokenFromRefreshToken function
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -82,7 +83,8 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $false, ParameterSetName = "DeviceCode", HelpMessage = "Specify to use device code authentication flow.")]
         [switch]$DeviceCode,
 
-        [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify to refresh an existing access token.")]
+        [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify to refresh an existing access token using stored refresh token.")]
+        [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
         [switch]$Refresh
     )
     Begin {
@@ -104,6 +106,30 @@ function Connect-MSIntuneGraph {
         Write-Verbose -Message "Using authentication flow: $($PSCmdlet.ParameterSetName)"
 
         try {
+            # Handle token refresh if requested and refresh token is available
+            if ($PSBoundParameters.ContainsKey("Refresh") -and $Refresh) {
+                if ($null -ne $Global:AccessToken -and $Global:AccessToken.PSObject.Properties["RefreshToken"] -and -not [string]::IsNullOrEmpty($Global:AccessToken.RefreshToken)) {
+                    Write-Verbose -Message "Refresh parameter specified and refresh token available, attempting silent token refresh"
+                    try {
+                        $Scopes = if ($Global:AccessToken.PSObject.Properties["Scopes"]) { $Global:AccessToken.Scopes } else { @("DeviceManagementApps.ReadWrite.All", "DeviceManagementRBAC.Read.All") }
+                        Update-AccessTokenFromRefreshToken -TenantID $TenantID -ClientID $ClientID -RefreshToken $Global:AccessToken.RefreshToken -Scopes $Scopes
+                        Write-Verbose -Message "Successfully refreshed access token silently"
+                        
+                        # Construct the required authentication header
+                        $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
+                        Write-Verbose -Message "Successfully constructed authentication header"
+                        
+                        return $Global:AuthenticationHeader
+                    }
+                    catch {
+                        Write-Warning -Message "Silent token refresh failed: $($_). Falling back to interactive authentication"
+                    }
+                }
+                else {
+                    Write-Verbose -Message "Refresh parameter specified but no refresh token available, proceeding with standard authentication"
+                }
+            }
+            
             # Handle different authentication flows
             switch ($PSCmdlet.ParameterSetName) {
                 "Interactive" {

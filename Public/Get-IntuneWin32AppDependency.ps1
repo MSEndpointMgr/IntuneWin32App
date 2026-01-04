@@ -42,18 +42,24 @@ function Get-IntuneWin32AppDependency {
     Process {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
-        $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
+        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
         if ($Win32App -ne $null) {
             $Win32AppID = $Win32App.id
 
             try {
                 # Attempt to call Graph and retrieve dependency configuration for Win32 app
-                $Win32AppRelationsResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)/relationships" -Method "GET" -ErrorAction Stop
+                $Win32AppRelationsResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/relationships" -ErrorAction Stop
 
                 # Handle return value
-                if ($Win32AppRelationsResponse.value -ne $null) {
-                    if ($Win32AppRelationsResponse.value.'@odata.type' -like "#microsoft.graph.mobileAppDependency") {
-                        return $Win32AppRelationsResponse.value
+                if ($Win32AppRelationsResponse -ne $null) {
+                    # Filter for dependency relationships
+                    $DependencyRelationships = $Win32AppRelationsResponse | Where-Object { $_.'@odata.type' -eq "#microsoft.graph.mobileAppDependency" }
+                    if ($DependencyRelationships -ne $null) {
+                        Write-Verbose -Message "Found $(@($DependencyRelationships).Count) dependency relationship(s)"
+                        return $DependencyRelationships
+                    }
+                    else {
+                        Write-Verbose -Message "No dependency relationships found for Win32 app: $($Win32AppID)"
                     }
                 }
             }

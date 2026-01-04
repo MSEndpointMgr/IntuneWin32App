@@ -200,7 +200,7 @@ function Set-IntuneWin32App {
     Process {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
-        $Win32App = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($ID)" -Method "GET"
+        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
         if ($Win32App -ne $null) {
             $Win32AppID = $Win32App.id
 
@@ -251,7 +251,7 @@ function Set-IntuneWin32App {
                 foreach ($CategoryNameItem in $CategoryName) {
                     Write-Verbose -Message "Querying for category: $($CategoryNameItem)"
                     try {
-                        $Category = (Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileAppCategories?`$filter=displayName eq '$([System.Web.HttpUtility]::UrlEncode($CategoryNameItem))'" -Method "GET" -ErrorAction "Stop").value
+                        $Category = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileAppCategories?`$filter=displayName eq '$([System.Web.HttpUtility]::UrlEncode($CategoryNameItem))'" -ErrorAction "Stop"
                         
                         if ($Category -ne $null) {
                             if ($Category.Count -eq 1) {
@@ -295,15 +295,16 @@ function Set-IntuneWin32App {
             if ($PSBoundParameters["UninstallCommandLine"]) {
                 $Win32AppBody.Add("uninstallCommandLine", $UninstallCommandLine)
             }
-            if ($PSBoundParameters["RestartBehavior"]) {
-                $Win32AppBody.Add("restartBehavior", $RestartBehavior)
-            }
-            if ($PSBoundParameters["MaximumInstallationTimeInMinutes"]) {
-                $Win32AppBody.Add("installTimeSettings", @{
-                    "useLocalTime" = $false
-                    "runAsAccount" = "system"
-                })
-                $Win32AppBody.Add("maximumInstallationTimeInMinutes", $MaximumInstallationTimeInMinutes)
+            if ($PSBoundParameters["RestartBehavior"] -or $PSBoundParameters["MaximumInstallationTimeInMinutes"]) {
+                # Build installExperience object
+                $InstallExperience = @{}
+                if ($PSBoundParameters["RestartBehavior"]) {
+                    $InstallExperience.Add("deviceRestartBehavior", $RestartBehavior)
+                }
+                if ($PSBoundParameters["MaximumInstallationTimeInMinutes"]) {
+                    $InstallExperience.Add("maxRunTimeInMinutes", $MaximumInstallationTimeInMinutes)
+                }
+                $Win32AppBody.Add("installExperience", $InstallExperience)
             }
             if ($PSBoundParameters["RequirementRule"]) {
                 Write-Verbose -Message "Validating requirement rule"
@@ -440,7 +441,7 @@ function Set-IntuneWin32App {
 
             try {
                 # Attempt to call Graph and update Win32 app
-                $Win32AppResponse = Invoke-IntuneGraphRequest -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)" -Method "PATCH" -Body ($Win32AppBody | ConvertTo-Json -Depth 3) -ContentType "application/json" -ErrorAction "Stop"
+                $Win32AppResponse = Invoke-MSGraphOperation -Patch -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)" -Body ($Win32AppBody | ConvertTo-Json -Depth 3) -ErrorAction "Stop"
                 Write-Verbose -Message "Successfully updated Win32 app object with ID: $($Win32AppID)"
                 
                 # Return the updated app object

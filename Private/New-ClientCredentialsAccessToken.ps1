@@ -55,19 +55,19 @@ function New-ClientCredentialsAccessToken {
             }
 
             # Calculate the ExpiresOn property based on the expires_in value
-            $GraphAPIAuthResult | Add-Member -MemberType NoteProperty -Name \"ExpiresOn\" -Value ((Get-Date).AddSeconds($GraphAPIAuthResult.expires_in).ToUniversalTime()) -Force
+            $GraphAPIAuthResult | Add-Member -MemberType NoteProperty -Name "ExpiresOn" -Value ((Get-Date).AddSeconds($GraphAPIAuthResult.expires_in).ToUniversalTime()) -Force
             
             # Add Scopes property for permission tracking
-            $GraphAPIAuthResult | Add-Member -MemberType NoteProperty -Name \"Scopes\" -Value @(\"https://graph.microsoft.com/.default\") -Force
+            $GraphAPIAuthResult | Add-Member -MemberType NoteProperty -Name "Scopes" -Value @("https://graph.microsoft.com/.default") -Force
             
             # Add AccessToken property for consistent access
-            $GraphAPIAuthResult | Add-Member -MemberType NoteProperty -Name \"AccessToken\" -Value $GraphAPIAuthResult.access_token -Force
+            $GraphAPIAuthResult | Add-Member -MemberType NoteProperty -Name "AccessToken" -Value $GraphAPIAuthResult.access_token -Force
 
             # Set global variable
             $Global:AccessToken = $GraphAPIAuthResult
         }
         catch {
-            throw "Error retrieving the access token: $_"
+            throw "Error retrieving the access token: $($_)"
         }
     }
 }
