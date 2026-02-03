@@ -1,12 +1,12 @@
 function Get-IntuneWin32App {
     <#
     .SYNOPSIS
-        Get all or a specific Win32 app by either DisplayName or ID.
+        Get all or a specific Win32 app by either DisplayName, ID, or Developer.
 
     .DESCRIPTION
-        Get all or a specific Win32 app by either DisplayName or ID.
-        
-        Note: When querying by DisplayName, the function queries Graph API's list endpoint which may have 
+        Get all or a specific Win32 app by either DisplayName, ID, or Developer.
+
+        Note: When querying by DisplayName, the function queries Graph API's list endpoint which may have
         eventual consistency delays. Newly created apps may not appear in list queries for several minutes,
         even though they're immediately accessible by direct ID query. This is expected Graph API behavior.
 
@@ -15,6 +15,9 @@ function Get-IntuneWin32App {
 
     .PARAMETER ID
         Specify the ID for a Win32 application.
+
+    .PARAMETER Developer
+        Specify developer value for a Win32 application.
 
     .NOTES
         Author:      Nickolaj Andersen
@@ -38,7 +41,11 @@ function Get-IntuneWin32App {
 
         [parameter(Mandatory = $true, ParameterSetName = "ID", HelpMessage = "Specify the ID for a Win32 application.")]
         [ValidateNotNullOrEmpty()]
-        [string]$ID
+        [string]$ID,
+
+        [parameter(Mandatory = $false, ParameterSetName = "Developer", HelpMessage = "Specify developer value for a Win32 application.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$Developer
     )
     Begin {
         # Ensure required authentication header variable exists
@@ -91,6 +98,35 @@ function Get-IntuneWin32App {
                     Write-Verbose -Message "Query for Win32 app with ID '$($ID)' returned an empty result"
                     return $null
                 }
+            }
+            "Developer" {
+                $Win32AppList = New-Object -TypeName "System.Collections.Generic.List[Object]"
+                $Win32MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')"
+                if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                    Write-Verbose -Message "Retrieved $($Win32MobileApps.Count) total Win32 apps from tenant"
+                    Write-Verbose -Message "Filtering for Win32 apps matching developer using pattern: *$($Developer)*"
+                    $Win32MobileApps = $Win32MobileApps | Where-Object { $_.developer -like "*$($Developer)*" }
+                    if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                        Write-Verbose -Message "Found $($Win32MobileApps.Count) app(s) matching the developer filter"
+                        foreach ($Win32MobileApp in $Win32MobileApps) {
+                            $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)"
+                            $Win32AppList.Add($Win32App)
+                        }
+
+                        # Handle return value
+                        return $Win32AppList
+                    }
+                    else {
+                        Write-Verbose -Message "Query for Win32 app returned an empty result, no apps matching the specified search criteria was found"
+                        Write-Verbose -Message "Note: If searching for a newly created app, Graph API list endpoints may not reflect it immediately due to caching"
+                    }
+                }
+                else {
+                    Write-Verbose -Message "Query for Win32 apps returned an empty result, no apps matching type 'win32LobApp' was found in tenant"
+                }
+
+                # Return empty array for consistency
+                return @()
             }
             default {
                 $Win32AppList = New-Object -TypeName "System.Collections.Generic.List[Object]"
