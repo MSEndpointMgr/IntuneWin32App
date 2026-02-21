@@ -46,7 +46,7 @@ function Test-AccessToken {
             }
 
             # Convert ExpiresOn to DateTimeOffset in UTC
-            $ExpiresOnUTC = [DateTimeOffset]::Parse($Global:AccessToken.ExpiresOn.ToString(), [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal).ToUniversalTime()
+            $ExpiresOnUTC = [DateTimeOffset]::Parse($Global:AccessToken.ExpiresOn.ToString([System.Globalization.CultureInfo]::InvariantCulture), [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal).ToUniversalTime()
 
             # Get the current UTC time as DateTimeOffset
             $UTCDateTime = [DateTimeOffset]::UtcNow

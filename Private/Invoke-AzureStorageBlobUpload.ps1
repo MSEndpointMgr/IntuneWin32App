@@ -58,7 +58,7 @@ function Invoke-AzureStorageBlobUpload {
 
         # Convert ExpiresOn to DateTimeOffset in UTC
         $ExpiresOnUTC = [DateTimeOffset]::Parse(
-            $Global:AccessToken.ExpiresOn.ToString(),
+            $Global:AccessToken.ExpiresOn.ToString([System.Globalization.CultureInfo]::InvariantCulture),
             [System.Globalization.CultureInfo]::InvariantCulture,
             [System.Globalization.DateTimeStyles]::AssumeUniversal
             ).ToUniversalTime()

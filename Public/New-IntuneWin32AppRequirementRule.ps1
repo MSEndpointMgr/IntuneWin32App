@@ -55,7 +55,7 @@ function New-IntuneWin32AppRequirementRule {
 
         [parameter(Mandatory = $true, HelpMessage = "Specify the minimum supported Windows release version as a requirement for the Win32 app.")]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet("W10_1607", "W10_1703", "W10_1709", "W10_1803", "W10_1809", "W10_1903", "W10_1909", "W10_2004", "W10_20H2", "W10_21H1", "W10_21H2", "W10_22H2", "W11_21H2", "W11_22H2")]
+        [ValidateSet("W10_1607", "W10_1703", "W10_1709", "W10_1803", "W10_1809", "W10_1903", "W10_1909", "W10_2004", "W10_20H2", "W10_21H1", "W10_21H2", "W10_22H2", "W11_21H2", "W11_22H2", "W11_23H2", "W11_24H2")]
         [Alias('MinimumSupportedOperatingSystem')]
         [string]$MinimumSupportedWindowsRelease,
 
@@ -101,6 +101,8 @@ function New-IntuneWin32AppRequirementRule {
             "W10_22H2" = "Windows10_22H2"
             "W11_21H2" = "Windows11_21H2"
             "W11_22H2" = "Windows11_22H2"
+            "W11_23H2" = "Windows11_23H2"
+            "W11_24H2" = "Windows11_24H2"
         }
 
         # Construct ordered hash-table with least amount of required properties for default requirement rule
