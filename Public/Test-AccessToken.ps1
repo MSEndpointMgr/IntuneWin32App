@@ -46,7 +46,9 @@ function Test-AccessToken {
             }
 
             # Convert ExpiresOn to DateTimeOffset in UTC
-            $ExpiresOnUTC = [DateTimeOffset]::Parse($Global:AccessToken.ExpiresOn.ToString(), [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal).ToUniversalTime()
+            #$ExpiresOnUTC = [DateTimeOffset]::Parse($Global:AccessToken.ExpiresOn.ToString(), [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal).ToUniversalTime()
+            ###Remove .ToString() Causes the following exception when validating against validity token - MethodInvocationException: Exception calling "Parse" with "3" argument(s): "String '' was not recognized as a valid DateTime."###
+            $ExpiresOnUTC = [DateTimeOffset]::Parse($Global:AccessToken.ExpiresOn, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal).ToUniversalTime()
 
             # Get the current UTC time as DateTimeOffset
             $UTCDateTime = [DateTimeOffset]::UtcNow
