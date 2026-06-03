@@ -79,6 +79,9 @@ function Update-AccessTokenFromRefreshToken {
             
             # Add AccessToken property for consistent access
             $TokenResponse | Add-Member -MemberType NoteProperty -Name "AccessToken" -Value $TokenResponse.access_token -Force
+
+            # Store client_id for subsequent silent token renewals
+            $TokenResponse | Add-Member -MemberType NoteProperty -Name "client_id" -Value $ClientID -Force
             
             # Store refresh token if available for subsequent silent token renewals
             if ($TokenResponse.refresh_token) {
