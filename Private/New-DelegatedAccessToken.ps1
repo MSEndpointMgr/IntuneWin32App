@@ -231,6 +231,9 @@ function New-DelegatedAccessToken {
             
             # Add AccessToken property for consistent access
             $TokenResponse | Add-Member -MemberType NoteProperty -Name "AccessToken" -Value $TokenResponse.access_token -Force
+
+            # Store client_id for silent token renewal
+            $TokenResponse | Add-Member -MemberType NoteProperty -Name "client_id" -Value $ClientID -Force
             
             # Store refresh token if available for silent token renewal
             if ($TokenResponse.refresh_token) {
