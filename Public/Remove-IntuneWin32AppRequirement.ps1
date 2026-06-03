@@ -60,13 +60,13 @@ function Remove-IntuneWin32AppRequirement {
     Process {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
-        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "mobileApps/$($ID)"
-        if ($Win32App -ne $null) {
+        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
+        if ($null -ne $Win32App) {
             $Win32AppID = $Win32App.id
 
             # Retrieve existing additional requirement rules
             $ExistingRequirementRules = Get-IntuneWin32AppRequirement -ID $Win32AppID
-            if ($ExistingRequirementRules -eq $null) {
+            if ($null -eq $ExistingRequirementRules) {
                 Write-Verbose -Message "No additional requirement rules found for Win32 app with ID: $($Win32AppID), nothing to remove"
                 return
             }
@@ -90,7 +90,7 @@ function Remove-IntuneWin32AppRequirement {
 
             try {
                 # Attempt to call Graph and update requirement rules on Win32 app
-                $Win32AppResponse = Invoke-MSGraphOperation -Patch -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)" -Body ($Win32AppBody | ConvertTo-Json -Depth 10) -ContentType "application/json"
+                $Win32AppResponse = Invoke-MSGraphOperation -Patch -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)" -Body ($Win32AppBody | ConvertTo-Json -Depth 10) -ContentType "application/json"
                 Write-Verbose -Message "Successfully removed additional requirement rule(s) from Win32 app with ID: $($Win32AppID)"
             }
             catch [System.Exception] {

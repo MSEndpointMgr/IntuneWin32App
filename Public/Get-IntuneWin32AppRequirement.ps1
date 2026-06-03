@@ -38,10 +38,10 @@ function Get-IntuneWin32AppRequirement {
     Process {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
-        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "mobileApps/$($ID)"
-        if ($Win32App -ne $null) {
+        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
+        if ($null -ne $Win32App) {
             # Handle return value
-            if ($Win32App.requirementRules -ne $null) {
+            if ($null -ne $Win32App.requirementRules) {
                 return $Win32App.requirementRules
             }
             else {
@@ -51,5 +51,8 @@ function Get-IntuneWin32AppRequirement {
         else {
             Write-Warning -Message "Query for Win32 app returned an empty result, no apps matching the specified search criteria with ID '$($ID)' was found"
         }
+
+        # Return empty array for consistency
+        return @()
     }
 }

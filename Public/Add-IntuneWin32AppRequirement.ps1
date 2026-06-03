@@ -49,8 +49,8 @@ function Add-IntuneWin32AppRequirement {
     Process {
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
-        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "mobileApps/$($ID)"
-        if ($Win32App -ne $null) {
+        $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
+        if ($null -ne $Win32App) {
             $Win32AppID = $Win32App.id
 
             # Retrieve existing additional requirement rules and merge with new ones to avoid overwriting
@@ -71,7 +71,7 @@ function Add-IntuneWin32AppRequirement {
             try {
                 # Attempt to call Graph and add additional requirement rules to Win32 app
                 Write-Verbose -Message "Attempting to add $($AdditionalRequirementRule.Count) additional requirement rule(s) to Win32 app with ID: $($Win32AppID)"
-                $Win32AppResponse = Invoke-MSGraphOperation -Patch -APIVersion "Beta" -Resource "mobileApps/$($Win32AppID)" -Body ($Win32AppBody | ConvertTo-Json -Depth 10) -ContentType "application/json"
+                $Win32AppResponse = Invoke-MSGraphOperation -Patch -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)" -Body ($Win32AppBody | ConvertTo-Json -Depth 10) -ContentType "application/json"
                 Write-Verbose -Message "Successfully added additional requirement rule(s) to Win32 app with ID: $($Win32AppID)"
             }
             catch [System.Exception] {
