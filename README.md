@@ -80,6 +80,13 @@ $ClientSecret = "<your-client-secret>"
 Connect-MSIntuneGraph -TenantID "name.onmicrosoft.com" -ClientID "<your-client-id>" -ClientSecret $ClientSecret
 ```
 
+#### Existing Access Token
+Reuse an already acquired access token instead of requesting a new one:
+```PowerShell
+$Token = "<existing-access-token>"
+Connect-MSIntuneGraph -TenantID "name.onmicrosoft.com" -AccessToken $Token
+```
+
 #### Custom Scopes
 Customize the requested permission scopes if needed:
 ```PowerShell

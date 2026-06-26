@@ -9,6 +9,13 @@ function Connect-MSIntuneGraph {
     .PARAMETER TenantID
         Specify the tenant name or ID, e.g. tenant.onmicrosoft.com or <GUID>.
 
+    .PARAMETER AccessToken
+        Specify an existing access token string or token response object to use instead of acquiring a new token.
+
+    .PARAMETER ExpiresOn
+        Optionally specify the expiry time (UTC) of the provided access token. If not specified, the expiry will be
+        extracted automatically from the JWT payload. Use this parameter for opaque (non-JWT) tokens.
+
     .PARAMETER ClientID
         Application ID (Client ID) for an Azure AD service principal.
 
@@ -38,7 +45,7 @@ function Connect-MSIntuneGraph {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2026-01-18
+        Updated:     2026-06-26
 
         Version history:
         1.0.0 - (2021-08-31) Script created
@@ -53,6 +60,8 @@ function Connect-MSIntuneGraph {
         1.0.9 - (2026-01-18) Implemented native client certificate authentication using New-ClientCertificateAccessToken function - completes all OAuth 2.0 flows without external dependencies
         1.1.0 - (2026-01-18) Fixed Issue #208: Ensured offline_access scope is included in token refresh requests to maintain refresh token continuity
         1.1.1 - (2026-01-18) Added Scopes parameter to allow users to customize requested permissions while providing sensible defaults for full module functionality
+        1.1.2 - (2026-06-26) Added AccessToken parameter set to reuse an existing access token
+        1.1.3 - (2026-06-26) Fixed Issue: Automatically decode JWT exp claim to set ExpiresOn when using AccessToken parameter set; added ExpiresOn parameter for opaque tokens
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -60,13 +69,23 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $true, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
+        [parameter(Mandatory = $true, ParameterSetName = "AccessToken")]
         [ValidateNotNullOrEmpty()]
         [string]$TenantID,
+
+        [parameter(Mandatory = $true, ParameterSetName = "AccessToken", HelpMessage = "Specify an existing access token string or token response object to use.")]
+        [ValidateNotNullOrEmpty()]
+        [object]$AccessToken,
+
+        [parameter(Mandatory = $false, ParameterSetName = "AccessToken", HelpMessage = "Optionally specify the expiry time (UTC) of the provided access token. Used for opaque tokens that cannot be decoded.")]
+        [ValidateNotNullOrEmpty()]
+        [DateTimeOffset]$ExpiresOn,
         
         [parameter(Mandatory = $true, ParameterSetName = "Interactive", HelpMessage = "Application ID (Client ID) for an Entra ID service principal.")]
         [parameter(Mandatory = $true, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
+        [parameter(Mandatory = $false, ParameterSetName = "AccessToken")]
         [ValidateNotNullOrEmpty()]
         [string]$ClientID,
 
@@ -99,16 +118,18 @@ function Connect-MSIntuneGraph {
         [string[]]$Scopes = @("DeviceManagementApps.ReadWrite.All", "DeviceManagementConfiguration.ReadWrite.All", "DeviceManagementRBAC.Read.All", "Group.Read.All", "offline_access")
     )
     Begin {
-        # Determine the correct RedirectUri (also known as Reply URL) for OAuth authentication
-        Write-Verbose -Message "Using Entra ID service principal with Application ID: $($ClientID)"
+        if ($PSCmdlet.ParameterSetName -ne "AccessToken") {
+            # Determine the correct RedirectUri (also known as Reply URL) for OAuth authentication
+            Write-Verbose -Message "Using Entra ID service principal with Application ID: $($ClientID)"
 
-        # Adjust RedirectUri parameter input in case none was passed on command line
-        if ([string]::IsNullOrEmpty($RedirectUri)) {
-            # Use http://localhost for loopback redirect (dynamic port will be assigned)
-            $RedirectUri = "http://localhost"
+            # Adjust RedirectUri parameter input in case none was passed on command line
+            if ([string]::IsNullOrEmpty($RedirectUri)) {
+                # Use http://localhost for loopback redirect (dynamic port will be assigned)
+                $RedirectUri = "http://localhost"
+            }
+
+            Write-Verbose -Message "Using RedirectUri with value: $($RedirectUri)"
         }
-
-        Write-Verbose -Message "Using RedirectUri with value: $($RedirectUri)"
 
         # Set default error action preference configuration
         $ErrorActionPreference = "Stop"
@@ -193,6 +214,82 @@ function Connect-MSIntuneGraph {
                     }
                     catch {
                         Write-Error -Message "An error occurred while retrieving access token using client certificate: $($_)"
+                        return
+                    }
+                }
+                "AccessToken" {
+                    Write-Verbose -Message "Using provided access token"
+                    try {
+                        if ($AccessToken -is [hashtable]) {
+                            $AccessToken = [pscustomobject]$AccessToken
+                        }
+
+                        if ($AccessToken -is [string]) {
+                            $AccessToken = [pscustomobject]@{
+                                access_token = $AccessToken
+                                AccessToken = $AccessToken
+                            }
+                        }
+                        else {
+                            if ("access_token" -notin $AccessToken.PSObject.Properties.Name -and "AccessToken" -in $AccessToken.PSObject.Properties.Name) {
+                                $AccessToken | Add-Member -MemberType NoteProperty -Name "access_token" -Value $AccessToken.AccessToken -Force
+                            }
+
+                            if ("AccessToken" -notin $AccessToken.PSObject.Properties.Name -and "access_token" -in $AccessToken.PSObject.Properties.Name) {
+                                $AccessToken | Add-Member -MemberType NoteProperty -Name "AccessToken" -Value $AccessToken.access_token -Force
+                            }
+                        }
+
+                        if ([string]::IsNullOrEmpty($AccessToken.AccessToken)) {
+                            throw "Invalid access token: token value is required."
+                        }
+
+                        if (-not [string]::IsNullOrEmpty($ClientID) -and "client_id" -notin $AccessToken.PSObject.Properties.Name) {
+                            $AccessToken | Add-Member -MemberType NoteProperty -Name "client_id" -Value $ClientID -Force
+                        }
+
+                        # Ensure ExpiresOn is set so that Test-AccessToken can determine expiration correctly.
+                        # Priority: 1) explicit ExpiresOn parameter, 2) already on the token object, 3) decoded from JWT exp claim.
+                        if ($PSBoundParameters.ContainsKey("ExpiresOn")) {
+                            $AccessToken | Add-Member -MemberType NoteProperty -Name "ExpiresOn" -Value $ExpiresOn -Force
+                            Write-Verbose -Message "ExpiresOn set from explicit parameter: $($ExpiresOn.ToString('o'))"
+                        }
+                        elseif (-not $AccessToken.PSObject.Properties["ExpiresOn"] -or $null -eq $AccessToken.ExpiresOn) {
+                            # Attempt to extract the exp claim from the JWT payload
+                            $JwtExpiresOn = $null
+                            try {
+                                $TokenParts = $AccessToken.access_token -split '\.'
+                                if ($TokenParts.Count -lt 2) {
+                                    throw "Provided access token does not appear to be a JWT."
+                                }
+
+                                $Payload = $TokenParts[1]
+                                # Pad base64url string to standard base64: append '=' until length is a multiple of 4
+                                $Padded = $Payload + ('=' * ((4 - ($Payload.Length % 4)) % 4))
+                                $Bytes = [System.Convert]::FromBase64String($Padded.Replace('-', '+').Replace('_', '/'))
+                                $Claims = [System.Text.Encoding]::UTF8.GetString($Bytes) | ConvertFrom-Json -ErrorAction Stop
+
+                                if ($Claims.PSObject.Properties["exp"]) {
+                                    $JwtExpiresOn = [DateTimeOffset]::FromUnixTimeSeconds([long]$Claims.exp)
+                                }
+                                else {
+                                    throw "The JWT payload does not contain an exp claim."
+                                }
+                            }
+                            catch {
+                                throw "Unable to determine token expiry. Provide -ExpiresOn (UTC) when using the -AccessToken parameter set. Details: $($_)"
+                            }
+
+                            $AccessToken | Add-Member -MemberType NoteProperty -Name "ExpiresOn" -Value $JwtExpiresOn -Force
+                            Write-Verbose -Message "ExpiresOn extracted from JWT exp claim: $($JwtExpiresOn.ToString('o'))"
+                        }
+
+                        $Global:AccessToken = $AccessToken
+                        $Global:AccessTokenTenantID = $TenantID
+                        Write-Verbose -Message "Successfully configured provided access token"
+                    }
+                    catch {
+                        Write-Error -Message "An error occurred while using the provided access token: $($_)"
                         return
                     }
                 }

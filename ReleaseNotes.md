@@ -18,6 +18,7 @@
 - Added OAuth 2.0 Device Code flow support via new `New-DeviceCodeAccessToken` private function and `-DeviceCode` parameter in `Connect-MSIntuneGraph`
 - Added OAuth 2.0 Client Credentials flow support via new `New-ClientCredentialsAccessToken` private function for modern service principal authentication without MSAL.PS dependency
 - Added OAuth 2.0 Client Certificate authentication flow via new `New-ClientCertificateAccessToken` private function with robust JWT creation, certificate validation, and error handling - completes all OAuth 2.0 flows without external dependencies
+- Added `AccessToken` parameter support in `Connect-MSIntuneGraph` to reuse an existing access token while still initializing module authentication state
 - Added OAuth 2.0 Refresh Token flow for silent token renewal via new `Update-AccessTokenFromRefreshToken` private function and `-Refresh` parameter in `Connect-MSIntuneGraph`
 - Added automatic token refresh in `Invoke-MSGraphOperation` function - checks token expiration before all Graph API calls and refreshes automatically if needed
 - Added dynamic port assignment for OAuth callback HTTP listener - automatically finds available ports for localhost redirect

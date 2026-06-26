@@ -24,6 +24,10 @@ Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com" -ClientID "<ClientID>" 
 $Cert = Get-ChildItem -Path "Cert:\CurrentUser\My" | Where-Object { $_.Thumbprint -eq "<Thumbprint>" }
 Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com" -ClientID "<ClientID>" -ClientCert $Cert
 
+# Existing access token
+$Token = "<AccessToken>"
+Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com" -AccessToken $Token
+
 # Refresh existing token
 Connect-MSIntuneGraph -TenantID "tenant.onmicrosoft.com" -ClientID "<ClientID>" -Refresh
 
