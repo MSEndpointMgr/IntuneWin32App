@@ -84,6 +84,12 @@ function Set-IntuneWin32App {
         1.0.2 - (2023-09-04) Updated with Test-AccessToken function
         1.0.3 - (2026-01-01) Added DetectionRule parameter with comprehensive validation (PR #197)
         1.0.4 - (2026-01-01) Added CategoryName, Icon, Install/Uninstall commands, RestartBehavior, MaximumInstallationTimeInMinutes, RequirementRule, AdditionalRequirementRule, and ReturnCode parameters with validation (PR #202)
+        1.0.5 - Fixed RequirementRule handling: removed an '@odata.type' requirement that
+                New-IntuneWin32AppRequirementRule never satisfies, replaced ContainsKey() calls
+                on an OrderedDictionary (a method that type does not implement) with Contains(),
+                and forward allowedArchitectures/applicableArchitectures/minimumSupportedWindowsRelease
+                to the request body the same way the create path (New-IntuneWin32AppBody) already
+                does. Fixes #236
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -310,33 +316,53 @@ function Set-IntuneWin32App {
                     break
                 }
                 
-                # Validate @odata.type property exists
-                if (-not $RequirementRule.Contains("@odata.type")) {
-                    Write-Warning -Message "RequirementRule is missing required '@odata.type' property."
-                    break
-                }
-                
+                # NOTE: an '@odata.type' requirement used to be enforced here, but
+                # New-IntuneWin32AppRequirementRule never sets one - Architecture and
+                # MinimumSupportedWindowsRelease are plain top-level properties on the
+                # win32LobApp resource, not a discriminated rule type like DetectionRule /
+                # AdditionalRequirementRule, so '@odata.type' does not apply to this
+                # parameter. Requiring it made -RequirementRule unusable: the check always
+                # failed and the bare "break" below it silently unwound the entire calling
+                # script (see #236).
+
                 Write-Verbose -Message "Adding requirement rule to Win32 app body"
-                
+
+                # Architecture - forwarded the same way the create path
+                # (Private/New-IntuneWin32AppBody.ps1) already handles it
+                if ($RequirementRule.Contains("allowedArchitectures") -and $RequirementRule["allowedArchitectures"]) {
+                    $Win32AppBody["allowedArchitectures"] = $RequirementRule["allowedArchitectures"]
+                    $Win32AppBody["applicableArchitectures"] = "none"
+                }
+                elseif ($RequirementRule.Contains("applicableArchitectures") -and $RequirementRule["applicableArchitectures"]) {
+                    $Win32AppBody["applicableArchitectures"] = $RequirementRule["applicableArchitectures"]
+                }
+
+                # Minimum supported Windows release (current property name, replaces
+                # minimumSupportedOperatingSystem since New-IntuneWin32AppRequirementRule 1.0.3)
+                if ($RequirementRule.Contains("minimumSupportedWindowsRelease") -and $RequirementRule["minimumSupportedWindowsRelease"]) {
+                    $Win32AppBody["minimumSupportedWindowsRelease"] = $RequirementRule["minimumSupportedWindowsRelease"]
+                }
+
                 # If there's already a minimumSupportedOperatingSystem in the body, preserve it
                 if (-not $Win32AppBody.ContainsKey("minimumSupportedOperatingSystem")) {
-                    # Extract OS requirement from rule if present
-                    if ($RequirementRule.ContainsKey("minimumSupportedOperatingSystem")) {
+                    # Extract OS requirement from rule if present (legacy property name,
+                    # kept for backward compatibility with older callers)
+                    if ($RequirementRule.Contains("minimumSupportedOperatingSystem")) {
                         $Win32AppBody.Add("minimumSupportedOperatingSystem", $RequirementRule["minimumSupportedOperatingSystem"])
                     }
                 }
                 
                 # Add additional requirement properties
-                if ($RequirementRule.ContainsKey("minimumFreeDiskSpaceInMB") -and $RequirementRule["minimumFreeDiskSpaceInMB"] -ne $null) {
+                if ($RequirementRule.Contains("minimumFreeDiskSpaceInMB") -and $RequirementRule["minimumFreeDiskSpaceInMB"] -ne $null) {
                     $Win32AppBody.Add("minimumFreeDiskSpaceInMB", $RequirementRule["minimumFreeDiskSpaceInMB"])
                 }
-                if ($RequirementRule.ContainsKey("minimumMemoryInMB") -and $RequirementRule["minimumMemoryInMB"] -ne $null) {
+                if ($RequirementRule.Contains("minimumMemoryInMB") -and $RequirementRule["minimumMemoryInMB"] -ne $null) {
                     $Win32AppBody.Add("minimumMemoryInMB", $RequirementRule["minimumMemoryInMB"])
                 }
-                if ($RequirementRule.ContainsKey("minimumNumberOfProcessors") -and $RequirementRule["minimumNumberOfProcessors"] -ne $null) {
+                if ($RequirementRule.Contains("minimumNumberOfProcessors") -and $RequirementRule["minimumNumberOfProcessors"] -ne $null) {
                     $Win32AppBody.Add("minimumNumberOfProcessors", $RequirementRule["minimumNumberOfProcessors"])
                 }
-                if ($RequirementRule.ContainsKey("minimumCpuSpeedInMHz") -and $RequirementRule["minimumCpuSpeedInMHz"] -ne $null) {
+                if ($RequirementRule.Contains("minimumCpuSpeedInMHz") -and $RequirementRule["minimumCpuSpeedInMHz"] -ne $null) {
                     $Win32AppBody.Add("minimumCpuSpeedInMHz", $RequirementRule["minimumCpuSpeedInMHz"])
                 }
             }
