@@ -194,14 +194,21 @@ function Invoke-MSGraphOperation {
                         Write-Verbose -Message "NextLink: $($GraphURI)"
                     }
                     else {
-                        # NextLink from response was null, assuming last page but also handle if a single instance is returned
-                        if ($GraphResponse.value) {
-                            $GraphResponseList.AddRange($GraphResponse.value) | Out-Null
+                        # NextLink from response was null, assuming last page but also handle if a single instance is returned.
+                        # A collection response is recognised by its array-typed 'value' property, regardless of how many
+                        # items it holds: an empty array is $false in PowerShell and Graph only sends '@odata.count' when
+                        # asked for it, so an empty collection used to fall through to the single-instance branch and the
+                        # whole response envelope was returned as if it were one entity.
+                        $ValueProperty = if ($null -ne $GraphResponse) { $GraphResponse.PSObject.Properties["value"] } else { $null }
+                        if ($null -ne $ValueProperty -and $ValueProperty.Value -is [System.Array]) {
+                            if ($ValueProperty.Value.Count -gt 0) {
+                                $GraphResponseList.AddRange($ValueProperty.Value) | Out-Null
+                            }
                         }
                         elseif ($GraphResponse.'@odata.count' -eq 0)  {
                             # Do nothing to return empty
                         }
-                        else {
+                        elseif ($null -ne $GraphResponse) {
                             $GraphResponseList.Add($GraphResponse) | Out-Null
                         }
 
