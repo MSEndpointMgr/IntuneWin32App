@@ -97,8 +97,8 @@ function Invoke-MSGraphOperation {
         [parameter(Mandatory = $false, ParameterSetName = "PUT")]
         [parameter(Mandatory = $false, ParameterSetName = "DELETE")]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet("application/json", "image/png")]
-        [string]$ContentType = "application/json"
+        [ValidateSet("application/json; charset=utf-8", "application/json", "image/png")]
+        [string]$ContentType = "application/json; charset=utf-8"
     )
     Begin {
         # Check if authentication header exists
