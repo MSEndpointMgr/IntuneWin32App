@@ -49,10 +49,11 @@ function Get-IntuneWin32AppRelationship {
             $RelationshipExistence = $false
 
             # Attempt to call Graph and retrieve supersedence configuration for Win32 app
-            $Win32AppRelationshipResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)/relationships" -ErrorAction "Stop"
+            # Force an array: a single result arrives as a scalar object, which has no .Count on Windows PowerShell 5.1
+            $Win32AppRelationshipResponse = @(Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)/relationships" -ErrorAction "Stop")
 
             # Switch depending on input type
-            if ($null -ne $Win32AppRelationshipResponse -and $Win32AppRelationshipResponse.Count -gt 0) {
+            if ($Win32AppRelationshipResponse.Count -gt 0) {
                 switch ($Type) {
                     "Dependency" {
                         if ($Win32AppRelationshipResponse.'@odata.type' -like "#microsoft.graph.mobileAppDependency") {

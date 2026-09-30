@@ -75,8 +75,9 @@ function Remove-IntuneWin32AppAssignmentGroup {
         if (-not([string]::IsNullOrEmpty($Win32AppID))) {
             try {
                 # Attempt to call Graph and retrieve all assignments for Win32 app
-                $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments" -ErrorAction "Stop"
-                if ($null -ne $Win32AppAssignmentResponse -and $Win32AppAssignmentResponse.Count -gt 0) {
+                # Force an array: a single result arrives as a scalar object, which has no .Count on Windows PowerShell 5.1
+                $Win32AppAssignmentResponse = @(Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments" -ErrorAction "Stop")
+                if ($Win32AppAssignmentResponse.Count -gt 0) {
                     # Process each assignment for removal
                     foreach ($Win32AppAssignment in $Win32AppAssignmentResponse) {
                         if ($Win32AppAssignment.target.groupId -eq $GroupID) {

@@ -44,13 +44,14 @@ function Get-IntuneWin32AppSupersedence {
 
             try {
                 # Attempt to call Graph and retrieve supersedence configuration for Win32 app
-                $Win32AppRelationsResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/relationships" -ErrorAction Stop
+                # Force arrays: a single result arrives as a scalar object, which has no .Count on Windows PowerShell 5.1
+                $Win32AppRelationsResponse = @(Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/relationships" -ErrorAction Stop)
 
                 # Handle return value
-                if ($null -ne $Win32AppRelationsResponse -and $Win32AppRelationsResponse.Count -gt 0) {
+                if ($Win32AppRelationsResponse.Count -gt 0) {
                     # Filter for supersedence relationships
-                    $SupersedenceRelationships = $Win32AppRelationsResponse | Where-Object { $_.'@odata.type' -eq "#microsoft.graph.mobileAppSupersedence" }
-                    if ($null -ne $SupersedenceRelationships -and $SupersedenceRelationships.Count -gt 0) {
+                    $SupersedenceRelationships = @($Win32AppRelationsResponse | Where-Object { $_.'@odata.type' -eq "#microsoft.graph.mobileAppSupersedence" })
+                    if ($SupersedenceRelationships.Count -gt 0) {
                         Write-Verbose -Message "Found $(@($SupersedenceRelationships).Count) supersedence relationship(s)"
                         return $SupersedenceRelationships
                     }

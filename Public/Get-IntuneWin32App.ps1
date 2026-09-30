@@ -53,12 +53,13 @@ function Get-IntuneWin32App {
         switch ($PSCmdlet.ParameterSetName) {
             "DisplayName" {
                 $Win32AppList = New-Object -TypeName "System.Collections.Generic.List[Object]"
-                $Win32MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')"
-                if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                # Force arrays: a single result arrives as a scalar object, which has no .Count on Windows PowerShell 5.1
+                $Win32MobileApps = @(Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')")
+                if ($Win32MobileApps.Count -gt 0) {
                     Write-Verbose -Message "Retrieved $($Win32MobileApps.Count) total Win32 apps from tenant"
                     Write-Verbose -Message "Filtering for Win32 apps matching displayName using pattern: *$($DisplayName)*"
-                    $Win32MobileApps = $Win32MobileApps | Where-Object { $_.displayName -like "*$($DisplayName)*" }
-                    if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                    $Win32MobileApps = @($Win32MobileApps | Where-Object { $_.displayName -like "*$($DisplayName)*" })
+                    if ($Win32MobileApps.Count -gt 0) {
                         Write-Verbose -Message "Found $($Win32MobileApps.Count) app(s) matching the display name filter"
                         foreach ($Win32MobileApp in $Win32MobileApps) {
                             $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)"
@@ -94,8 +95,9 @@ function Get-IntuneWin32App {
             }
             default {
                 $Win32AppList = New-Object -TypeName "System.Collections.Generic.List[Object]"
-                $Win32MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')"
-                if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                # Force an array: a single result arrives as a scalar object, which has no .Count on Windows PowerShell 5.1
+                $Win32MobileApps = @(Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')")
+                if ($Win32MobileApps.Count -gt 0) {
                     foreach ($Win32MobileApp in $Win32MobileApps) {
                         $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)"
                         $Win32AppList.Add($Win32App)

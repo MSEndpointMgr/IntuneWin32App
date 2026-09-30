@@ -121,8 +121,9 @@ function Get-IntuneWin32AppAssignment {
             foreach ($Win32MobileApp in $Win32AppList) {
                 try {
                     # Attempt to call Graph and retrieve all assignments for each Win32 app
-                    $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)/assignments" -ErrorAction Stop
-                    if ($null -ne $Win32AppAssignmentResponse -and $Win32AppAssignmentResponse.Count -gt 0) {
+                    # Force an array: a single result arrives as a scalar object, which has no .Count on Windows PowerShell 5.1
+                    $Win32AppAssignmentResponse = @(Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)/assignments" -ErrorAction Stop)
+                    if ($Win32AppAssignmentResponse.Count -gt 0) {
                         if ($PSCmdlet.ParameterSetName -eq "Group") {
                             if ($PSBoundParameters["Intent"]) {
                                 $Win32AppAssignmentMatches = $Win32AppAssignmentResponse | Where-Object { ($PSItem.target.'@odata.type' -like "*groupAssignmentTarget") -and ($PSItem.intent -like $Intent) }

@@ -43,13 +43,14 @@ function Get-IntuneWin32AppDependency {
 
             try {
                 # Attempt to call Graph and retrieve dependency configuration for Win32 app
-                $Win32AppRelationsResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/relationships" -ErrorAction Stop
+                # Force arrays: a single result arrives as a scalar object, which has no .Count on Windows PowerShell 5.1
+                $Win32AppRelationsResponse = @(Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/relationships" -ErrorAction Stop)
 
                 # Handle return value
-                if ($null -ne $Win32AppRelationsResponse -and $Win32AppRelationsResponse.Count -gt 0) {
+                if ($Win32AppRelationsResponse.Count -gt 0) {
                     # Filter for dependency relationships
-                    $DependencyRelationships = $Win32AppRelationsResponse | Where-Object { $_.'@odata.type' -eq "#microsoft.graph.mobileAppDependency" }
-                    if ($null -ne $DependencyRelationships -and $DependencyRelationships.Count -gt 0) {
+                    $DependencyRelationships = @($Win32AppRelationsResponse | Where-Object { $_.'@odata.type' -eq "#microsoft.graph.mobileAppDependency" })
+                    if ($DependencyRelationships.Count -gt 0) {
                         Write-Verbose -Message "Found $(@($DependencyRelationships).Count) dependency relationship(s)"
                         return $DependencyRelationships
                     }

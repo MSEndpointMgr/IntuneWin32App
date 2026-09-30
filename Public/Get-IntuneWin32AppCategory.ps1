@@ -57,8 +57,9 @@ function Get-IntuneWin32AppCategory {
 
         try {
             # Invoke Graph API call to retrieve categories
-            $Win32AppCategories = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource $Resource -ErrorAction "Stop"
-            if ($null -ne $Win32AppCategories -and $Win32AppCategories.Count -gt 0) {
+            # Force an array: a single result arrives as a scalar object, which has no .Count on Windows PowerShell 5.1
+            $Win32AppCategories = @(Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource $Resource -ErrorAction "Stop")
+            if ($Win32AppCategories.Count -gt 0) {
                 foreach ($Win32AppCategory in $Win32AppCategories) {
                     $PSObject = [PSCustomObject]@{
                         ID = $Win32AppCategory.id
