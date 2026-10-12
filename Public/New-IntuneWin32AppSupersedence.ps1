@@ -21,6 +21,8 @@ function New-IntuneWin32AppSupersedence {
         Version history:
         1.0.0 - (2021-04-01) Function created
         1.0.1 - (2021-08-31) Updated to use new authentication header
+        1.0.2 - (2026-10-12) Removed the token lifetime check that read ExpiresOn from the authentication header, which no longer carries that entry (see New-AuthenticationHeader, #182).
+                             Like the other functions, token validity and renewal is handled by Invoke-MSGraphOperation using Test-AccessToken.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -37,15 +39,6 @@ function New-IntuneWin32AppSupersedence {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
-        }
-        else {
-            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
-            if ($TokenLifeTime -le 0) {
-                Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
-            }
-            else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
-            }
         }
 
         # Set script variable for error action preference

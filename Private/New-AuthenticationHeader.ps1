@@ -19,6 +19,8 @@ function New-AuthenticationHeader {
         1.0.0 - (2021-04-08) Script created
         1.0.1 - (2021-09-08) Fixed issue reported by Paul DeArment Jr where the local date time set for ExpiresOn should be UTC to not cause any time related issues
         1.0.2 - (2024-05-29) Updated to support access tokens from New-ClientCredentialsAccessToken function (thanks to @tjgruber)
+        1.0.3 - (2026-10-12) Removed the ExpiresOn entry from the header table. The table is passed as -Headers to Invoke-RestMethod, so the culture-formatted date was sent as an HTTP request header,
+                             which PowerShell 7 rejects when the date contains non-ASCII characters (seen on macOS), failing every Graph request (fixes #182). The expiry is available as $Global:AccessToken.ExpiresOn.
     #>
     param(
         [Parameter(Mandatory = $true, HelpMessage = "Pass the AuthenticationResult object returned from Get-AccessToken cmdlet.")]
@@ -30,14 +32,6 @@ function New-AuthenticationHeader {
         $AuthenticationHeader = @{
             "Content-Type"  = "application/json"
             "Authorization" = "Bearer $($AccessToken.access_token)"
-        }
-
-        # Check if ExpiresOn property is available
-        if ($AccessToken.PSObject.Properties["ExpiresOn"]) {
-            $AuthenticationHeader["ExpiresOn"] = $AccessToken.ExpiresOn.ToUniversalTime()
-        }
-        else {
-            Write-Warning "The access token does not contain an ExpiresOn property. The ExpiresOn field in the authentication header will not be set."
         }
 
         # Handle return value
