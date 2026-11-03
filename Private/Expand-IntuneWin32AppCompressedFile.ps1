@@ -65,7 +65,7 @@ function Expand-IntuneWin32AppCompressedFile {
             $ClassImport = Add-Type -AssemblyName "System.IO.Compression.FileSystem" -ErrorAction Stop -Verbose:$false
         }
         catch [System.Exception] {
-            Write-Warning -Message "An error occurred while loading System.IO.Compression.FileSystem assembly. Error message: $($_.Exception.Message)"; break
+            throw "An error occurred while loading System.IO.Compression.FileSystem assembly. Error message: $($_.Exception.Message)"
         }
     }
     Process {

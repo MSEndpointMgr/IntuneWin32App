@@ -9,6 +9,9 @@ function New-IntuneWin32AppDetectionRuleScript {
     .PARAMETER ScriptFile
         Specify the full path to the PowerShell detection script, e.g. 'C:\Scripts\Detection.ps1'.
 
+    .PARAMETER ScriptContent
+        Specify the PowerShell detection script content as a string, as an alternative to ScriptFile.
+
     .PARAMETER EnforceSignatureCheck
         Specify if PowerShell script signature check should be enforced.
 
@@ -25,10 +28,11 @@ function New-IntuneWin32AppDetectionRuleScript {
         1.0.0 - (2020-09-17) Function created
         1.0.1 - (2021-08-31) Fixed an issue when using a non-UTF encoded multi-line script file
         1.0.2 - (2022-09-02) Fixed GitHub reported issue #41 (https://github.com/MSEndpointMgr/IntuneWin32App/issues/41)
+        1.0.3 - (2026-11-03) Script files are no longer re-encoded, which corrupted non UTF-8 scripts (#15). Added ScriptContent parameter (#168)
     #>
-    [CmdletBinding(SupportsShouldProcess = $true)]
+    [CmdletBinding(SupportsShouldProcess = $true, DefaultParameterSetName = "ScriptFile")]
     param(
-        [parameter(Mandatory = $true, HelpMessage = "Specify the full path to the PowerShell detection script, e.g. 'C:\Scripts\Detection.ps1'.")]
+        [parameter(Mandatory = $true, ParameterSetName = "ScriptFile", HelpMessage = "Specify the full path to the PowerShell detection script, e.g. 'C:\Scripts\Detection.ps1'.")]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({
             # Check if file name contains any invalid characters
@@ -52,11 +56,15 @@ function New-IntuneWin32AppDetectionRuleScript {
             }
         })]
         [string]$ScriptFile,
-       
+
+        [parameter(Mandatory = $true, ParameterSetName = "ScriptContent", HelpMessage = "Specify the PowerShell detection script content as a string.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$ScriptContent,
+
         [parameter(Mandatory = $false, HelpMessage = "Specify if PowerShell script signature check should be enforced.")]
         [ValidateNotNullOrEmpty()]
         [bool]$EnforceSignatureCheck = $false,
-       
+
         [parameter(Mandatory = $false, HelpMessage = "Specify if PowerShell script should be executed as a 32-bit process.")]
         [ValidateNotNullOrEmpty()]
         [bool]$RunAs32Bit = $false
@@ -65,21 +73,22 @@ function New-IntuneWin32AppDetectionRuleScript {
         # Handle initial value for return
         $DetectionRule = $null
 
-        # Detect if passed script file exists
-        if (Test-Path -Path $ScriptFile) {
-            # Convert script file contents to base64 string
-            $ScriptContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-Content -Path "$($ScriptFile)" -Raw -Encoding UTF8)))
-
-            # Construct detection rule ordered table
-            $DetectionRule = [ordered]@{
-                "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptDetection"
-                "enforceSignatureCheck" = $EnforceSignatureCheck
-                "runAs32Bit" = $RunAs32Bit
-                "scriptContent" = $ScriptContent
+        # Convert script file or script content to base64 string
+        switch ($PSCmdlet.ParameterSetName) {
+            "ScriptFile" {
+                $EncodedScriptContent = ConvertTo-IntuneScriptContent -Path $ScriptFile
+            }
+            "ScriptContent" {
+                $EncodedScriptContent = ConvertTo-IntuneScriptContent -Content $ScriptContent
             }
         }
-        else {
-            Write-Warning -Message "Unable to detect the presence of specified script file"
+
+        # Construct detection rule ordered table
+        $DetectionRule = [ordered]@{
+            "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptDetection"
+            "enforceSignatureCheck" = $EnforceSignatureCheck
+            "runAs32Bit" = $RunAs32Bit
+            "scriptContent" = $EncodedScriptContent
         }
 
         # Handle return value with constructed detection rule

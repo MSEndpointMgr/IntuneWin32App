@@ -28,7 +28,7 @@ function Get-IntuneWin32AppDependency {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -46,10 +46,10 @@ function Get-IntuneWin32AppDependency {
                 $Win32AppRelationsResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/relationships" -ErrorAction Stop
 
                 # Handle return value
-                if ($null -ne $Win32AppRelationsResponse -and $Win32AppRelationsResponse.Count -gt 0) {
+                if ($null -ne $Win32AppRelationsResponse -and @($Win32AppRelationsResponse).Count -gt 0) {
                     # Filter for dependency relationships
                     $DependencyRelationships = $Win32AppRelationsResponse | Where-Object { $_.'@odata.type' -eq "#microsoft.graph.mobileAppDependency" }
-                    if ($null -ne $DependencyRelationships -and $DependencyRelationships.Count -gt 0) {
+                    if ($null -ne $DependencyRelationships -and @($DependencyRelationships).Count -gt 0) {
                         Write-Verbose -Message "Found $(@($DependencyRelationships).Count) dependency relationship(s)"
                         return $DependencyRelationships
                     }

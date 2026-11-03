@@ -21,6 +21,9 @@ function New-IntuneWin32AppPackage {
     .PARAMETER IntuneWinAppUtilPath
         Specify the full path to the IntuneWinAppUtil.exe file.
 
+    .PARAMETER Silent
+        Specify to run IntuneWinAppUtil.exe without creating a console window, using the -qq switch available in IntuneWinAppUtil.exe version 1.8.7 and later.
+
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
@@ -33,7 +36,9 @@ function New-IntuneWin32AppPackage {
         1.0.2 - (2023-01-23) Added Force parameter, function now also checks if an existing .intunewin file is present in the output folder and prompts accordingly
         1.0.3 - (2023-09-04) Added Test-Path -LiteralPath conditional statements to all Test-Path instances
         1.0.4 - (2023-12-13) Added RedirectStandardOutput parameter to allow for fix where IntuneWinAppUtil.exe wouldn't work when called from Invoke-Executable function
-    #>    
+        1.0.5 - (2026-11-03) Added Silent parameter to use the -qq switch of IntuneWinAppUtil.exe (#62, #244). Relative paths are now resolved against the
+                             current PowerShell location (#91). IntuneWinAppUtil.exe is no longer downloaded when present at a path containing wildcard characters.
+    #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [parameter(Mandatory = $true, HelpMessage = "Specify the full path of the source folder where the setup file and all of it's potential dependency files reside.")]
@@ -54,9 +59,17 @@ function New-IntuneWin32AppPackage {
 
         [parameter(Mandatory = $false, HelpMessage = "Specify the full path to the IntuneWinAppUtil.exe file.")]
         [ValidateNotNullOrEmpty()]
-        [string]$IntuneWinAppUtilPath = (Join-Path -Path $env:TEMP -ChildPath "IntuneWinAppUtil.exe")
+        [string]$IntuneWinAppUtilPath = (Join-Path -Path $env:TEMP -ChildPath "IntuneWinAppUtil.exe"),
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify to run IntuneWinAppUtil.exe without creating a console window, requires IntuneWinAppUtil.exe version 1.8.7 or later.")]
+        [switch]$Silent
     )
     Process {
+        # Resolve relative paths against the current PowerShell location, since .NET and external executables use the process working directory
+        $SourceFolder = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($SourceFolder)
+        $OutputFolder = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($OutputFolder)
+        $IntuneWinAppUtilPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($IntuneWinAppUtilPath)
+
         # Trim trailing backslashes from input paths
         $SourceFolder = $SourceFolder.TrimEnd("\")
         $OutputFolder = $OutputFolder.TrimEnd("\")
@@ -71,7 +84,7 @@ function New-IntuneWin32AppPackage {
                 if ((Test-Path -Path $OutputFolder) -or (Test-Path -LiteralPath $OutputFolder)) {
                     Write-Verbose -Message "Successfully detected specified output folder: $($OutputFolder)"
 
-                    if ((-not(Test-Path -Path $IntuneWinAppUtilPath)) -or (-not(Test-Path -LiteralPath $IntuneWinAppUtilPath))) {
+                    if (-not(Test-Path -LiteralPath $IntuneWinAppUtilPath)) {
                         if (-not($PSBoundParameters["IntuneWinAppUtilPath"])) {
                             # Download IntuneWinAppUtil.exe if not present in context temporary folder
                             Write-Verbose -Message "Unable to detect IntuneWinAppUtil.exe in specified location, attempting to download to: $($env:TEMP)"
@@ -102,7 +115,8 @@ function New-IntuneWin32AppPackage {
                         if ($ProcessPackage -eq $true) {
                             # Invoke IntuneWinAppUtil.exe with parameter inputs
                             Write-Verbose -Message "Invoking IntuneWinAppUtil.exe to initialize packaging process"
-                            $PackageInvocation = Invoke-Executable -FilePath $IntuneWinAppUtilPath -Arguments "-c ""$($SourceFolder)"" -s ""$($SetupFile)"" -o ""$($OutPutFolder)"" -q" -RedirectStandardOutput $false -RedirectStandardError $false -CreateNoWindow $false -UseShellExecute $true
+                            $QuietSwitch = if ($Silent) { "-qq" } else { "-q" }
+                            $PackageInvocation = Invoke-Executable -FilePath $IntuneWinAppUtilPath -Arguments "-c ""$($SourceFolder)"" -s ""$($SetupFile)"" -o ""$($OutPutFolder)"" $($QuietSwitch)" -RedirectStandardOutput $false -RedirectStandardError $false -CreateNoWindow $false -UseShellExecute $true
                             if ($PackageInvocation.ExitCode -eq 0) {
                                 Write-Verbose -Message "IntuneWinAppUtil.exe packaging process completed with exit code $($PackageInvocation.ExitCode)"
 

@@ -43,7 +43,7 @@ function Get-IntuneWin32App {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -54,12 +54,12 @@ function Get-IntuneWin32App {
             "DisplayName" {
                 $Win32AppList = New-Object -TypeName "System.Collections.Generic.List[Object]"
                 $Win32MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')"
-                if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
-                    Write-Verbose -Message "Retrieved $($Win32MobileApps.Count) total Win32 apps from tenant"
+                if ($null -ne $Win32MobileApps -and @($Win32MobileApps).Count -gt 0) {
+                    Write-Verbose -Message "Retrieved $(@($Win32MobileApps).Count) total Win32 apps from tenant"
                     Write-Verbose -Message "Filtering for Win32 apps matching displayName using pattern: *$($DisplayName)*"
                     $Win32MobileApps = $Win32MobileApps | Where-Object { $_.displayName -like "*$($DisplayName)*" }
-                    if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
-                        Write-Verbose -Message "Found $($Win32MobileApps.Count) app(s) matching the display name filter"
+                    if ($null -ne $Win32MobileApps -and @($Win32MobileApps).Count -gt 0) {
+                        Write-Verbose -Message "Found $(@($Win32MobileApps).Count) app(s) matching the display name filter"
                         foreach ($Win32MobileApp in $Win32MobileApps) {
                             $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)"
                             $Win32AppList.Add($Win32App)
@@ -95,7 +95,7 @@ function Get-IntuneWin32App {
             default {
                 $Win32AppList = New-Object -TypeName "System.Collections.Generic.List[Object]"
                 $Win32MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')"
-                if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                if ($null -ne $Win32MobileApps -and @($Win32MobileApps).Count -gt 0) {
                     foreach ($Win32MobileApp in $Win32MobileApps) {
                         $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)"
                         $Win32AppList.Add($Win32App)

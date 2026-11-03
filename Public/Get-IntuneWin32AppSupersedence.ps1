@@ -29,7 +29,7 @@ function Get-IntuneWin32AppSupersedence {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -47,10 +47,10 @@ function Get-IntuneWin32AppSupersedence {
                 $Win32AppRelationsResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/relationships" -ErrorAction Stop
 
                 # Handle return value
-                if ($null -ne $Win32AppRelationsResponse -and $Win32AppRelationsResponse.Count -gt 0) {
+                if ($null -ne $Win32AppRelationsResponse -and @($Win32AppRelationsResponse).Count -gt 0) {
                     # Filter for supersedence relationships
                     $SupersedenceRelationships = $Win32AppRelationsResponse | Where-Object { $_.'@odata.type' -eq "#microsoft.graph.mobileAppSupersedence" }
-                    if ($null -ne $SupersedenceRelationships -and $SupersedenceRelationships.Count -gt 0) {
+                    if ($null -ne $SupersedenceRelationships -and @($SupersedenceRelationships).Count -gt 0) {
                         Write-Verbose -Message "Found $(@($SupersedenceRelationships).Count) supersedence relationship(s)"
                         return $SupersedenceRelationships
                     }

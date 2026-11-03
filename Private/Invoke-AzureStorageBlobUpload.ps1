@@ -22,6 +22,8 @@ function Invoke-AzureStorageBlobUpload {
         1.0.3 - (2022-09-03) Added access token refresh functionality when a token is about to expire, to prevent uploads from failing due to an expired access token
         1.0.5 - (2024-06-04) Added retry logic for chunk uploads and finalization steps to enhance reliability (thanks to @tjgruber)
         1.0.6 - (2024-11-15) Refactor date handling for token to fix locale-specific parsing issues (thanks to @tjgruber)
+        1.0.7 - (2026-11-03) Fixed locale specific date parsing (#210, #225) and token refresh for client secret and certificate flows (#75, #130).
+                             Failed chunk upload or finalization now throws a terminating error and the file handle is always released.
     #>
     param(
         [parameter(Mandatory = $true)]
@@ -53,79 +55,66 @@ function Invoke-AzureStorageBlobUpload {
 
     # Upload each chunk and check whether a SAS URI renewal is required after each chunk is uploaded and renew if needed
     $ChunkIDs = @()
-    for ($Chunk = 0; $Chunk -lt $ChunkCount; $Chunk++) {
-        Write-Verbose -Message "SAS Uri renewal timer has elapsed for: $($SASRenewalTimer.Elapsed.Minutes) minute $($SASRenewalTimer.Elapsed.Seconds) seconds"
+    try {
+        for ($Chunk = 0; $Chunk -lt $ChunkCount; $Chunk++) {
+            Write-Verbose -Message "SAS Uri renewal timer has elapsed for: $($SASRenewalTimer.Elapsed.Minutes) minute $($SASRenewalTimer.Elapsed.Seconds) seconds"
 
-        # Convert ExpiresOn to DateTimeOffset in UTC
-        $ExpiresOnUTC = [DateTimeOffset]::Parse(
-            $Global:AccessToken.ExpiresOn.ToString(),
-            [System.Globalization.CultureInfo]::InvariantCulture,
-            [System.Globalization.DateTimeStyles]::AssumeUniversal
-            ).ToUniversalTime()
+            # Refresh access token silently if it is about to expire, supports all authentication flows
+            Update-AccessTokenIfRequired -RenewalThresholdMinutes 10
 
-        # Get the current UTC time as DateTimeOffset
-        $UTCDateTime = [DateTimeOffset]::UtcNow
+            # Convert and calculate required chunk elements for content upload
+            $ChunkID = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Chunk.ToString("0000")))
+            $ChunkIDs += $ChunkID
+            $Start = $Chunk * $ChunkSizeInBytes
+            $Length = [System.Math]::Min($ChunkSizeInBytes, $FileSize - $Start)
+            $Bytes = $BinaryReader.ReadBytes($Length)
 
-        # Calculate the TimeSpan between expiration and current time
-        $TimeSpan = $ExpiresOnUTC - $UTCDateTime
+            # Increment chunk to get the current chunk
+            $CurrentChunk = $Chunk + 1
 
-        # Calculate the token expiration time in minutes
-        $TokenExpireMinutes = [System.Math]::Round($TimeSpan.TotalMinutes)
+            Write-Progress -Activity "Uploading file to Azure Storage blob" -Status "Uploading chunk $($CurrentChunk) of $($ChunkCount)" -PercentComplete ($CurrentChunk / $ChunkCount * 100)
+            Write-Verbose -Message "Uploading file to Azure Storage blob, processing chunk '$($CurrentChunk)' of '$($ChunkCount)'"
 
-        # Determine if refresh of access token is required when expiration count is less than or equal to minimum age
-        if ($TokenExpireMinutes -le 10) {
-            Write-Verbose -Message "Existing token found but is soon about to expire, refreshing token"
-            Connect-MSIntuneGraph -TenantID $Global:AccessTokenTenantID -Refresh
-        }
-
-        # Convert and calculate required chunk elements for content upload
-        $ChunkID = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Chunk.ToString("0000")))
-        $ChunkIDs += $ChunkID
-        $Start = $Chunk * $ChunkSizeInBytes
-        $Length = [System.Math]::Min($ChunkSizeInBytes, $FileSize - $Start)
-        $Bytes = $BinaryReader.ReadBytes($Length)
-
-        # Increment chunk to get the current chunk
-        $CurrentChunk = $Chunk + 1
-
-        Write-Progress -Activity "Uploading file to Azure Storage blob" -Status "Uploading chunk $($CurrentChunk) of $($ChunkCount)" -PercentComplete ($CurrentChunk / $ChunkCount * 100)
-        Write-Verbose -Message "Uploading file to Azure Storage blob, processing chunk '$($CurrentChunk)' of '$($ChunkCount)'"
-
-        $UploadSuccess = $false
-        $RetryCount = 8
-        $RetryDelayRange = @{ Min = 7; Max = 30 }
-        for ($i = 0; $i -lt $RetryCount; $i++) {
-            try {
-                $UploadResponse = Invoke-AzureStorageBlobUploadChunk -StorageUri $StorageUri -ChunkID $ChunkID -Bytes $Bytes
-                $UploadSuccess = $true
-                break
-            } catch {
-                $RetryDelay = Get-Random -Minimum $RetryDelayRange.Min -Maximum $RetryDelayRange.Max
-                Write-Warning "Failed to upload chunk [$($CurrentChunk)] of [$($ChunkCount)]. Attempt [$($i + 1)] of [$RetryCount]. Retrying in [$RetryDelay] seconds. Error: $_"
-                Start-Sleep -Seconds $RetryDelay
-                Write-Warning "Retrying upload of chunk [$($CurrentChunk)] of [$($ChunkCount)]"
-            }
-        }
-
-        if (-not $UploadSuccess) {
-            Write-Error "Failed to upload chunk after [$RetryCount] attempts. Aborting upload."
-            return
-        }
-
-        if (($CurrentChunk -lt $ChunkCount) -and ($SASRenewalTimer.ElapsedMilliseconds -ge 450000)) {
-            Write-Verbose -Message "SAS Uri renewal is required, attempting to renew"
-            try {
-                $RenewedSASUri = Invoke-AzureStorageBlobUploadRenew -Resource $Resource
-                if ($null -ne $RenewedSASUri) {
-                    $StorageUri = $RenewedSASUri
-                    $SASRenewalTimer.Restart()
-                } else {
-                    Write-Warning "SAS Uri renewal failed, continuing with existing Uri"
+            $UploadSuccess = $false
+            $RetryCount = 8
+            $RetryDelayRange = @{ Min = 7; Max = 30 }
+            for ($i = 0; $i -lt $RetryCount; $i++) {
+                try {
+                    $UploadResponse = Invoke-AzureStorageBlobUploadChunk -StorageUri $StorageUri -ChunkID $ChunkID -Bytes $Bytes
+                    $UploadSuccess = $true
+                    break
+                } catch {
+                    $RetryDelay = Get-Random -Minimum $RetryDelayRange.Min -Maximum $RetryDelayRange.Max
+                    Write-Warning "Failed to upload chunk [$($CurrentChunk)] of [$($ChunkCount)]. Attempt [$($i + 1)] of [$RetryCount]. Retrying in [$RetryDelay] seconds. Error: $_"
+                    Start-Sleep -Seconds $RetryDelay
+                    Write-Warning "Retrying upload of chunk [$($CurrentChunk)] of [$($ChunkCount)]"
                 }
-            } catch {
-                Write-Warning "SAS Uri renewal attempt failed with error: $_. Continuing with existing Uri."
+            }
+
+            if (-not $UploadSuccess) {
+                throw "Failed to upload chunk after [$RetryCount] attempts. Aborting upload."
+            }
+
+            if (($CurrentChunk -lt $ChunkCount) -and ($SASRenewalTimer.ElapsedMilliseconds -ge 450000)) {
+                Write-Verbose -Message "SAS Uri renewal is required, attempting to renew"
+                try {
+                    $RenewedSASUri = Invoke-AzureStorageBlobUploadRenew -Resource $Resource
+                    if ($null -ne $RenewedSASUri) {
+                        $StorageUri = $RenewedSASUri
+                        $SASRenewalTimer.Restart()
+                    } else {
+                        Write-Warning "SAS Uri renewal failed, continuing with existing Uri"
+                    }
+                } catch {
+                    Write-Warning "SAS Uri renewal attempt failed with error: $_. Continuing with existing Uri."
+                }
             }
         }
+    }
+    finally {
+        # Always release the file handle, also when the upload fails
+        $BinaryReader.Close()
+        $BinaryReader.Dispose()
     }
 
     # Stop timer
@@ -140,7 +129,7 @@ function Invoke-AzureStorageBlobUpload {
     $RetryDelayRange = @{ Min = 7; Max = 30 }
     for ($i = 0; $i -lt $RetryCount; $i++) {
         try {
-            Invoke-AzureStorageBlobUploadFinalize -StorageUri $StorageUri -ChunkID $ChunkIDs
+            $null = Invoke-AzureStorageBlobUploadFinalize -StorageUri $StorageUri -ChunkID $ChunkIDs
             $FinalizeSuccess = $true
             break
         } catch {
@@ -151,11 +140,6 @@ function Invoke-AzureStorageBlobUpload {
     }
 
     if (-not $FinalizeSuccess) {
-        Write-Error "Failed to finalize upload after [$RetryCount] attempts. Aborting upload."
-        return
+        throw "Failed to finalize upload after [$RetryCount] attempts. Aborting upload."
     }
-
-    # Close and dispose binary reader object
-    $BinaryReader.Close()
-    $BinaryReader.Dispose()
 }

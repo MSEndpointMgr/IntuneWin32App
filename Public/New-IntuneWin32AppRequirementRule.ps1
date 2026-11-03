@@ -7,13 +7,14 @@ function New-IntuneWin32AppRequirementRule {
         Construct a new requirement rule as an optional requirement for Add-IntuneWin32App cmdlet.
 
     .PARAMETER Architecture
-        Specify the architecture as a requirement for the Win32 app. 
+        Specify the architecture as a requirement for the Win32 app.
         Supported values: x64, x86, arm64, x64x86, AllWithARM64.
         - x64: 64-bit Intel/AMD processors only
         - x86: 32-bit Intel/AMD processors only
         - arm64: 64-bit ARM processors only
         - x64x86: x64 and x86 (Intel/AMD architectures)
         - AllWithARM64: x64, x86, and arm64 (universal)
+        When not specified, the app is allowed to be installed on all systems (x64, x86 and arm64).
 
     .PARAMETER MinimumSupportedWindowsRelease
         Specify the minimum supported Windows release version as a requirement for the Win32 app.
@@ -45,17 +46,19 @@ function New-IntuneWin32AppRequirementRule {
         1.0.5 - (2023-04-26) Added support for new Windows 10 and Windows 11 minimum operating system versions
         1.0.6 - (2023-09-04) Added alias of MinimumSupportedOperatingSystem to MinimumSupportedWindowsRelease
         1.0.7 - (2025-12-07) BREAKING: Added ARM64 support and switched to modern allowedArchitectures property by default
-    #>    
+        1.0.8 - (2026-11-03) Added Windows 11 23H2 and 24H2 minimum supported Windows releases (#218). Architecture parameter is now optional and
+                             allows installation on all systems when not specified (#233)
+    #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [parameter(Mandatory = $true, HelpMessage = "Specify the architecture as a requirement for the Win32 app.")]
+        [parameter(Mandatory = $false, HelpMessage = "Specify the architecture as a requirement for the Win32 app.")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("x64", "x86", "arm64", "x64x86", "AllWithARM64")]
-        [string]$Architecture,
+        [string]$Architecture = "AllWithARM64",
 
         [parameter(Mandatory = $true, HelpMessage = "Specify the minimum supported Windows release version as a requirement for the Win32 app.")]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet("W10_1607", "W10_1703", "W10_1709", "W10_1803", "W10_1809", "W10_1903", "W10_1909", "W10_2004", "W10_20H2", "W10_21H1", "W10_21H2", "W10_22H2", "W11_21H2", "W11_22H2")]
+        [ValidateSet("W10_1607", "W10_1703", "W10_1709", "W10_1803", "W10_1809", "W10_1903", "W10_1909", "W10_2004", "W10_20H2", "W10_21H1", "W10_21H2", "W10_22H2", "W11_21H2", "W11_22H2", "W11_23H2", "W11_24H2")]
         [Alias('MinimumSupportedOperatingSystem')]
         [string]$MinimumSupportedWindowsRelease,
 
@@ -101,6 +104,8 @@ function New-IntuneWin32AppRequirementRule {
             "W10_22H2" = "Windows10_22H2"
             "W11_21H2" = "Windows11_21H2"
             "W11_22H2" = "Windows11_22H2"
+            "W11_23H2" = "Windows11_23H2"
+            "W11_24H2" = "Windows11_24H2"
         }
 
         # Construct ordered hash-table with least amount of required properties for default requirement rule

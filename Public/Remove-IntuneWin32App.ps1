@@ -36,7 +36,7 @@ function Remove-IntuneWin32App {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -46,9 +46,9 @@ function Remove-IntuneWin32App {
         switch ($PSCmdlet.ParameterSetName) {
             "DisplayName" {
                 $MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps"
-                if ($MobileApps.Count -ge 1) {
+                if (@($MobileApps).Count -ge 1) {
                     $Win32MobileApps = $MobileApps | Where-Object { $_.'@odata.type' -like "#microsoft.graph.win32LobApp" }
-                    if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                    if ($null -ne $Win32MobileApps -and @($Win32MobileApps).Count -gt 0) {
                         $Win32App = $Win32MobileApps | Where-Object { $_.displayName -like $DisplayName }
                         if ($null -ne $Win32App) {
                             Write-Verbose -Message "Detected Win32 app with ID: $($Win32App.id)"
@@ -74,7 +74,9 @@ function Remove-IntuneWin32App {
         if (-not([string]::IsNullOrEmpty($Win32AppID))) {
             try {
                 # Attempt to call Graph and delete Win32 app
-                $Win32AppDeletionResponse = Invoke-MSGraphOperation -Delete -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)" -ErrorAction Stop
+                if ($PSCmdlet.ShouldProcess("deviceAppManagement/mobileApps/$($Win32AppID)", "DELETE")) {
+                    $Win32AppDeletionResponse = Invoke-MSGraphOperation -Delete -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)" -ErrorAction Stop
+                }
             }
             catch [System.Exception] {
                 Write-Warning -Message "An error occurred while deleting Win32 app with ID: $($Win32AppID). Error message: $($_.Exception.Message)"

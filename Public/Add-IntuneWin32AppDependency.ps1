@@ -36,7 +36,7 @@ function Add-IntuneWin32AppDependency {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -44,7 +44,7 @@ function Add-IntuneWin32AppDependency {
 
         # Validate maximum number of dependency configuration tables
         if ($Dependency.Count -gt 100) {
-            Write-Warning -Message "Maximum allowed number of dependency objects '100' detected, actual count passed as input: $($Dependency.Count)"; break
+            throw "Maximum allowed number of dependency objects '100' detected, actual count passed as input: $($Dependency.Count)"
         }
     }
     Process {
@@ -65,7 +65,9 @@ function Add-IntuneWin32AppDependency {
 
                 try {
                     # Attempt to call Graph and configure dependency for Win32 app
-                    Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships" -Body ($Win32AppRelationshipsTable | ConvertTo-Json) -ErrorAction Stop
+                    if ($PSCmdlet.ShouldProcess("deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships", "POST")) {
+                        Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships" -Body ($Win32AppRelationshipsTable | ConvertTo-Json) -ErrorAction Stop
+                    }
                 }
                 catch [System.Exception] {
                     Write-Warning -Message "An error occurred while configuring dependency for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"

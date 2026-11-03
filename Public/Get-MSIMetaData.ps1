@@ -53,7 +53,7 @@ function Get-MSIMetaData {
             return $Value
         } 
         catch {
-            Write-Warning -Message $_.Exception.Message; break
+            throw $_.Exception.Message
         }
     }
     End {

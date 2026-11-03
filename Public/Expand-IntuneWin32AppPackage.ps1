@@ -59,13 +59,16 @@ function Expand-IntuneWin32AppPackage {
             $ClassImport = Add-Type -AssemblyName "System.IO.Compression.FileSystem" -ErrorAction Stop -Verbose:$false
         }
         catch [System.Exception] {
-            Write-Warning -Message "An error occurred while loading System.IO.Compression.FileSystem assembly. Error message: $($_.Exception.Message)"; break
+            throw "An error occurred while loading System.IO.Compression.FileSystem assembly. Error message: $($_.Exception.Message)"
         }
 
         # Set script variable for error action preference
         $ErrorActionPreference = "Stop"        
     }
     Process {
+        # Resolve relative paths against the current PowerShell location, since .NET methods use the process working directory (#91)
+        $FilePath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($FilePath)
+
         if (Test-Path -Path $FilePath) {
             try {
                 # Read Win32 app meta data
@@ -111,11 +114,11 @@ function Expand-IntuneWin32AppPackage {
                                             Remove-Item -Path $TargetFilePath -Force -ErrorAction Stop
                                         }
                                         catch [System.Exception] {
-                                            Write-Warning -Message "An error occurred while removing existing decoded file: $($TargetFilePathName). Error message: $($_.Exception.Message)"; break
+                                            throw "An error occurred while removing existing decoded file: $($TargetFilePathName). Error message: $($_.Exception.Message)"
                                         }
                                     }
                                     else {
-                                        Write-Warning -Message "Existing file '$($TargetFilePathName)' already exists, use Force parameter to overwrite"; break
+                                        throw "Existing file '$($TargetFilePathName)' already exists, use Force parameter to overwrite"
                                     }
                                 }
 

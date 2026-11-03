@@ -27,6 +27,12 @@ function New-IntuneWin32AppRequirementRuleScript {
     .PARAMETER ScriptFile
         Specify the full path to the PowerShell script file, e.g. 'C:\Scripts\Rule.ps1'.
 
+    .PARAMETER ScriptContent
+        Specify the PowerShell script content as a string, as an alternative to ScriptFile.
+
+    .PARAMETER ScriptName
+        Specify the display name of the script when using ScriptContent, defaults to 'RequirementScript.ps1'.
+
     .PARAMETER ScriptContext
         Specify to either run the script in the local system context or with signed in user context.
 
@@ -41,7 +47,7 @@ function New-IntuneWin32AppRequirementRuleScript {
 
     .PARAMETER DateTimeComparisonOperator
         Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.
-    
+
     .PARAMETER FloatComparisonOperator
         Specify the operator. Supported values are: equal, notEqual, greaterThanOrEqual, greaterThan, lessThanOrEqual, lessThan.
 
@@ -71,7 +77,7 @@ function New-IntuneWin32AppRequirementRuleScript {
 
     .PARAMETER EnforceSignatureCheck
         Set as True to verify that the script executed is signed by a trusted publisher.
-                
+
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
@@ -105,12 +111,12 @@ function New-IntuneWin32AppRequirementRuleScript {
         [parameter(Mandatory = $true, ParameterSetName = "Version", HelpMessage = "Select output data type as a version, used when determining a detection match requirement.")]
         [switch]$VersionOutputDataType,
 
-        [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Specify the full path to the PowerShell script file, e.g. 'C:\Scripts\Rule.ps1'.")]
-        [parameter(Mandatory = $true, ParameterSetName = "Integer")]
-        [parameter(Mandatory = $true, ParameterSetName = "Boolean")]
-        [parameter(Mandatory = $true, ParameterSetName = "DateTime")]
-        [parameter(Mandatory = $true, ParameterSetName = "Float")]
-        [parameter(Mandatory = $true, ParameterSetName = "Version")]
+        [parameter(Mandatory = $false, ParameterSetName = "String", HelpMessage = "Specify the full path to the PowerShell script file, e.g. 'C:\Scripts\Rule.ps1'.")]
+        [parameter(Mandatory = $false, ParameterSetName = "Integer")]
+        [parameter(Mandatory = $false, ParameterSetName = "Boolean")]
+        [parameter(Mandatory = $false, ParameterSetName = "DateTime")]
+        [parameter(Mandatory = $false, ParameterSetName = "Float")]
+        [parameter(Mandatory = $false, ParameterSetName = "Version")]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({
             # Check if file name contains any invalid characters
@@ -135,6 +141,14 @@ function New-IntuneWin32AppRequirementRuleScript {
         })]
         [string]$ScriptFile,
 
+        [parameter(Mandatory = $false, HelpMessage = "Specify the PowerShell script content as a string, as an alternative to ScriptFile.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$ScriptContent,
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify the display name of the script when using ScriptContent.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$ScriptName = "RequirementScript.ps1",
+
         [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Specify to either run the script in the local system context or with signed in user context.")]
         [parameter(Mandatory = $true, ParameterSetName = "Integer")]
         [parameter(Mandatory = $true, ParameterSetName = "Boolean")]
@@ -144,7 +158,7 @@ function New-IntuneWin32AppRequirementRuleScript {
         [ValidateNotNullOrEmpty()]
         [ValidateSet("system", "user")]
         [string]$ScriptContext,
-               
+
         [parameter(Mandatory = $true, ParameterSetName = "String", HelpMessage = "Specify the operator. Supported values are: equal, notEqual.")]
         [ValidateSet("equal", "notEqual")]
         [ValidateNotNullOrEmpty()]
@@ -207,7 +221,7 @@ function New-IntuneWin32AppRequirementRuleScript {
         [parameter(Mandatory = $false, ParameterSetName = "Boolean")]
         [parameter(Mandatory = $false, ParameterSetName = "DateTime")]
         [parameter(Mandatory = $false, ParameterSetName = "Float")]
-        [parameter(Mandatory = $false, ParameterSetName = "Version")]        
+        [parameter(Mandatory = $false, ParameterSetName = "Version")]
         [ValidateNotNullOrEmpty()]
         [bool]$RunAs32BitOn64System = $false,
 
@@ -224,107 +238,109 @@ function New-IntuneWin32AppRequirementRuleScript {
         # Handle initial value for return
         $RequirementRuleScript = $null
 
-        # Detect if passed script file exists
-        Write-Verbose -Message "Attempting to locate given script file in provided path: $($ScriptFile)"
-        if (Test-Path -Path $ScriptFile) {
-            # Get script file name from provided path
+        # Ensure that either a script file or script content was passed on the command line
+        if ([string]::IsNullOrEmpty($ScriptFile) -eq [string]::IsNullOrEmpty($ScriptContent)) {
+            throw "Specify either the ScriptFile or the ScriptContent parameter"
+        }
+
+        # Convert script file or script content to base64 string
+        if (-not([string]::IsNullOrEmpty($ScriptFile))) {
             $ScriptFileName = [System.IO.Path]::GetFileName("$($ScriptFile)")
-
-            # Convert script file contents to base64 string
-            $ScriptContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-Content -Path "$($ScriptFile)" -Raw -Encoding UTF8)))
-
-            switch ($PSCmdlet.ParameterSetName) {
-                "String" {
-                    # Construct ordered hash-table with least amount of required properties for default requirement rule
-                    $RequirementRuleScript = [ordered]@{
-                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
-                        "operator" = $StringComparisonOperator
-                        "detectionValue" = $StringValue
-                        "displayName" = $ScriptFileName
-                        "enforceSignatureCheck" = $EnforceSignatureCheck
-                        "runAs32Bit" = $RunAs32BitOn64System
-                        "runAsAccount" = $ScriptContext
-                        "scriptContent" = $ScriptContent
-                        "detectionType" = "string"
-                    }
-                }
-                "Integer" {
-                    # Construct ordered hash-table with least amount of required properties for default requirement rule
-                    $RequirementRuleScript = [ordered]@{
-                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
-                        "operator" = $IntegerComparisonOperator
-                        "detectionValue" = $IntegerValue
-                        "displayName" = $ScriptFileName
-                        "enforceSignatureCheck" = $EnforceSignatureCheck
-                        "runAs32Bit" = $RunAs32BitOn64System
-                        "runAsAccount" = $ScriptContext
-                        "scriptContent" = $ScriptContent
-                        "detectionType" = "integer"
-                    }
-                }
-                "Boolean" {
-                    # Construct ordered hash-table with least amount of required properties for default requirement rule
-                    $RequirementRuleScript = [ordered]@{
-                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
-                        "operator" = $BooleanComparisonOperator
-                        "detectionValue" = $BooleanValue.ToLower()
-                        "displayName" = $ScriptFileName
-                        "enforceSignatureCheck" = $EnforceSignatureCheck
-                        "runAs32Bit" = $RunAs32BitOn64System
-                        "runAsAccount" = $ScriptContext
-                        "scriptContent" = $ScriptContent
-                        "detectionType" = "boolean"
-                    }
-                }
-                "DateTime" {
-                    # Convert input datetime object to ISO 8601 string
-                    $DateValueString = ConvertTo-JSONDate -InputObject $DateTimeValue
-                    
-                    # Construct ordered hash-table with least amount of required properties for default requirement rule
-                    $RequirementRuleScript = [ordered]@{
-                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
-                        "operator" = $DateTimeComparisonOperator
-                        "detectionValue" = $DateValueString
-                        "displayName" = $ScriptFileName
-                        "enforceSignatureCheck" = $EnforceSignatureCheck
-                        "runAs32Bit" = $RunAs32BitOn64System
-                        "runAsAccount" = $ScriptContext
-                        "scriptContent" = $ScriptContent
-                        "detectionType" = "dateTime"
-                    }
-                }
-                "Float" {
-                    # Construct ordered hash-table with least amount of required properties for default requirement rule
-                    $RequirementRuleScript = [ordered]@{
-                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
-                        "operator" = $FloatComparisonOperator
-                        "detectionValue" = $FloatValue
-                        "displayName" = $ScriptFileName
-                        "enforceSignatureCheck" = $EnforceSignatureCheck
-                        "runAs32Bit" = $RunAs32BitOn64System
-                        "runAsAccount" = $ScriptContext
-                        "scriptContent" = $ScriptContent
-                        "detectionType" = "float"
-                    }
-                }
-                "Version" {
-                    # Construct ordered hash-table with least amount of required properties for default requirement rule
-                    $RequirementRuleScript = [ordered]@{
-                        "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
-                        "operator" = $VersionComparisonOperator
-                        "detectionValue" = $VersionValue
-                        "displayName" = $ScriptFileName
-                        "enforceSignatureCheck" = $EnforceSignatureCheck
-                        "runAs32Bit" = $RunAs32BitOn64System
-                        "runAsAccount" = $ScriptContext
-                        "scriptContent" = $ScriptContent
-                        "detectionType" = "version"
-                    }
-                }
-            }
+            $EncodedScriptContent = ConvertTo-IntuneScriptContent -Path $ScriptFile
         }
         else {
-            Write-Warning -Message "Unable to detect specified script file in given path: $($ScriptFile)"
+            $ScriptFileName = $ScriptName
+            $EncodedScriptContent = ConvertTo-IntuneScriptContent -Content $ScriptContent
+        }
+
+        switch ($PSCmdlet.ParameterSetName) {
+            "String" {
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleScript = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                    "operator" = $StringComparisonOperator
+                    "detectionValue" = $StringValue
+                    "displayName" = $ScriptFileName
+                    "enforceSignatureCheck" = $EnforceSignatureCheck
+                    "runAs32Bit" = $RunAs32BitOn64System
+                    "runAsAccount" = $ScriptContext
+                    "scriptContent" = $EncodedScriptContent
+                    "detectionType" = "string"
+                }
+            }
+            "Integer" {
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleScript = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                    "operator" = $IntegerComparisonOperator
+                    "detectionValue" = $IntegerValue
+                    "displayName" = $ScriptFileName
+                    "enforceSignatureCheck" = $EnforceSignatureCheck
+                    "runAs32Bit" = $RunAs32BitOn64System
+                    "runAsAccount" = $ScriptContext
+                    "scriptContent" = $EncodedScriptContent
+                    "detectionType" = "integer"
+                }
+            }
+            "Boolean" {
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleScript = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                    "operator" = $BooleanComparisonOperator
+                    "detectionValue" = $BooleanValue.ToLower()
+                    "displayName" = $ScriptFileName
+                    "enforceSignatureCheck" = $EnforceSignatureCheck
+                    "runAs32Bit" = $RunAs32BitOn64System
+                    "runAsAccount" = $ScriptContext
+                    "scriptContent" = $EncodedScriptContent
+                    "detectionType" = "boolean"
+                }
+            }
+            "DateTime" {
+                # Convert input datetime object to ISO 8601 string
+                $DateValueString = ConvertTo-JSONDate -InputObject $DateTimeValue
+
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleScript = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                    "operator" = $DateTimeComparisonOperator
+                    "detectionValue" = $DateValueString
+                    "displayName" = $ScriptFileName
+                    "enforceSignatureCheck" = $EnforceSignatureCheck
+                    "runAs32Bit" = $RunAs32BitOn64System
+                    "runAsAccount" = $ScriptContext
+                    "scriptContent" = $EncodedScriptContent
+                    "detectionType" = "dateTime"
+                }
+            }
+            "Float" {
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleScript = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                    "operator" = $FloatComparisonOperator
+                    "detectionValue" = $FloatValue
+                    "displayName" = $ScriptFileName
+                    "enforceSignatureCheck" = $EnforceSignatureCheck
+                    "runAs32Bit" = $RunAs32BitOn64System
+                    "runAsAccount" = $ScriptContext
+                    "scriptContent" = $EncodedScriptContent
+                    "detectionType" = "float"
+                }
+            }
+            "Version" {
+                # Construct ordered hash-table with least amount of required properties for default requirement rule
+                $RequirementRuleScript = [ordered]@{
+                    "@odata.type" = "#microsoft.graph.win32LobAppPowerShellScriptRequirement"
+                    "operator" = $VersionComparisonOperator
+                    "detectionValue" = $VersionValue
+                    "displayName" = $ScriptFileName
+                    "enforceSignatureCheck" = $EnforceSignatureCheck
+                    "runAs32Bit" = $RunAs32BitOn64System
+                    "runAsAccount" = $ScriptContext
+                    "scriptContent" = $EncodedScriptContent
+                    "detectionType" = "version"
+                }
+            }
         }
 
         # Handle return value with constructed requirement rule for file
