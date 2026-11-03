@@ -34,11 +34,24 @@ function Connect-MSIntuneGraph {
     .PARAMETER Scopes
         Specify the permission scopes to request. Defaults include DeviceManagementApps.ReadWrite.All, DeviceManagementConfiguration.ReadWrite.All, DeviceManagementRBAC.Read.All, Group.Read.All, and offline_access for full module functionality.
 
+    .PARAMETER ManagedIdentity
+        Specify to authenticate using an Azure managed identity, e.g. from Azure Automation, Azure Functions, Azure App Service, Azure Arc or an Azure Virtual Machine.
+
+    .PARAMETER ManagedIdentityClientID
+        Specify the Client ID of a user-assigned managed identity. When not specified, the system-assigned managed identity is used.
+
+    .PARAMETER AccessToken
+        Specify an existing access token for Microsoft Graph, as a plain string or SecureString, e.g. from Get-AzAccessToken or a pipeline task.
+        The token cannot be renewed silently, call Connect-MSIntuneGraph again with a new token when it expires.
+
+    .PARAMETER PassThru
+        Specify to return the authentication header, which contains the bearer token, to the pipeline.
+
     .NOTES
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2026-01-18
+        Updated:     2026-11-03
 
         Version history:
         1.0.0 - (2021-08-31) Script created
@@ -53,6 +66,9 @@ function Connect-MSIntuneGraph {
         1.0.9 - (2026-01-18) Implemented native client certificate authentication using New-ClientCertificateAccessToken function - completes all OAuth 2.0 flows without external dependencies
         1.1.0 - (2026-01-18) Fixed Issue #208: Ensured offline_access scope is included in token refresh requests to maintain refresh token continuity
         1.1.1 - (2026-01-18) Added Scopes parameter to allow users to customize requested permissions while providing sensible defaults for full module functionality
+        1.1.2 - (2026-11-03) BREAKING CHANGE: The authentication header (including the bearer token) is no longer written to the pipeline unless PassThru is specified (#229).
+                             Authentication failures now raise a terminating error instead of a warning (#228). Refresh parameter is now supported for all flows,
+                             ClientSecret and ClientCert flows request a new token (#75, #130). Added ManagedIdentity (#201) and AccessToken (#114) parameter sets.
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -60,9 +76,11 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $true, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
+        [parameter(Mandatory = $false, ParameterSetName = "ManagedIdentity")]
+        [parameter(Mandatory = $false, ParameterSetName = "AccessToken")]
         [ValidateNotNullOrEmpty()]
         [string]$TenantID,
-        
+
         [parameter(Mandatory = $true, ParameterSetName = "Interactive", HelpMessage = "Application ID (Client ID) for an Entra ID service principal.")]
         [parameter(Mandatory = $true, ParameterSetName = "DeviceCode")]
         [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
@@ -70,13 +88,11 @@ function Connect-MSIntuneGraph {
         [ValidateNotNullOrEmpty()]
         [string]$ClientID,
 
-        [parameter(Mandatory = $false, HelpMessage = "Application secret (Client Secret) for an Entra ID service principal.")]
-        [parameter(Mandatory = $true, ParameterSetName = "ClientSecret")]
+        [parameter(Mandatory = $true, ParameterSetName = "ClientSecret", HelpMessage = "Application secret (Client Secret) for an Entra ID service principal.")]
         [ValidateNotNullOrEmpty()]
         [string]$ClientSecret,
 
-        [parameter(Mandatory = $false, HelpMessage = "A Certificate object (not just thumbprint) representing the client certificate for an Azure AD service principal.")]
-        [parameter(Mandatory = $true, ParameterSetName = "ClientCert")]
+        [parameter(Mandatory = $true, ParameterSetName = "ClientCert", HelpMessage = "A Certificate object (not just thumbprint) representing the client certificate for an Azure AD service principal.")]
         [ValidateNotNullOrEmpty()]
         [System.Security.Cryptography.X509Certificates.X509Certificate2]$ClientCert,
 
@@ -87,137 +103,140 @@ function Connect-MSIntuneGraph {
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify to force an interactive prompt for credentials.")]
         [switch]$Interactive,
 
-        [parameter(Mandatory = $false, ParameterSetName = "DeviceCode", HelpMessage = "Specify to use device code authentication flow.")]
+        [parameter(Mandatory = $true, ParameterSetName = "DeviceCode", HelpMessage = "Specify to use device code authentication flow.")]
         [switch]$DeviceCode,
+
+        [parameter(Mandatory = $true, ParameterSetName = "ManagedIdentity", HelpMessage = "Specify to authenticate using an Azure managed identity.")]
+        [switch]$ManagedIdentity,
+
+        [parameter(Mandatory = $false, ParameterSetName = "ManagedIdentity", HelpMessage = "Specify the Client ID of a user-assigned managed identity.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$ManagedIdentityClientID = [string]::Empty,
+
+        [parameter(Mandatory = $true, ParameterSetName = "AccessToken", HelpMessage = "Specify an existing access token for Microsoft Graph.")]
+        [ValidateNotNullOrEmpty()]
+        [System.Object]$AccessToken,
 
         [parameter(Mandatory = $false, ParameterSetName = "Interactive", HelpMessage = "Specify to refresh an existing access token using stored refresh token.")]
         [parameter(Mandatory = $false, ParameterSetName = "DeviceCode")]
+        [parameter(Mandatory = $false, ParameterSetName = "ClientSecret")]
+        [parameter(Mandatory = $false, ParameterSetName = "ClientCert")]
+        [parameter(Mandatory = $false, ParameterSetName = "ManagedIdentity")]
         [switch]$Refresh,
 
         [parameter(Mandatory = $false, HelpMessage = "Array of permission scopes to request.")]
         [ValidateNotNullOrEmpty()]
-        [string[]]$Scopes = @("DeviceManagementApps.ReadWrite.All", "DeviceManagementConfiguration.ReadWrite.All", "DeviceManagementRBAC.Read.All", "Group.Read.All", "offline_access")
+        [string[]]$Scopes = @("DeviceManagementApps.ReadWrite.All", "DeviceManagementConfiguration.ReadWrite.All", "DeviceManagementRBAC.Read.All", "Group.Read.All", "offline_access"),
+
+        [parameter(Mandatory = $false, HelpMessage = "Specify to return the authentication header, which contains the bearer token, to the pipeline.")]
+        [switch]$PassThru
     )
     Begin {
-        # Determine the correct RedirectUri (also known as Reply URL) for OAuth authentication
-        Write-Verbose -Message "Using Entra ID service principal with Application ID: $($ClientID)"
+        if ($PSCmdlet.ParameterSetName -in @("Interactive", "DeviceCode", "ClientSecret", "ClientCert")) {
+            Write-Verbose -Message "Using Entra ID service principal with Application ID: $($ClientID)"
+        }
 
         # Adjust RedirectUri parameter input in case none was passed on command line
         if ([string]::IsNullOrEmpty($RedirectUri)) {
             # Use http://localhost for loopback redirect (dynamic port will be assigned)
             $RedirectUri = "http://localhost"
         }
-
-        Write-Verbose -Message "Using RedirectUri with value: $($RedirectUri)"
-
-        # Set default error action preference configuration
-        $ErrorActionPreference = "Stop"
+        if ($PSCmdlet.ParameterSetName -eq "Interactive") {
+            Write-Verbose -Message "Using RedirectUri with value: $($RedirectUri)"
+        }
     }
     Process {
         Write-Verbose -Message "Using authentication flow: $($PSCmdlet.ParameterSetName)"
 
-        try {
-            # Handle token refresh if requested and refresh token is available
-            if ($PSBoundParameters.ContainsKey("Refresh") -and $Refresh) {
-                if ($null -ne $Global:AccessToken -and $Global:AccessToken.PSObject.Properties["RefreshToken"] -and -not [string]::IsNullOrEmpty($Global:AccessToken.RefreshToken)) {
-                    Write-Verbose -Message "Refresh parameter specified and refresh token available, attempting silent token refresh"
-                    try {
-                        $RefreshScopes = if ($Global:AccessToken.PSObject.Properties["Scopes"]) { 
-                            $Global:AccessToken.Scopes 
-                        }
-                        else { 
-                            $Scopes
-                        }
-                        Update-AccessTokenFromRefreshToken -TenantID $TenantID -ClientID $ClientID -RefreshToken $Global:AccessToken.RefreshToken -Scopes $RefreshScopes
-                        Write-Verbose -Message "Successfully refreshed access token silently"
-                        
-                        # Construct the required authentication header
-                        $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
-                        Write-Verbose -Message "Successfully constructed authentication header"
-                        
-                        return $Global:AuthenticationHeader
-                    }
-                    catch {
-                        Write-Warning -Message "Silent token refresh failed: $($_). Falling back to interactive authentication"
-                    }
+        # Handle token refresh if requested and the existing connection uses the same flow, tenant and client
+        $RefreshCompleted = $false
+        if ($Refresh) {
+            $Connection = $Script:IntuneGraphConnection
+            $IsSameConnection = ($null -ne $Connection) -and ($Connection.Flow -eq $PSCmdlet.ParameterSetName) -and ([string]::IsNullOrEmpty($TenantID) -or ($Connection.TenantID -eq $TenantID)) -and ([string]::IsNullOrEmpty($ClientID) -or ($Connection.ClientID -eq $ClientID))
+            if ($IsSameConnection) {
+                try {
+                    Update-AccessTokenIfRequired -Force
+                    $RefreshCompleted = $true
+                    Write-Verbose -Message "Successfully refreshed access token silently"
                 }
-                else {
-                    Write-Verbose -Message "Refresh parameter specified but no refresh token available, proceeding with standard authentication"
+                catch {
+                    Write-Warning -Message "Silent token refresh failed: $($_). Falling back to standard authentication"
                 }
             }
-            
-            # Handle different authentication flows
-            switch ($PSCmdlet.ParameterSetName) {
-                "Interactive" {
-                    Write-Verbose -Message "Using New-DelegatedAccessToken for interactive authentication"
-                    try {
-                        New-DelegatedAccessToken -TenantID $TenantID -ClientID $ClientID -RedirectUri $RedirectUri -Scopes $Scopes
-                        $Global:AccessTokenTenantID = $TenantID
-                        Write-Verbose -Message "Successfully retrieved access token using New-DelegatedAccessToken"
-                    }
-                    catch {
-                        Write-Error -Message "An error occurred while retrieving access token using interactive authentication: $($_)"
-                        return
-                    }
-                }
-                "DeviceCode" {
-                    Write-Verbose -Message "Using New-DeviceCodeAccessToken for device code authentication"
-                    try {
-                        New-DeviceCodeAccessToken -TenantID $TenantID -ClientID $ClientID -Scopes $Scopes
-                        $Global:AccessTokenTenantID = $TenantID
-                        Write-Verbose -Message "Successfully retrieved access token using New-DeviceCodeAccessToken"
-                    }
-                    catch {
-                        Write-Error -Message "An error occurred while retrieving access token using device code authentication: $($_)"
-                        return
-                    }
-                }
-                "ClientSecret" {
-                    Write-Verbose -Message "Using New-ClientCredentialsAccessToken for client secret authentication"
-                    try {
-                        New-ClientCredentialsAccessToken -TenantID $TenantID -ClientID $ClientID -ClientSecret $ClientSecret
-                        $Global:AccessTokenTenantID = $TenantID
-                        Write-Verbose -Message "Successfully retrieved access token using client credentials"
-                    }
-                    catch {
-                        Write-Error -Message "An error occurred while retrieving access token using client credentials: $($_)"
-                        return
-                    }
-                }
-                "ClientCert" {
-                    Write-Verbose -Message "Using New-ClientCertificateAccessToken for client certificate authentication"
-                    try {
-                        New-ClientCertificateAccessToken -TenantID $TenantID -ClientID $ClientID -ClientCertificate $ClientCert
-                        $Global:AccessTokenTenantID = $TenantID
-                        Write-Verbose -Message "Successfully retrieved access token using client certificate"
-                    }
-                    catch {
-                        Write-Error -Message "An error occurred while retrieving access token using client certificate: $($_)"
-                        return
-                    }
-                }
-            }
-
-            try {
-                # Validate that access token was successfully retrieved
-                if (($null -eq $Global:AccessToken) -or ([string]::IsNullOrEmpty($Global:AccessToken.AccessToken))) {
-                    Write-Error -Message "Failed to retrieve access token"
-                    return
-                }
-                
-                # Construct the required authentication header
-                $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
-                Write-Verbose -Message "Successfully constructed authentication header"
-
-                # Handle return value
-                return $Global:AuthenticationHeader
-            }
-            catch {
-                Write-Warning -Message "An error occurred while attempting to construct authentication header: $($_)"
+            else {
+                Write-Verbose -Message "Refresh parameter specified but no matching connection is available, proceeding with standard authentication"
             }
         }
-        catch {
-            Write-Warning -Message "An error occurred while constructing parameter input for access token retrieval: $($_)"
+
+        if (-not($RefreshCompleted)) {
+            try {
+                switch ($PSCmdlet.ParameterSetName) {
+                    "Interactive" {
+                        Write-Verbose -Message "Using New-DelegatedAccessToken for interactive authentication"
+                        $null = New-DelegatedAccessToken -TenantID $TenantID -ClientID $ClientID -RedirectUri $RedirectUri -Scopes $Scopes
+                    }
+                    "DeviceCode" {
+                        Write-Verbose -Message "Using New-DeviceCodeAccessToken for device code authentication"
+                        $null = New-DeviceCodeAccessToken -TenantID $TenantID -ClientID $ClientID -Scopes $Scopes
+                    }
+                    "ClientSecret" {
+                        Write-Verbose -Message "Using New-ClientCredentialsAccessToken for client secret authentication"
+                        $null = New-ClientCredentialsAccessToken -TenantID $TenantID -ClientID $ClientID -ClientSecret $ClientSecret
+                    }
+                    "ClientCert" {
+                        Write-Verbose -Message "Using New-ClientCertificateAccessToken for client certificate authentication"
+                        $null = New-ClientCertificateAccessToken -TenantID $TenantID -ClientID $ClientID -ClientCertificate $ClientCert
+                    }
+                    "ManagedIdentity" {
+                        Write-Verbose -Message "Using New-ManagedIdentityAccessToken for managed identity authentication"
+                        $null = New-ManagedIdentityAccessToken -ClientID $ManagedIdentityClientID
+                        if ([string]::IsNullOrEmpty($TenantID)) {
+                            $TenantID = (Get-AccessTokenClaims -AccessToken $Global:AccessToken.access_token).tid
+                        }
+                    }
+                    "AccessToken" {
+                        Write-Verbose -Message "Using provided access token"
+                        $TokenClaims = New-AccessTokenFromString -AccessToken $AccessToken
+                        if ([string]::IsNullOrEmpty($TenantID) -and $TokenClaims.tid) {
+                            $TenantID = $TokenClaims.tid
+                        }
+                    }
+                }
+                if (($null -eq $Global:AccessToken) -or ([string]::IsNullOrEmpty($Global:AccessToken.AccessToken))) {
+                    throw "No access token was returned"
+                }
+            }
+            catch {
+                $ErrorRecord = New-Object -TypeName "System.Management.Automation.ErrorRecord" -ArgumentList @(
+                    (New-Object -TypeName "System.Exception" -ArgumentList "An error occurred while retrieving access token using authentication flow '$($PSCmdlet.ParameterSetName)': $($_)"),
+                    "AccessTokenRetrievalFailed",
+                    [System.Management.Automation.ErrorCategory]::AuthenticationError,
+                    $TenantID
+                )
+                $PSCmdlet.ThrowTerminatingError($ErrorRecord)
+            }
+            Write-Verbose -Message "Successfully retrieved access token"
+
+            # Store connection details in module scope for silent token renewal
+            $Global:AccessTokenTenantID = $TenantID
+            $Global:AccessTokenClientID = $ClientID
+            $Script:IntuneGraphConnection = @{
+                "Flow" = $PSCmdlet.ParameterSetName
+                "TenantID" = $TenantID
+                "ClientID" = $ClientID
+                "ClientSecret" = $ClientSecret
+                "ClientCert" = $ClientCert
+                "ManagedIdentityClientID" = $ManagedIdentityClientID
+            }
+
+            # Construct the required authentication header
+            $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
+            Write-Verbose -Message "Successfully constructed authentication header"
+        }
+
+        # Handle return value, the authentication header contains the bearer token and is only returned when requested
+        if ($PassThru) {
+            return $Global:AuthenticationHeader
         }
     }
 }

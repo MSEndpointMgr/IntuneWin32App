@@ -19,13 +19,14 @@ function Invoke-AzureStorageBlobUploadRenew {
         1.0.0 - (2020-01-04) Function created
         1.0.1 - (2021-03-15) Fixed an issue where SAS Uri renewal wasn't working correctly
         1.0.2 - (2024-06-03) Added loop to check the status of the SAS URI renewal
+        1.0.3 - (2026-11-03) Fixed duplicate deviceAppManagement segment in resource path, the Resource parameter already contains it (#222)
     #>
     param(
         [parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string]$Resource
     )
-    $RenewSASURIRequest = Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/$($Resource)/renewUpload" -Body "{}"
+    $RenewSASURIRequest = Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "$($Resource)/renewUpload" -Body "{}"
 
     # Loop to wait for the renewal process to complete and check the status
     $attempts = 0
@@ -33,7 +34,7 @@ function Invoke-AzureStorageBlobUploadRenew {
     $waitTime = 5 # seconds
 
     while ($attempts -lt $maxAttempts) {
-        $FilesProcessingRequest = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/$($Resource)"
+        $FilesProcessingRequest = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "$($Resource)"
         if ($FilesProcessingRequest.uploadState -eq "azureStorageUriRenewalSuccess") {
             return $FilesProcessingRequest.azureStorageUri
         } elseif ($FilesProcessingRequest.uploadState -eq "azureStorageUriRenewalFailed") {

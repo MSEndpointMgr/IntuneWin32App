@@ -56,7 +56,7 @@ function Get-IntuneWin32AppAssignment {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -69,10 +69,10 @@ function Get-IntuneWin32AppAssignment {
         switch ($PSCmdlet.ParameterSetName) {
             "DisplayName" {
                 $Win32MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')"
-                if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                if ($null -ne $Win32MobileApps -and @($Win32MobileApps).Count -gt 0) {
                     Write-Verbose -Message "Filtering for Win32 apps matching displayName: $($DisplayName)"
                     $Win32MobileApps = $Win32MobileApps | Where-Object { $_.displayName -like "*$($DisplayName)*" }
-                    if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                    if ($null -ne $Win32MobileApps -and @($Win32MobileApps).Count -gt 0) {
                         foreach ($Win32MobileApp in $Win32MobileApps) {
                             $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)"
                             $Win32AppList.Add($Win32App)
@@ -102,7 +102,7 @@ function Get-IntuneWin32AppAssignment {
             }
             "Group" {
                 $Win32MobileApps = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')"
-                if ($null -ne $Win32MobileApps -and $Win32MobileApps.Count -gt 0) {
+                if ($null -ne $Win32MobileApps -and @($Win32MobileApps).Count -gt 0) {
                     foreach ($Win32MobileApp in $Win32MobileApps) {
                         $Win32AppList.Add($Win32MobileApp) | Out-Null
                     }
@@ -122,7 +122,7 @@ function Get-IntuneWin32AppAssignment {
                 try {
                     # Attempt to call Graph and retrieve all assignments for each Win32 app
                     $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32MobileApp.id)/assignments" -ErrorAction Stop
-                    if ($null -ne $Win32AppAssignmentResponse -and $Win32AppAssignmentResponse.Count -gt 0) {
+                    if ($null -ne $Win32AppAssignmentResponse -and @($Win32AppAssignmentResponse).Count -gt 0) {
                         if ($PSCmdlet.ParameterSetName -eq "Group") {
                             if ($PSBoundParameters["Intent"]) {
                                 $Win32AppAssignmentMatches = $Win32AppAssignmentResponse | Where-Object { ($PSItem.target.'@odata.type' -like "*groupAssignmentTarget") -and ($PSItem.intent -like $Intent) }
@@ -130,24 +130,17 @@ function Get-IntuneWin32AppAssignment {
                             else {
                                 $Win32AppAssignmentMatches = $Win32AppAssignmentResponse | Where-Object { $PSItem.target.'@odata.type' -like "*groupAssignmentTarget" }
                             }
-    
+
                             foreach ($Win32AppAssignment in $Win32AppAssignmentMatches) {
                                 try {
-                                    # Retrieve group name from given group id
-                                    $AzureADGroupResponse = Invoke-AzureADGraphRequest -Resource "groups/$($Win32AppAssignment.target.groupId)" -Method "GET"
-                                    if ($AzureADGroupResponse.displayName -like "*$($GroupName)*") {
+                                    # Retrieve group name from given group id, including soft-deleted groups
+                                    $AssignmentGroupName = Get-EntraGroupDisplayName -GroupID $Win32AppAssignment.target.groupId
+                                    if ($AssignmentGroupName -like "*$($GroupName)*") {
                                         Write-Verbose -Message "Win32 app assignment '$($Win32AppAssignment.id)' for app '$($Win32MobileApp.displayName)' matched group name: $($GroupName)"
-    
+
                                         # Determine if assignment is either Include or Exclude for GroupMode property output
-                                        switch ($Win32AppAssignment.target.'@odata.type') {
-                                            "#microsoft.graph.groupAssignmentTarget" {
-                                                $GroupMode = "Include"
-                                            }
-                                            "#microsoft.graph.exclusionGroupAssignmentTarget" {
-                                                $GroupMode = "Exclude"
-                                            }
-                                        }
-    
+                                        $GroupMode = if ($Win32AppAssignment.target.'@odata.type' -eq "#microsoft.graph.exclusionGroupAssignmentTarget") { "Exclude" } else { "Include" }
+
                                         # Create a custom object for return value
                                         $PSObject = [PSCustomObject]@{
                                             Type = $Win32AppAssignment.target.'@odata.type'
@@ -155,13 +148,14 @@ function Get-IntuneWin32AppAssignment {
                                             FilterID = $Win32AppAssignment.target.deviceAndAppManagementAssignmentFilterId
                                             FilterType = $Win32AppAssignment.target.deviceAndAppManagementAssignmentFilterType
                                             GroupID = $Win32AppAssignment.target.groupId
-                                            GroupName = $AzureADGroupResponse.displayName
+                                            GroupName = $AssignmentGroupName
                                             Intent = $Win32AppAssignment.intent
                                             GroupMode = $GroupMode
                                             DeliveryOptimizationPriority = $Win32AppAssignment.settings.deliveryOptimizationPriority
                                             Notifications = $Win32AppAssignment.settings.notifications
                                             RestartSettings = $Win32AppAssignment.settings.restartSettings
                                             InstallTimeSettings = $Win32AppAssignment.settings.installTimeSettings
+                                            AutoUpdateSettings = $Win32AppAssignment.settings.autoUpdateSettings
                                         }
                                         $Win32AppAssignmentList.Add($PSObject) | Out-Null
                                     }
@@ -173,22 +167,15 @@ function Get-IntuneWin32AppAssignment {
                         }
                         else {
                             foreach ($Win32AppAssignment in $Win32AppAssignmentResponse) {
-                                # Determine if assignment is either Include or Exclude for GroupMode property output
-                                switch ($Win32AppAssignment.target.'@odata.type') {
-                                    "#microsoft.graph.groupAssignmentTarget" {
-                                        $GroupMode = "Include"
-                                    }
-                                    "#microsoft.graph.exclusionGroupAssignmentTarget" {
-                                        $GroupMode = "Exclude"
-                                    }
-                                }
+                                # Determine if assignment is either Include or Exclude for GroupMode property output, All Users and All Devices targets are always included
+                                $GroupMode = if ($Win32AppAssignment.target.'@odata.type' -eq "#microsoft.graph.exclusionGroupAssignmentTarget") { "Exclude" } else { "Include" }
 
-                                # If data type is of type 'groupAssignmentTarget' then retrieve group name from given group id
+                                # If data type is of type 'groupAssignmentTarget' then retrieve group name from given group id, including soft-deleted groups
                                 if ($Win32AppAssignment.target.'@odata.type' -like '*groupAssignmentTarget') {
-                                    $AzureADGroupResponse = Invoke-AzureADGraphRequest -Resource "groups/$($Win32AppAssignment.target.groupId)" -Method "GET"
+                                    $AssignmentGroupName = Get-EntraGroupDisplayName -GroupID $Win32AppAssignment.target.groupId
                                 }
                                 else {
-                                    $AzureADGroupResponse = $null
+                                    $AssignmentGroupName = $null
                                 }
 
                                 # Create a custom object for return value
@@ -198,13 +185,14 @@ function Get-IntuneWin32AppAssignment {
                                     FilterID = $Win32AppAssignment.target.deviceAndAppManagementAssignmentFilterId
                                     FilterType = $Win32AppAssignment.target.deviceAndAppManagementAssignmentFilterType
                                     GroupID = $Win32AppAssignment.target.groupId
-                                    GroupName = if ($null -ne $AzureADGroupResponse) { $AzureADGroupResponse.displayName } else { $null }
+                                    GroupName = $AssignmentGroupName
                                     Intent = $Win32AppAssignment.intent
                                     GroupMode = $GroupMode
                                     DeliveryOptimizationPriority = $Win32AppAssignment.settings.deliveryOptimizationPriority
                                     Notifications = $Win32AppAssignment.settings.notifications
                                     RestartSettings = $Win32AppAssignment.settings.restartSettings
                                     InstallTimeSettings = $Win32AppAssignment.settings.installTimeSettings
+                                    AutoUpdateSettings = $Win32AppAssignment.settings.autoUpdateSettings
                                 }
                                 $Win32AppAssignmentList.Add($PSObject) | Out-Null
                             }
@@ -218,7 +206,7 @@ function Get-IntuneWin32AppAssignment {
                     Write-Warning -Message "An error occurred while retrieving Win32 app assignments for app with ID: $($Win32MobileApp.id). Error message: $($_.Exception.Message)"
                 }
             }
-    
+
             # Handle return value
             return $Win32AppAssignmentList
         }

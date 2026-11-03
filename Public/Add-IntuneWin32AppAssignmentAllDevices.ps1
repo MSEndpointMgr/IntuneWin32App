@@ -45,6 +45,9 @@ function Add-IntuneWin32AppAssignmentAllDevices {
     .PARAMETER FilterName
         Specify the name of an existing Filter.
 
+    .PARAMETER FilterID
+        Specify the ID of an existing Filter, as an alternative to FilterName.
+
     .PARAMETER FilterMode
         Specify the filter mode of the specified Filter, e.g. Include or Exclude.
 
@@ -112,7 +115,7 @@ function Add-IntuneWin32AppAssignmentAllDevices {
         [ValidateNotNullOrEmpty()]
         [ValidateRange(1, 240)]
         [int]$RestartCountDownDisplay = 15,
-        
+
         [parameter(Mandatory = $false, HelpMessage = "Specify a count in minutes for snoozing the restart notification, if not specified the snooze functionality is now allowed.")]
         [ValidateNotNullOrEmpty()]
         [ValidateRange(1, 712)]
@@ -122,6 +125,10 @@ function Add-IntuneWin32AppAssignmentAllDevices {
         [ValidateNotNullOrEmpty()]
         [string]$FilterName,
 
+        [parameter(Mandatory = $false, HelpMessage = "Specify the ID of an existing Filter, as an alternative to FilterName.")]
+        [ValidateNotNullOrEmpty()]
+        [string]$FilterID,
+
         [parameter(Mandatory = $false, HelpMessage = "Specify the filter mode of the specified Filter, e.g. Include or Exclude.")]
         [ValidateSet("Include", "Exclude")]
         [string]$FilterMode
@@ -129,7 +136,7 @@ function Add-IntuneWin32AppAssignmentAllDevices {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -138,16 +145,14 @@ function Add-IntuneWin32AppAssignmentAllDevices {
         # Validate that AutoUpdateSupersededApps is only allowed with Intent equals available
         if ($PSBoundParameters["AutoUpdateSupersededApps"]) {
             if ($PSBoundParameters["Intent"] -ne "available") {
-                Write-Warning -Message "Validation failed for parameter input, AutoUpdateSupersededApps is only allowed with Intent equals available."; break
+                throw "Validation failed for parameter input, AutoUpdateSupersededApps is only allowed with Intent equals available."
             }
         }
 
-        # Validate that Available parameter input datetime object is in the past if the Deadline parameter is not passed on the command line
-        if ($PSBoundParameters["AvailableTime"]) {
-            if (-not($PSBoundParameters["DeadlineTime"])) {
-                if ($AvailableTime -gt (Get-Date).AddDays(-1)) {
-                    Write-Warning -Message "Validation failed for parameter input, available date time needs to be before the current used 'as soon as possible' deadline date and time, with a offset of 1 day"; break
-                }
+        # Validate that Deadline parameter input datetime object is after the Available parameter input datetime object when both are passed on the command line
+        if ($PSBoundParameters["AvailableTime"] -and $PSBoundParameters["DeadlineTime"]) {
+            if ($DeadlineTime -lt $AvailableTime) {
+                throw "Validation failed for parameter input, deadline date time needs to be after the available date time"
             }
         }
 
@@ -155,7 +160,7 @@ function Add-IntuneWin32AppAssignmentAllDevices {
         if ($PSBoundParameters["DeadlineTime"]) {
             if (-not($PSBoundParameters["AvailableTime"])) {
                 if ($DeadlineTime -lt (Get-Date)) {
-                    Write-Warning -Message "Validation failed for parameter input, deadline date time needs to be after the current used 'as soon as possible' available date and time"; break
+                    throw "Validation failed for parameter input, deadline date time needs to be after the current used 'as soon as possible' available date and time"
                 }
             }
         }
@@ -175,7 +180,7 @@ function Add-IntuneWin32AppAssignmentAllDevices {
         if (-not($PSBoundParameters["RestartNotificationSnooze"])) {
             [System.Object]$RestartNotificationSnooze = $null
             Write-Verbose -Message "RestartNotificationSnooze parameter was not specified, which means 'Allow user to snooze the restart notification' functionality will be disabled for this assignment"
-        }        
+        }
     }
     Process {
         # Get Filter object if parameter is passed on command line
@@ -197,6 +202,17 @@ function Add-IntuneWin32AppAssignmentAllDevices {
             }
         }
 
+        # Use Filter ID directly if parameter is passed on command line, e.g. from the FilterID property returned by Get-IntuneWin32AppAssignment
+        if ($PSBoundParameters["FilterID"]) {
+            if ([string]::IsNullOrEmpty($FilterMode)) {
+                $FilterMode = "Include"
+            }
+            $FilterMode = $FilterMode.ToLower()
+            $AssignmentFilter = [PSCustomObject]@{
+                "id" = $FilterID
+            }
+        }
+
         # Retrieve Win32 app by ID from parameter input
         Write-Verbose -Message "Querying for Win32 app using ID: $($ID)"
         $Win32App = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($ID)"
@@ -208,7 +224,7 @@ function Add-IntuneWin32AppAssignmentAllDevices {
                 "@odata.type" = "#microsoft.graph.allDevicesAssignmentTarget"
                 "deviceAndAppManagementAssignmentFilterId" = if ($null -ne $AssignmentFilter) { $AssignmentFilter.id } else { $null }
                 "deviceAndAppManagementAssignmentFilterType" = if ($null -ne $AssignmentFilter) { $FilterMode } else { "none" }
-            } 
+            }
 
             # Construct table for Win32 app assignment body
             $Win32AppAssignmentBody = [ordered]@{
@@ -276,18 +292,21 @@ function Add-IntuneWin32AppAssignmentAllDevices {
                 }
             }
 
-            $DuplicateAssignment = Test-IntuneWin32AppAssignment -ID $Win32AppID -Target "AllDevices"
+            $DuplicateAssignment = Test-IntuneWin32AppAssignment -ID $Win32AppID -Target "AllDevices" -Intent $Intent
             if ($DuplicateAssignment -eq $false) {
                 try {
                     # Attempt to call Graph and create new assignment for Win32 app
-                    $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments" -Body ($Win32AppAssignmentBody | ConvertTo-Json) -ErrorAction Stop
+                    if ($PSCmdlet.ShouldProcess("deviceAppManagement/mobileApps/$($Win32AppID)/assignments", "POST")) {
+                        $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments" -Body ($Win32AppAssignmentBody | ConvertTo-Json) -ErrorAction Stop
+                    }
                     if ($Win32AppAssignmentResponse.id) {
                         Write-Verbose -Message "Successfully created Win32 app assignment with ID: $($Win32AppAssignmentResponse.id)"
                         Write-Output -InputObject $Win32AppAssignmentResponse
                     }
                 }
                 catch [System.Exception] {
-                    Write-Warning -Message "An error occurred while creating a Win32 app assignment: $($TargetFilePath). Error message: $($_.Exception.Message)"
+                    Write-Warning -Message "An error occurred while creating a Win32 app assignment. Error message: $($_.Exception.Message)"
+                    $PSCmdlet.ThrowTerminatingError($_)
                 }
             }
         }

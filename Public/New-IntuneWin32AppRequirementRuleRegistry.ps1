@@ -82,7 +82,7 @@ function New-IntuneWin32AppRequirementRuleRegistry {
         [parameter(Mandatory = $false, ParameterSetName = "StringComparison")]
         [parameter(Mandatory = $false, ParameterSetName = "IntegerComparison")]
         [parameter(Mandatory = $false, ParameterSetName = "VersionComparison")]
-        [ValidateNotNullOrEmpty()]
+        [AllowEmptyString()]
         [string]$ValueName = $null,
 
         [parameter(Mandatory = $false, ParameterSetName = "Existence", HelpMessage = "Decide whether to search in 32-bit registry on 64-bit environments.")]

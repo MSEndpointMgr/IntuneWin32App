@@ -37,7 +37,7 @@ function Add-IntuneWin32AppSupersedence {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -45,7 +45,7 @@ function Add-IntuneWin32AppSupersedence {
 
         # Validate maximum number of supersedence configuration tables
         if ($Supersedence.Count -gt 10) {
-            Write-Warning -Message "Maximum allowed number of supersedence objects '10' detected, actual count passed as input: $($Supersedence.Count)"; break
+            throw "Maximum allowed number of supersedence objects '10' detected, actual count passed as input: $($Supersedence.Count)"
         }
     }
     Process {
@@ -66,7 +66,9 @@ function Add-IntuneWin32AppSupersedence {
 
                 try {
                     # Attempt to call Graph and configure supersedence for Win32 app
-                    Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships" -Body ($Win32AppRelationshipsTable | ConvertTo-Json) -ErrorAction Stop
+                    if ($PSCmdlet.ShouldProcess("deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships", "POST")) {
+                        Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships" -Body ($Win32AppRelationshipsTable | ConvertTo-Json) -ErrorAction Stop
+                    }
                 }
                 catch [System.Exception] {
                     Write-Warning -Message "An error occurred while configuring supersedence for Win32 app: $($Win32AppID). Error message: $($_.Exception.Message)"

@@ -53,10 +53,13 @@ function Get-IntuneWin32AppMetaData {
             $ClassImport = Add-Type -AssemblyName "System.IO.Compression.FileSystem" -ErrorAction Stop -Verbose:$false
         }
         catch [System.Exception] {
-            Write-Warning -Message "An error occurred while loading System.IO.Compression.FileSystem assembly. Error message: $($_.Exception.Message)"; break
+            throw "An error occurred while loading System.IO.Compression.FileSystem assembly. Error message: $($_.Exception.Message)"
         }
     }
     Process {
+        # Resolve relative paths against the current PowerShell location, since .NET methods use the process working directory (#91)
+        $FilePath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($FilePath)
+
         try {
             # Attempt to open compressed .intunewin archive file from parameter input
             $IntuneWin32AppFile = [System.IO.Compression.ZipFile]::OpenRead($FilePath)

@@ -42,7 +42,7 @@ function Remove-IntuneWin32AppAssignmentGroup {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -76,14 +76,16 @@ function Remove-IntuneWin32AppAssignmentGroup {
             try {
                 # Attempt to call Graph and retrieve all assignments for Win32 app
                 $Win32AppAssignmentResponse = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments" -ErrorAction "Stop"
-                if ($null -ne $Win32AppAssignmentResponse -and $Win32AppAssignmentResponse.Count -gt 0) {
+                if ($null -ne $Win32AppAssignmentResponse -and @($Win32AppAssignmentResponse).Count -gt 0) {
                     # Process each assignment for removal
                     foreach ($Win32AppAssignment in $Win32AppAssignmentResponse) {
                         if ($Win32AppAssignment.target.groupId -eq $GroupID) {
                             try {
                                 # Remove current assignment
                                 Write-Verbose -Message "Attempting to remove Win32 app assignment with ID: $($Win32AppAssignment.id)"
-                                $Win32AppAssignmentRemoveResponse = Invoke-MSGraphOperation -Delete -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments/$($Win32AppAssignment.id)" -ErrorAction "Stop"
+                                if ($PSCmdlet.ShouldProcess("deviceAppManagement/mobileApps/$($Win32AppID)/assignments/$($Win32AppAssignment.id)", "DELETE")) {
+                                    $Win32AppAssignmentRemoveResponse = Invoke-MSGraphOperation -Delete -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/assignments/$($Win32AppAssignment.id)" -ErrorAction "Stop"
+                                }
                             }
                             catch [System.Exception] {
                                 Write-Warning -Message "An error occurred while removing assignment ID '$($Win32AppAssignment.id)' for app with ID: $($Win32AppID). Error message: $($_.Exception.Message)"

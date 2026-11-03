@@ -27,7 +27,7 @@ function New-IntuneWin32AppSupersedence {
         [parameter(Mandatory = $true, HelpMessage = "Specify the ID for an existing Win32 application.")]
         [ValidateNotNullOrEmpty()]
         [string]$ID,
-        
+
         [parameter(Mandatory = $true, HelpMessage = "Specify the supersedence behavior, use Replace for uninstall and Update for when updating an app.")]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("Replace", "Update")]
@@ -36,17 +36,11 @@ function New-IntuneWin32AppSupersedence {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
-        else {
-            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
-            if ($TokenLifeTime -le 0) {
-                Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
-            }
-            else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
-            }
-        }
+
+        # Silently renew the access token if required, throws a terminating error if renewal is not possible
+        Update-AccessTokenIfRequired
 
         # Set script variable for error action preference
         $ErrorActionPreference = "Stop"

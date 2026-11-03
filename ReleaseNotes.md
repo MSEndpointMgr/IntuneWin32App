@@ -1,5 +1,48 @@
 # Release notes for IntuneWin32App module
 
+## Unreleased
+
+### Breaking Changes
+- `Connect-MSIntuneGraph` no longer writes the authentication header (which contains the bearer token) to the pipeline. Use the new `-PassThru` switch to get it (#229)
+- `Connect-MSIntuneGraph` and the rest of the module now raise terminating errors instead of writing a warning and calling `break`. `break` outside a loop silently stopped the calling script (or the caller's `foreach` loop) with exit code 0, so failures in CI/CD pipelines went unnoticed. Errors can now be handled with `try`/`catch` (#228, #231, #236)
+- `Add-IntuneWin32App`, `Update-IntuneWin32AppPackageFile` and the `Add-IntuneWin32AppAssignment*` functions throw when the Win32 app, its content or the assignment could not be created (#228)
+- The authentication header table no longer contains an `ExpiresOn` entry. Use `Test-AccessToken` to check the token lifetime (#182)
+- `Connect-MSIntuneGraph`: `-DeviceCode` is now mandatory in the DeviceCode parameter set, and `-ClientSecret` / `-ClientCert` are only valid in their own parameter sets
+
+### New Features
+- Added `-ManagedIdentity` and `-ManagedIdentityClientID` parameters to `Connect-MSIntuneGraph` for Azure Automation, Azure Functions, App Service, Azure Arc and Azure VMs (#201)
+- Added `-AccessToken` parameter to `Connect-MSIntuneGraph` to use an existing Microsoft Graph access token, e.g. from `Get-AzAccessToken` or a pipeline task (#114, #152)
+- Added `-Silent` switch to `New-IntuneWin32AppPackage` to use the `-qq` switch of IntuneWinAppUtil.exe 1.8.7+, which does not create a console window (#62, #244)
+- Added `-FilterID` parameter to `Add-IntuneWin32AppAssignmentGroup`, `Add-IntuneWin32AppAssignmentAllUsers` and `Add-IntuneWin32AppAssignmentAllDevices`, matching the `FilterID` property returned by `Get-IntuneWin32AppAssignment` (#150)
+- Added `-SupersededID` parameter to `Remove-IntuneWin32AppSupersedence` to remove individual supersedence relationships (#204)
+- Added `-ScriptContent` parameter to `New-IntuneWin32AppDetectionRuleScript` and `-ScriptContent`/`-ScriptName` to `New-IntuneWin32AppRequirementRuleScript` (#168)
+- Added `W11_23H2` and `W11_24H2` to `New-IntuneWin32AppRequirementRule` (#218)
+- `New-IntuneWin32AppRequirementRule -Architecture` is now optional and allows installation on all systems when not specified (#233)
+- `Get-IntuneWin32AppAssignment` now returns an `AutoUpdateSettings` property (#158) and resolves the name of soft-deleted groups (#211)
+- `-WhatIf` and `-Confirm` are now honored by all functions that create, change or remove objects in Intune (#235)
+
+### Bug Fixes
+- Fixed access token expiry being parsed with day and month swapped on non en-US systems (e.g. de-DE, en-AU, en-GB, fr-FR, es-ES), which made every token appear expired or caused "String was not recognized as a valid DateTime" errors (#210, #215, #225, #238)
+- Fixed silent token renewal never working because the refresh used a `client_id` property that token responses do not contain (#225). Token renewal now also works for the ClientSecret, ClientCert and ManagedIdentity flows, including during long uploads (#75, #130)
+- Fixed `Connect-MSIntuneGraph -Refresh` and sample `9-Token refresh.ps1` (#94)
+- Fixed SAS URI renewal failing for large uploads due to a duplicate `deviceAppManagement` segment in the resource path (#222)
+- Fixed functions returning nothing on Windows PowerShell 5.1 when exactly one object matched, e.g. `Get-IntuneWin32App -DisplayName` and `Get-IntuneWin32AppSupersedence` (#174, #214, #223)
+- Fixed `Get-IntuneWin32AppAssignment` returning an empty assignment entry for apps without assignments (#206)
+- Fixed `Get-IntuneWin32AppAssignment` reporting `GroupMode` as `Exclude` for All Users and All Devices assignments (#153), and argument validation errors when resolving group names (#108)
+- Fixed `Set-IntuneWin32App -RequirementRule`, which required an `@odata.type` property never created by `New-IntuneWin32AppRequirementRule` and did not update the minimum Windows release or architecture (#236)
+- Fixed duplicate assignment detection never detecting existing assignments, and allowed the same group with different intents, e.g. include for required and exclude for uninstall (#76, #85, #140)
+- Fixed `AvailableTime` validation in the `Add-IntuneWin32AppAssignment*` functions rejecting future dates when `DeadlineTime` is not specified (#129, #178)
+- Custom return codes passed to `Add-IntuneWin32App` and `Set-IntuneWin32App` now replace default return codes with the same value instead of creating duplicates (#99, #115)
+- The app package file name shown in Intune now matches the uploaded .intunewin file name instead of `IntunePackage.intunewin` (#109, #190)
+- `Add-IntuneWin32App` and `Set-IntuneWin32App` accept empty `InformationURL` and `PrivacyURL` values (#86)
+- `New-IntuneWin32AppDetectionRuleRegistry` and `New-IntuneWin32AppRequirementRuleRegistry` accept an empty `-ValueName` to target the `(Default)` value (#216)
+- Fixed throttled Graph requests (429) failing when no `Retry-After` header was returned, and `Retry-After` not being read on PowerShell 7 (#203)
+- Fixed non-ASCII characters (e.g. Japanese) being garbled in app properties on Windows PowerShell 5.1 (#34)
+- Fixed script detection and requirement rules corrupting scripts that are not UTF-8 encoded; scripts with non-ASCII characters are uploaded with a UTF-8 BOM so they run correctly on devices (#15)
+- Fixed relative paths resolving against the process working directory instead of the current PowerShell location (#91)
+- Fixed finalize output of the blob upload leaking into the output of `Add-IntuneWin32App` and `Update-IntuneWin32AppPackageFile` (#111)
+- Fixed the PowerShell script detection rule validation in `Add-IntuneWin32App` referencing an undefined variable
+
 ## 1.5.0
 
 ### Major Code Quality Improvements
@@ -140,7 +183,7 @@
 
 ## 1.3.4
 - Private function New-IntuneWin32AppBody used in Add-IntuneWin32App function, was updated where the minimumSupportedOperatingSystem property is replaced by minimumSupportedWindowsRelease. This caused the Add-IntuneWin32App function to return Bad Request since the request body was malformed. `NOTE:` This change introduces a new parameter for New-IntuneWin32AppRequirementRule function named MinimumSupportedWindowsRelease that replaces the MinimumSupportedOperatingSystem parameter.
-- Also fixed a bug in private function New-IntuneWin32AppBody where minimumFreeDiskSpaceInMB, minimumMemoryInMB, minimumNumberOfProcessors and minimumCpuSpeedInMHz properties where not handled at all. 
+- Also fixed a bug in private function New-IntuneWin32AppBody where minimumFreeDiskSpaceInMB, minimumMemoryInMB, minimumNumberOfProcessors and minimumCpuSpeedInMHz properties where not handled at all.
 - Add-IntuneWin32App function was updated where a break command that would prevent the Win32 app body JSON output from being display in case an error occured, was removed.
 - New-IntuneWin32AppRequirementRuleScript and New-IntuneWin32AppDetectionRuleScript functions was fixed as reported on: https://github.com/MSEndpointMgr/IntuneWin32App/issues/41
 - New-IntuneWin32AppRequirementRuleScript has been updated with correct variables for 'Version'.

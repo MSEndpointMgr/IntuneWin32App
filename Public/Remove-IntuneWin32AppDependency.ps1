@@ -30,7 +30,7 @@ function Remove-IntuneWin32AppDependency {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -61,7 +61,9 @@ function Remove-IntuneWin32AppDependency {
             Write-Verbose -Message "Request body: $Body"
 
             # Attempt to call Graph and remove dependency configuration for Win32 app
-            Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships" -Body $Body
+            if ($PSCmdlet.ShouldProcess("deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships", "POST")) {
+                Invoke-MSGraphOperation -Post -APIVersion "Beta" -Resource "deviceAppManagement/mobileApps/$($Win32AppID)/updateRelationships" -Body $Body
+            }
         }
         else {
             Write-Verbose -Message "Query for Win32 app returned an empty result, no apps matching the specified search criteria with ID '$($ID)' was found"

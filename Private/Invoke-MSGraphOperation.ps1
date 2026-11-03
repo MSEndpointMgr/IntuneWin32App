@@ -2,38 +2,38 @@ function Invoke-MSGraphOperation {
     <#
     .SYNOPSIS
         Perform a specific call to Intune Graph API, either as GET, POST, PATCH or DELETE methods.
-        
+
     .DESCRIPTION
         Perform a specific call to Intune Graph API, either as GET, POST, PATCH or DELETE methods.
         This function handles nextLink objects including throttling based on retry-after value from Graph response.
-        
+
     .PARAMETER Get
         Switch parameter used to specify the method operation as 'GET'.
-        
+
     .PARAMETER Post
         Switch parameter used to specify the method operation as 'POST'.
-        
+
     .PARAMETER Patch
         Switch parameter used to specify the method operation as 'PATCH'.
-        
+
     .PARAMETER Put
         Switch parameter used to specify the method operation as 'PUT'.
-        
+
     .PARAMETER Delete
         Switch parameter used to specify the method operation as 'DELETE'.
-        
+
     .PARAMETER Resource
         Specify the full resource path, e.g. deviceManagement/auditEvents.
-        
+
     .PARAMETER Body
         Specify the body construct.
-        
+
     .PARAMETER APIVersion
         Specify to use either 'Beta' or 'v1.0' API version.
-        
+
     .PARAMETER ContentType
         Specify the content type for the graph request.
-        
+
     .NOTES
         Author:      Nickolaj Andersen & Jan Ketil Skanke
         Contact:     @JankeSkanke @NickolajA
@@ -51,7 +51,11 @@ function Invoke-MSGraphOperation {
         1.0.6 - (2026-01-04) Implemented automatic token refresh using Update-AccessTokenFromRefreshToken when token expires.
                              Supports up to 10 retry attempts with intelligent delay calculation based on Graph API throttling responses.
         1.0.7 - (2026-01-18) Fixed Issue #208: Ensured offline_access scope is included in automatic token refresh to maintain refresh token continuity
-    #>    
+        1.0.8 - (2026-11-03) Empty collection responses now return an empty result instead of the raw response object (#206). Throttled requests without a
+                             Retry-After header are retried with exponential backoff and Retry-After is read correctly on PowerShell 6+ (#203).
+                             JSON bodies are sent as UTF-8 on Windows PowerShell 5.1 (#34). Token renewal works for all flows and missing authentication
+                             throws a terminating error instead of using break (#225, #228).
+    #>
     param(
         [parameter(Mandatory = $true, ParameterSetName = "GET", HelpMessage = "Switch parameter used to specify the method operation as 'GET'.")]
         [switch]$Get,
@@ -102,40 +106,12 @@ function Invoke-MSGraphOperation {
     )
     Begin {
         # Check if authentication header exists
-        if ($Global:AuthenticationHeader -eq $null) {
-            Write-Warning -Message "Unable to find authentication header, use Connect-MSIntuneGraph function before running this function"; break
+        if ($null -eq $Global:AuthenticationHeader) {
+            throw "Unable to find authentication header, use Connect-MSIntuneGraph function before running this function"
         }
 
-        # Check if access token needs refresh
-        if (-not (Test-AccessToken)) {
-            Write-Verbose -Message "Access token requires renewal"
-            
-            # Attempt silent refresh if refresh token is available
-            if ($null -ne $Global:AccessToken -and $Global:AccessToken.PSObject.Properties["RefreshToken"] -and -not [string]::IsNullOrEmpty($Global:AccessToken.RefreshToken)) {
-                Write-Verbose -Message "Attempting silent token refresh"
-                try {
-                    $Scopes = if ($Global:AccessToken.PSObject.Properties["Scopes"]) { 
-                        $Global:AccessToken.Scopes 
-                    }
-                    else { 
-                        @("DeviceManagementApps.ReadWrite.All", "offline_access") 
-                    }
-                    Update-AccessTokenFromRefreshToken -TenantID $Global:AccessTokenTenantID -ClientID $Global:AccessToken.client_id -RefreshToken $Global:AccessToken.RefreshToken -Scopes $Scopes
-                    
-                    # Update authentication header with new token
-                    $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
-                    Write-Verbose -Message "Successfully refreshed access token silently"
-                }
-                catch {
-                    Write-Warning -Message "Silent token refresh failed: $($_). Please re-authenticate using Connect-MSIntuneGraph"
-                    break
-                }
-            }
-            else {
-                Write-Warning -Message "Access token has expired and no refresh token is available. Please re-authenticate using Connect-MSIntuneGraph"
-                break
-            }
-        }
+        # Silently renew the access token if required, throws a terminating error if renewal is not possible
+        Update-AccessTokenIfRequired
 
         # Retry parameters for transient error handling
         $MaxRetryAttempts = 10
@@ -147,7 +123,7 @@ function Invoke-MSGraphOperation {
 
         # Construct full URI
         $GraphURI = "https://graph.microsoft.com/$($APIVersion)/$($Resource)"
-        Write-Verbose -Message "$($PSCmdlet.ParameterSetName) $($GraphURI)"        
+        Write-Verbose -Message "$($PSCmdlet.ParameterSetName) $($GraphURI)"
 
         # Call Graph API and get JSON response with pagination and retry support
         $GraphResponseProcess = $true
@@ -166,16 +142,13 @@ function Invoke-MSGraphOperation {
                         "Verbose" = $false
                     }
 
-                    switch ($PSCmdlet.ParameterSetName) {
-                        "POST" {
-                            $RequestParams.Add("Body", $Body)
-                            $RequestParams.Add("ContentType", $ContentType)
+                    if ($PSCmdlet.ParameterSetName -in @("POST", "PATCH", "PUT")) {
+                        # Send JSON string bodies as UTF-8 bytes, Windows PowerShell 5.1 otherwise encodes them as ISO-8859-1 which garbles non-ASCII characters
+                        if (($Body -is [string]) -and ($ContentType -eq "application/json")) {
+                            $RequestParams.Add("Body", [System.Text.Encoding]::UTF8.GetBytes($Body))
+                            $RequestParams.Add("ContentType", "application/json; charset=utf-8")
                         }
-                        "PATCH" {
-                            $RequestParams.Add("Body", $Body)
-                            $RequestParams.Add("ContentType", $ContentType)
-                        }
-                        "PUT" {
+                        else {
                             $RequestParams.Add("Body", $Body)
                             $RequestParams.Add("ContentType", $ContentType)
                         }
@@ -187,19 +160,24 @@ function Invoke-MSGraphOperation {
                     # Mark request as successful
                     $RequestSucceeded = $true
 
+                    # Determine if the response is a collection, collection responses contain a 'value' array which can be empty
+                    $IsCollectionResponse = ($null -ne $GraphResponse) -and ($null -ne $GraphResponse.PSObject.Properties["value"]) -and (($GraphResponse.value -is [System.Array]) -or ($null -eq $GraphResponse.value))
+
                     # Handle paging in response
                     if ($null -ne $GraphResponse.'@odata.nextLink') {
-                        $GraphResponseList.AddRange($GraphResponse.value) | Out-Null
+                        $GraphResponseList.AddRange(@($GraphResponse.value)) | Out-Null
                         $GraphURI = $GraphResponse.'@odata.nextLink'
                         Write-Verbose -Message "NextLink: $($GraphURI)"
                     }
                     else {
                         # NextLink from response was null, assuming last page but also handle if a single instance is returned
-                        if ($GraphResponse.value) {
-                            $GraphResponseList.AddRange($GraphResponse.value) | Out-Null
+                        if ($IsCollectionResponse) {
+                            if ($null -ne $GraphResponse.value) {
+                                $GraphResponseList.AddRange(@($GraphResponse.value)) | Out-Null
+                            }
                         }
-                        elseif ($GraphResponse.'@odata.count' -eq 0)  {
-                            # Do nothing to return empty
+                        elseif (($null -eq $GraphResponse) -or ($GraphResponse -is [string] -and [string]::IsNullOrEmpty($GraphResponse))) {
+                            # Do nothing to return empty, e.g. for DELETE operations or 204 No Content responses
                         }
                         else {
                             $GraphResponseList.Add($GraphResponse) | Out-Null
@@ -271,11 +249,11 @@ function Invoke-MSGraphOperation {
                             else {
                                 # Not valid JSON or null/empty, use raw error message
                                 Write-Verbose -Message "Error response is not valid JSON or is empty"
-                                $ResponseBody.ErrorMessage = if ($ExceptionItem.ErrorDetails.Message) { 
-                                    $ExceptionItem.ErrorDetails.Message 
+                                $ResponseBody.ErrorMessage = if ($ExceptionItem.ErrorDetails.Message) {
+                                    $ExceptionItem.ErrorDetails.Message
                                 }
-                                else { 
-                                    $ExceptionItem.Exception.Message 
+                                else {
+                                    $ExceptionItem.Exception.Message
                                 }
                                 $ResponseBody.ErrorCode = "NonJsonError"
                             }
@@ -288,9 +266,21 @@ function Invoke-MSGraphOperation {
 
                         switch ($StatusCode) {
                             "TooManyRequests" {
-                                # 429 - Use Retry-After header from Graph API (required by API specification)
-                                $RetryAfterHeader = $ExceptionItem.Exception.Response.Headers["Retry-After"]
-                                
+                                # 429 - Use Retry-After header from Graph API, read differently for WebResponse (PowerShell 5.1) and HttpResponseMessage (PowerShell 6+)
+                                $RetryAfterHeader = $null
+                                $ResponseHeaders = $ExceptionItem.Exception.Response.Headers
+                                if ($ResponseHeaders -is [System.Net.WebHeaderCollection]) {
+                                    $RetryAfterHeader = $ResponseHeaders["Retry-After"]
+                                }
+                                elseif ($null -ne $ResponseHeaders.RetryAfter) {
+                                    if ($null -ne $ResponseHeaders.RetryAfter.Delta) {
+                                        $RetryAfterHeader = [string][int][Math]::Ceiling($ResponseHeaders.RetryAfter.Delta.TotalSeconds)
+                                    }
+                                    elseif ($null -ne $ResponseHeaders.RetryAfter.Date) {
+                                        $RetryAfterHeader = $ResponseHeaders.RetryAfter.Date.UtcDateTime.ToString("R")
+                                    }
+                                }
+
                                 if ($RetryAfterHeader) {
                                     $IsRetryable = $true
                                     # Retry-After can be seconds (integer) or HTTP date
@@ -302,14 +292,14 @@ function Invoke-MSGraphOperation {
                                     else {
                                         # Try parsing as HTTP date
                                         $RetryAfterDate = $null
-                                        if ([DateTime]::TryParse($RetryAfterHeader, [ref]$RetryAfterDate)) {
+                                        if ([DateTime]::TryParse($RetryAfterHeader, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AdjustToUniversal, [ref]$RetryAfterDate)) {
                                             $RetryDelay = [Math]::Max(1, [int](($RetryAfterDate - [DateTime]::UtcNow).TotalSeconds))
                                             Write-Verbose -Message "Graph API provided Retry-After date, calculated delay: $($RetryDelay) seconds"
                                         }
                                         else {
-                                            # Could not parse Retry-After header, do not retry
-                                            Write-Warning -Message "Graph throttling (429) detected but Retry-After header could not be parsed: $($RetryAfterHeader)"
-                                            $IsRetryable = $false
+                                            # Could not parse Retry-After header, fall back to exponential backoff
+                                            Write-Verbose -Message "Graph throttling (429) detected but Retry-After header could not be parsed: $($RetryAfterHeader)"
+                                            $UseExponentialBackoff = $true
                                         }
                                     }
 
@@ -318,9 +308,9 @@ function Invoke-MSGraphOperation {
                                     }
                                 }
                                 else {
-                                    # No Retry-After header provided by Graph API, cannot retry safely
-                                    Write-Warning -Message "Graph throttling (429) detected but no Retry-After header provided"
-                                    $IsRetryable = $false
+                                    # No Retry-After header provided by Graph API, fall back to exponential backoff
+                                    $IsRetryable = $true
+                                    $UseExponentialBackoff = $true
                                 }
                             }
                             "ServiceUnavailable" {
@@ -391,7 +381,7 @@ function Invoke-MSGraphOperation {
                         default {
                             # Throw terminating error for POST/PATCH/DELETE operations
                             $SystemException = New-Object -TypeName "System.Management.Automation.RuntimeException" -ArgumentList ("{0}: {1}" -f $ResponseBody.ErrorCode, $ResponseBody.ErrorMessage)
-                            $ErrorRecord = New-Object -TypeName "System.Management.Automation.ErrorRecord" -ArgumentList @($SystemException, $ErrorID, [System.Management.Automation.ErrorCategory]::NotImplemented, [string]::Empty)
+                            $ErrorRecord = New-Object -TypeName "System.Management.Automation.ErrorRecord" -ArgumentList @($SystemException, "GraphRequestFailed", [System.Management.Automation.ErrorCategory]::InvalidOperation, $GraphURI)
 
                             # Throw a terminating custom error record
                             $PSCmdlet.ThrowTerminatingError($ErrorRecord)

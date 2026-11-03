@@ -35,7 +35,7 @@ function Get-IntuneWin32AppCategory {
     Begin {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
-            Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
+            throw "Authentication token was not found, use Connect-MSIntuneGraph before using this function"
         }
 
         # Set script variable for error action preference
@@ -58,7 +58,7 @@ function Get-IntuneWin32AppCategory {
         try {
             # Invoke Graph API call to retrieve categories
             $Win32AppCategories = Invoke-MSGraphOperation -Get -APIVersion "Beta" -Resource $Resource -ErrorAction "Stop"
-            if ($null -ne $Win32AppCategories -and $Win32AppCategories.Count -gt 0) {
+            if ($null -ne $Win32AppCategories -and @($Win32AppCategories).Count -gt 0) {
                 foreach ($Win32AppCategory in $Win32AppCategories) {
                     $PSObject = [PSCustomObject]@{
                         ID = $Win32AppCategory.id
