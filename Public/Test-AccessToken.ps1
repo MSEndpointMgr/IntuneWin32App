@@ -13,7 +13,7 @@ function Test-AccessToken {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-04-08
-        Updated:     2024-11-15
+        Updated:     2026-11-12
 
         Version history:
         1.0.0 - (2021-04-08) Script created
@@ -22,6 +22,7 @@ function Test-AccessToken {
         1.0.3 - (2024-05-29) Updated to handle tokens with ExpiresOn property (thanks to @tjgruber)
         1.0.4 - (2024-11-15) Refactor date handling for token to fix locale-specific parsing issues (thanks to @tjgruber)
         1.0.5 - (2025-12-07) Reduced default RenewalThresholdMinutes from 10 to 5 minutes to avoid conflicts with minimum Access Token Lifetime policies
+        1.0.6 - (2026-11-12) Fixed access token expiration being miscalculated on systems with a non-English culture, e.g. en-GB or de-DE, caused by a culture-dependent string conversion of the ExpiresOn property
     #>
     param(
         [parameter(Mandatory = $false, HelpMessage = "Specify the renewal threshold for access token age in minutes.")]
@@ -33,20 +34,20 @@ function Test-AccessToken {
             return $false
         }
         else {
-            # Determine the current time in UTC
-            $UTCDateTime = (Get-Date).ToUniversalTime()
-
-            # Calculate the expiration time of the token
-            if ($Global:AccessToken.PSObject.Properties["ExpiresOn"] -and $Global:AccessToken.ExpiresOn) {
-                $ExpiresOn = $Global:AccessToken.ExpiresOn.ToUniversalTime()
-            }
-            else {
+            # Ensure the access token contains an expiration time
+            if (-not ($Global:AccessToken.PSObject.Properties["ExpiresOn"] -and $Global:AccessToken.ExpiresOn)) {
                 Write-Verbose -Message "The access token does not contain a valid ExpiresOn property. Cannot determine expiration."
                 return $false
             }
 
-            # Convert ExpiresOn to DateTimeOffset in UTC
-            $ExpiresOnUTC = [DateTimeOffset]::Parse($Global:AccessToken.ExpiresOn.ToString(), [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal).ToUniversalTime()
+            # Convert ExpiresOn to DateTimeOffset in UTC, without a culture-dependent round trip through a string
+            try {
+                $ExpiresOnUTC = ConvertTo-UTCDateTimeOffset -InputObject $Global:AccessToken.ExpiresOn
+            }
+            catch {
+                Write-Verbose -Message "The ExpiresOn property of the access token is not a valid date and time. Cannot determine expiration."
+                return $false
+            }
 
             # Get the current UTC time as DateTimeOffset
             $UTCDateTime = [DateTimeOffset]::UtcNow

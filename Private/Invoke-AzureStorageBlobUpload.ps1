@@ -13,7 +13,7 @@ function Invoke-AzureStorageBlobUpload {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2020-01-04
-        Updated:     2024-11-15
+        Updated:     2026-11-12
 
         Version history:
         1.0.0 - (2020-01-04) Function created
@@ -22,6 +22,8 @@ function Invoke-AzureStorageBlobUpload {
         1.0.3 - (2022-09-03) Added access token refresh functionality when a token is about to expire, to prevent uploads from failing due to an expired access token
         1.0.5 - (2024-06-04) Added retry logic for chunk uploads and finalization steps to enhance reliability (thanks to @tjgruber)
         1.0.6 - (2024-11-15) Refactor date handling for token to fix locale-specific parsing issues (thanks to @tjgruber)
+        1.0.7 - (2026-11-12) Fixed access token expiration being miscalculated on systems with a non-English culture, e.g. en-GB or de-DE, caused by a culture-dependent string conversion of the ExpiresOn property
+        1.0.8 - (2026-11-12) Fixed access token renewal during upload, which was missing the required ClientID parameter and was not supported for the ClientSecret and ClientCert authentication flows
     #>
     param(
         [parameter(Mandatory = $true)]
@@ -56,26 +58,12 @@ function Invoke-AzureStorageBlobUpload {
     for ($Chunk = 0; $Chunk -lt $ChunkCount; $Chunk++) {
         Write-Verbose -Message "SAS Uri renewal timer has elapsed for: $($SASRenewalTimer.Elapsed.Minutes) minute $($SASRenewalTimer.Elapsed.Seconds) seconds"
 
-        # Convert ExpiresOn to DateTimeOffset in UTC
-        $ExpiresOnUTC = [DateTimeOffset]::Parse(
-            $Global:AccessToken.ExpiresOn.ToString(),
-            [System.Globalization.CultureInfo]::InvariantCulture,
-            [System.Globalization.DateTimeStyles]::AssumeUniversal
-            ).ToUniversalTime()
-
-        # Get the current UTC time as DateTimeOffset
-        $UTCDateTime = [DateTimeOffset]::UtcNow
-
-        # Calculate the TimeSpan between expiration and current time
-        $TimeSpan = $ExpiresOnUTC - $UTCDateTime
-
-        # Calculate the token expiration time in minutes
-        $TokenExpireMinutes = [System.Math]::Round($TimeSpan.TotalMinutes)
-
-        # Determine if refresh of access token is required when expiration count is less than or equal to minimum age
-        if ($TokenExpireMinutes -le 10) {
+        # Renew the access token when it's about to expire, to ensure the SAS Uri renewal and the requests following the upload don't fail
+        if (-not (Test-AccessToken -RenewalThresholdMinutes 10)) {
             Write-Verbose -Message "Existing token found but is soon about to expire, refreshing token"
-            Connect-MSIntuneGraph -TenantID $Global:AccessTokenTenantID -Refresh
+            if (-not (Update-AccessToken)) {
+                Write-Warning -Message "Access token is about to expire and could not be renewed, requests following the upload may fail"
+            }
         }
 
         # Convert and calculate required chunk elements for content upload

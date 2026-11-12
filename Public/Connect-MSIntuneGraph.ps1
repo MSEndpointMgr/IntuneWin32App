@@ -38,7 +38,7 @@ function Connect-MSIntuneGraph {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-08-31
-        Updated:     2026-01-18
+        Updated:     2026-11-12
 
         Version history:
         1.0.0 - (2021-08-31) Script created
@@ -53,6 +53,7 @@ function Connect-MSIntuneGraph {
         1.0.9 - (2026-01-18) Implemented native client certificate authentication using New-ClientCertificateAccessToken function - completes all OAuth 2.0 flows without external dependencies
         1.1.0 - (2026-01-18) Fixed Issue #208: Ensured offline_access scope is included in token refresh requests to maintain refresh token continuity
         1.1.1 - (2026-01-18) Added Scopes parameter to allow users to customize requested permissions while providing sensible defaults for full module functionality
+        1.1.2 - (2026-11-12) Keep the tenant ID, client ID and client credentials in module scope, to support renewal of an access token without user interaction for all authentication flows
     #>
     [CmdletBinding(DefaultParameterSetName = "Interactive")]
     param(
@@ -130,7 +131,16 @@ function Connect-MSIntuneGraph {
                         }
                         Update-AccessTokenFromRefreshToken -TenantID $TenantID -ClientID $ClientID -RefreshToken $Global:AccessToken.RefreshToken -Scopes $RefreshScopes
                         Write-Verbose -Message "Successfully refreshed access token silently"
-                        
+                        $Global:AccessTokenTenantID = $TenantID
+
+                        # Keep the details required to renew the access token without user interaction
+                        $Script:AccessTokenRenewalContext = @{
+                            "TenantID" = $TenantID
+                            "ClientID" = $ClientID
+                            "ClientSecret" = if ($PSCmdlet.ParameterSetName -eq "ClientSecret") { $ClientSecret } else { $null }
+                            "ClientCert" = if ($PSCmdlet.ParameterSetName -eq "ClientCert") { $ClientCert } else { $null }
+                        }
+
                         # Construct the required authentication header
                         $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
                         Write-Verbose -Message "Successfully constructed authentication header"
@@ -204,7 +214,15 @@ function Connect-MSIntuneGraph {
                     Write-Error -Message "Failed to retrieve access token"
                     return
                 }
-                
+
+                # Keep the details required to renew the access token without user interaction
+                $Script:AccessTokenRenewalContext = @{
+                    "TenantID" = $TenantID
+                    "ClientID" = $ClientID
+                    "ClientSecret" = if ($PSCmdlet.ParameterSetName -eq "ClientSecret") { $ClientSecret } else { $null }
+                    "ClientCert" = if ($PSCmdlet.ParameterSetName -eq "ClientCert") { $ClientCert } else { $null }
+                }
+
                 # Construct the required authentication header
                 $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
                 Write-Verbose -Message "Successfully constructed authentication header"
