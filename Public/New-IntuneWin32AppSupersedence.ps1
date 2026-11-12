@@ -16,11 +16,12 @@ function New-IntuneWin32AppSupersedence {
         Author:      Nickolaj Andersen
         Contact:     @NickolajA
         Created:     2021-04-01
-        Updated:     2021-08-31
+        Updated:     2026-11-12
 
         Version history:
         1.0.0 - (2021-04-01) Function created
         1.0.1 - (2021-08-31) Updated to use new authentication header
+        1.0.2 - (2026-11-12) Removed token lifetime check that used the Minutes instead of the TotalMinutes property and could report a valid access token as expired, token validation and renewal is handled by Invoke-MSGraphOperation
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -37,15 +38,6 @@ function New-IntuneWin32AppSupersedence {
         # Ensure required authentication header variable exists
         if (-not (Test-AuthenticationState)) {
             Write-Warning -Message "Authentication token was not found, use Connect-MSIntuneGraph before using this function"; break
-        }
-        else {
-            $TokenLifeTime = ($Global:AuthenticationHeader.ExpiresOn - (Get-Date).ToUniversalTime()).Minutes
-            if ($TokenLifeTime -le 0) {
-                Write-Warning -Message "Existing token found but has expired, use Connect-MSIntuneGraph to request a new authentication token"; break
-            }
-            else {
-                Write-Verbose -Message "Current authentication token expires in (minutes): $($TokenLifeTime)"
-            }
         }
 
         # Set script variable for error action preference
