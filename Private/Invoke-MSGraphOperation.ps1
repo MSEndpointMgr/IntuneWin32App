@@ -110,29 +110,9 @@ function Invoke-MSGraphOperation {
         if (-not (Test-AccessToken)) {
             Write-Verbose -Message "Access token requires renewal"
             
-            # Attempt silent refresh if refresh token is available
-            if ($null -ne $Global:AccessToken -and $Global:AccessToken.PSObject.Properties["RefreshToken"] -and -not [string]::IsNullOrEmpty($Global:AccessToken.RefreshToken)) {
-                Write-Verbose -Message "Attempting silent token refresh"
-                try {
-                    $Scopes = if ($Global:AccessToken.PSObject.Properties["Scopes"]) { 
-                        $Global:AccessToken.Scopes 
-                    }
-                    else { 
-                        @("DeviceManagementApps.ReadWrite.All", "offline_access") 
-                    }
-                    Update-AccessTokenFromRefreshToken -TenantID $Global:AccessTokenTenantID -ClientID $Global:AccessToken.client_id -RefreshToken $Global:AccessToken.RefreshToken -Scopes $Scopes
-                    
-                    # Update authentication header with new token
-                    $Global:AuthenticationHeader = New-AuthenticationHeader -AccessToken $Global:AccessToken
-                    Write-Verbose -Message "Successfully refreshed access token silently"
-                }
-                catch {
-                    Write-Warning -Message "Silent token refresh failed: $($_). Please re-authenticate using Connect-MSIntuneGraph"
-                    break
-                }
-            }
-            else {
-                Write-Warning -Message "Access token has expired and no refresh token is available. Please re-authenticate using Connect-MSIntuneGraph"
+            # Attempt to renew the access token without user interaction
+            if (-not (Update-AccessToken)) {
+                Write-Warning -Message "Access token has expired and could not be renewed. Please re-authenticate using Connect-MSIntuneGraph"
                 break
             }
         }
